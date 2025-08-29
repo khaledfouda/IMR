@@ -11,6 +11,129 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// soft_threshold_cpp
+NumericMatrix soft_threshold_cpp(const NumericMatrix B, const double lambda);
+RcppExport SEXP _IMR_soft_threshold_cpp(SEXP BSEXP, SEXP lambdaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericMatrix >::type B(BSEXP);
+    Rcpp::traits::input_parameter< const double >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(soft_threshold_cpp(B, lambda));
+    return rcpp_result_gen;
+END_RCPP
+}
+// row_means_cpp
+NumericVector row_means_cpp(SEXP yS4, const int n_cols);
+RcppExport SEXP _IMR_row_means_cpp(SEXP yS4SEXP, SEXP n_colsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
+    Rcpp::traits::input_parameter< const int >::type n_cols(n_colsSEXP);
+    rcpp_result_gen = Rcpp::wrap(row_means_cpp(yS4, n_cols));
+    return rcpp_result_gen;
+END_RCPP
+}
+// col_means_cpp
+NumericVector col_means_cpp(SEXP yS4, const int n_rows);
+RcppExport SEXP _IMR_col_means_cpp(SEXP yS4SEXP, SEXP n_rowsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
+    Rcpp::traits::input_parameter< const int >::type n_rows(n_rowsSEXP);
+    rcpp_result_gen = Rcpp::wrap(col_means_cpp(yS4, n_rows));
+    return rcpp_result_gen;
+END_RCPP
+}
+// add_to_rows_inplace_cpp
+void add_to_rows_inplace_cpp(NumericVector yx, const IntegerVector i, const NumericVector add_per_row, double alpha);
+RcppExport SEXP _IMR_add_to_rows_inplace_cpp(SEXP yxSEXP, SEXP iSEXP, SEXP add_per_rowSEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type yx(yxSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector >::type i(iSEXP);
+    Rcpp::traits::input_parameter< const NumericVector >::type add_per_row(add_per_rowSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    add_to_rows_inplace_cpp(yx, i, add_per_row, alpha);
+    return R_NilValue;
+END_RCPP
+}
+// add_to_cols_inplace_cpp
+void add_to_cols_inplace_cpp(NumericVector yx, const IntegerVector p, const NumericVector add_per_col, const double alpha);
+RcppExport SEXP _IMR_add_to_cols_inplace_cpp(SEXP yxSEXP, SEXP pSEXP, SEXP add_per_colSEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type yx(yxSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector >::type p(pSEXP);
+    Rcpp::traits::input_parameter< const NumericVector >::type add_per_col(add_per_colSEXP);
+    Rcpp::traits::input_parameter< const double >::type alpha(alphaSEXP);
+    add_to_cols_inplace_cpp(yx, p, add_per_col, alpha);
+    return R_NilValue;
+END_RCPP
+}
+// frob_ratio_cpp
+double frob_ratio_cpp(const arma::mat& Uold, const arma::vec& Dsqold, const arma::mat& Vold, const arma::mat& U, const arma::vec& Dsq, const arma::mat& V);
+RcppExport SEXP _IMR_frob_ratio_cpp(SEXP UoldSEXP, SEXP DsqoldSEXP, SEXP VoldSEXP, SEXP USEXP, SEXP DsqSEXP, SEXP VSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type Uold(UoldSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Dsqold(DsqoldSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Vold(VoldSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
+    rcpp_result_gen = Rcpp::wrap(frob_ratio_cpp(Uold, Dsqold, Vold, U, Dsq, V));
+    return rcpp_result_gen;
+END_RCPP
+}
+// update_A_cpp
+arma::mat update_A_cpp(SEXP yS4, const arma::mat& V, const arma::mat& U, const arma::vec& Dsq, const double lambda_M);
+RcppExport SEXP _IMR_update_A_cpp(SEXP yS4SEXP, SEXP VSEXP, SEXP USEXP, SEXP DsqSEXP, SEXP lambda_MSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
+    Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
+    rcpp_result_gen = Rcpp::wrap(update_A_cpp(yS4, V, U, Dsq, lambda_M));
+    return rcpp_result_gen;
+END_RCPP
+}
+// update_B_cpp
+arma::mat update_B_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const double lambda_M);
+RcppExport SEXP _IMR_update_B_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP lambda_MSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
+    Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
+    rcpp_result_gen = Rcpp::wrap(update_B_cpp(yS4, U, V, Dsq, lambda_M));
+    return rcpp_result_gen;
+END_RCPP
+}
+// partial_crossprod
+Rcpp::NumericVector partial_crossprod(Rcpp::NumericMatrix u, Rcpp::NumericMatrix v, Rcpp::IntegerVector irow, Rcpp::IntegerVector pcol, bool vtranspose);
+RcppExport SEXP _IMR_partial_crossprod(SEXP uSEXP, SEXP vSEXP, SEXP irowSEXP, SEXP pcolSEXP, SEXP vtransposeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type u(uSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type v(vSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type irow(irowSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type pcol(pcolSEXP);
+    Rcpp::traits::input_parameter< bool >::type vtranspose(vtransposeSEXP);
+    rcpp_result_gen = Rcpp::wrap(partial_crossprod(u, v, irow, pcol, vtranspose));
+    return rcpp_result_gen;
+END_RCPP
+}
 // svd_small_nc_cpp
 Rcpp::List svd_small_nc_cpp(SEXP mS);
 RcppExport SEXP _IMR_svd_small_nc_cpp(SEXP mSSEXP) {
@@ -32,4 +155,24 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(svd_small_nr_cpp(mS));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"_IMR_soft_threshold_cpp", (DL_FUNC) &_IMR_soft_threshold_cpp, 2},
+    {"_IMR_row_means_cpp", (DL_FUNC) &_IMR_row_means_cpp, 2},
+    {"_IMR_col_means_cpp", (DL_FUNC) &_IMR_col_means_cpp, 2},
+    {"_IMR_add_to_rows_inplace_cpp", (DL_FUNC) &_IMR_add_to_rows_inplace_cpp, 4},
+    {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 4},
+    {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
+    {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
+    {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},
+    {"_IMR_partial_crossprod", (DL_FUNC) &_IMR_partial_crossprod, 5},
+    {"_IMR_svd_small_nc_cpp", (DL_FUNC) &_IMR_svd_small_nc_cpp, 1},
+    {"_IMR_svd_small_nr_cpp", (DL_FUNC) &_IMR_svd_small_nr_cpp, 1},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_IMR(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

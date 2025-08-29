@@ -94,40 +94,41 @@ opt_svd <-
 
 # partial cross product at certain indices and returns a vector
 #' @export
-partial_crossprod <-
-  function(u, v, irow, pcol, vtranpose = FALSE) {
-    dd <- dim(u)
-    nnrow <- as.integer(dd[1])
-    nrank <- dd[2]
-    stopifnot(all(irow < nnrow))
-    storage.mode(u) <- "double"
-    storage.mode(v) <- "double"
-    storage.mode(irow) <- "integer"
-    storage.mode(pcol) <- "integer"
-    nomega <- as.integer(length(irow))
-
-
-    if (vtranpose) {
-      nncol <- as.integer(nrow(v))
-      stopifnot(nrank == ncol(v))
-      call_fun <- "pcrossprodt"
-    } else {
-      nncol <- as.integer(ncol(v))
-      stopifnot(nrank == nrow(v))
-      call_fun <- "pcrossprod"
-    }
-
-
-    .Fortran(
-      call_fun,
-      nnrow,
-      nncol,
-      nrank,
-      u,
-      v,
-      irow,
-      pcol,
-      nomega,
-      r = double(nomega)
-    )$r
-  }
+# partial_crossprod <-
+#   function(u, v, irow, pcol, vtranpose = FALSE) {
+#     dd <- dim(u)
+#     nnrow <- as.integer(dd[1])
+#     nrank <- dd[2]
+#     stopifnot(all(irow < nnrow))
+#     storage.mode(u) <- "double"
+#     storage.mode(v) <- "double"
+#     storage.mode(irow) <- "integer"
+#     storage.mode(pcol) <- "integer"
+#     nomega <- as.integer(length(irow))
+#     r = double(nomega)
+#
+#     if (vtranpose) {
+#       nncol <- as.integer(nrow(v))
+#       stopifnot(nrank == ncol(v))
+#       pcrossprodt_call(nnrow, nncol, nrank, u, v, irow, pcol, nomega, r)
+#     } else {
+#       nncol <- as.integer(ncol(v))
+#       stopifnot(nrank == nrow(v))
+#       pcrossprod_call(nnrow, nncol, nrank, u, v, irow, pcol, nomega, r)
+#     }
+#     return(r)
+#
+#     # .Fortran(
+#     #   call_fun,
+#     #   nnrow,
+#     #   nncol,
+#     #   nrank,
+#     #   u,
+#     #   v,
+#     #   irow,
+#     #   pcol,
+#     #   nomega,
+#     #   r = double(nomega),
+#     #   PACKAGE = "IMR"
+#     # )$r
+#   }

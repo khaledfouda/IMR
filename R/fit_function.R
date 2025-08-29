@@ -19,7 +19,7 @@ fit <- function(
     warm_start = NULL,
     ls_initial = TRUE) {
   # Input checks & setup ----------------------------------------------------
-  stopifnot(inherits(Y, "CsparseMatrix"))
+  stopifnot(is.Incomplete(Y))
 
   dims <- dim(Y)
   nr <- dims[1]

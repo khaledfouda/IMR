@@ -2,6 +2,7 @@
 #define R_IMR_H
 #include <R.h>
 #include <Rinternals.h>
+#include <stdlib.h> // for NULL
 #include <R_ext/Rdynload.h>
 // #include <R_ext/RS.h> // F77_SUB
 #define _(String) (String)
@@ -64,13 +65,20 @@ static R_NativePrimitiveArgType pcrossprodt_t[] = {
 static R_FortranMethodDef fMethods[] = {
   FDEF(pcrossprod),
   FDEF(pcrossprodt),
-  {NULL, NULL, 0, NULL}
+  {NULL, NULL, 0}
 };
 
 void Rcpp_R_init_IMR(DllInfo *dll);
 void R_init_IMR(DllInfo *dll){
+  // Rcpp_R_init_IMR(dll);
   R_registerRoutines(dll, NULL, NULL, fMethods, NULL);
   R_useDynamicSymbols(dll, FALSE);
 }
+
+
+/* .Call calls */
+// generated with tools::package_native_routine_registration_skeleton(".")
+
+
 
 #endif

@@ -1,8 +1,9 @@
+// [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-
 using namespace Rcpp;
 
 // lasso soft-thresholding
+// [[Rcpp::export]]
 NumericMatrix soft_threshold_cpp(const NumericMatrix B, const double lambda) {
   const int nrow = B.nrow();
   const int ncol = B.ncol();
@@ -22,7 +23,7 @@ NumericMatrix soft_threshold_cpp(const NumericMatrix B, const double lambda) {
 // the following two functions compute row and column means of
 // a matrix of class Incomplete (sparse)
 // faster than rowMeans and colMeans
-
+// [[Rcpp::export]]
 NumericVector row_means_cpp(SEXP yS4, const int n_cols) {
   S4 y(yS4);
   IntegerVector i = y.slot("i");
@@ -42,7 +43,7 @@ NumericVector row_means_cpp(SEXP yS4, const int n_cols) {
   for (int r = 0; r < n; ++r) sums[r] /= denom;
   return sums;
 }
-
+// [[Rcpp::export]]
 NumericVector col_means_cpp(SEXP yS4, const int n_rows) {
   S4 y(yS4);
   IntegerVector p = y.slot("p");
@@ -62,7 +63,7 @@ NumericVector col_means_cpp(SEXP yS4, const int n_rows) {
 // the following two functions add a vector to the rows or the columns
 // of the R sparse matrix. yx = y@x; i = y@i; p = y@p
 // the update is done inplace
-
+// [[Rcpp::export]]
 void add_to_rows_inplace_cpp(NumericVector yx,
                              const IntegerVector i,
                              const NumericVector add_per_row,
@@ -83,7 +84,7 @@ void add_to_rows_inplace_cpp(NumericVector yx,
       stop("row index out of range");
   }
 }
-
+// [[Rcpp::export]]
 void add_to_cols_inplace_cpp(NumericVector yx,
                              const IntegerVector p,
                              const NumericVector add_per_col,
@@ -102,6 +103,7 @@ void add_to_cols_inplace_cpp(NumericVector yx,
 
 // the following functions computes the frobonanci ratio
 // between old and new svd decompositions
+// [[Rcpp::export]]
 double frob_ratio_cpp(const arma::mat& Uold,  const arma::vec& Dsqold, const arma::mat& Vold,
                       const arma::mat& U,     const arma::vec& Dsq,    const arma::mat& V) {
   const arma::uword r = Dsq.n_elem;
@@ -149,6 +151,7 @@ double frob_ratio_cpp(const arma::mat& Uold,  const arma::vec& Dsqold, const arm
 
 // A_mat = (y %*% V + U * diag(Dsq)) %*% diag(D_star)
 // with D_star_j = Dsq_j / (Dsq_j + lambda_M)
+// [[Rcpp::export]]
 arma::mat update_A_cpp(SEXP yS4,              // dgCMatrix (n x m)
                             const arma::mat& V,    // m x J
                             const arma::mat& U,    // n x J
@@ -178,7 +181,7 @@ arma::mat update_A_cpp(SEXP yS4,              // dgCMatrix (n x m)
 
   return A; // n x J
 }
-
+// [[Rcpp::export]]
 arma::mat update_B_cpp(SEXP yS4,              // dgCMatrix (n x m)
                             const arma::mat& U,    // n x J
                             const arma::mat& V,    // m x J
