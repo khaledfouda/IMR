@@ -92,10 +92,10 @@ fit <- function(
         gamma <- matrix(0, nr, ncol(Z))
         zg_obs <- rep(0, nz)
       }
-      if (intercept_col) {
+      if (intercept_row) {
         phi.a <- rep(0, nr)
       }
-      if (intercept_row) {
+      if (intercept_col) {
         phi.b <- rep(0, nc)
       }
 
@@ -182,7 +182,7 @@ fit <- function(
     U <- U %*% B_mat$v
 
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],J,J), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -196,7 +196,7 @@ fit <- function(
     V <- V %*% A_mat$v
 
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],J,J), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 

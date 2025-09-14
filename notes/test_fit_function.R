@@ -1,24 +1,41 @@
 library(devtools)
 clean_dll(); Rcpp::compileAttributes(); document(); load_all()
 require(tidyverse)
-
-
-f <- function() {
-  dlls <- Filter(function(d) d[["name"]] == "IMR", getLoadedDLLs())
-  vapply(dlls, `[[`, "", "path")  %>% print()
-  getDLLRegisteredRoutines(dlls[[1]])$`.Call` %>% print()
-  getDLLRegisteredRoutines(dlls[[1]])$Fortran     %>% print()
-}
-f()
-
 source("./notes/generate_simu_dat.R")
-dat <-
-generate_simulated_data(300, 400, 3, 5, 0, 0.7,
-                        prepare_for_fitting = T,mv_coeffs = T,seed = 2025)
-x <- matrix(rbinom(150, 1, .4), 15,10); x[1,5] <- x[3:4,7] <- NA; as(x, "Incomplete")
 
-fit <- IMR::fit(dat$fit_data$train, dat$X, J=3, lambda_M = .001, lambda_beta=.0001,
-                trace=T, ls_initial = FALSE)
+
+dat <-
+generate_simulated_data(300, 400, 3, 5, 3, 0.7,
+                        prepare_for_fitting = T,mv_coeffs = T,seed = 2025)
+
+
+
+
+Y = dat$fit_data$train
+X = dat$fit_data$X$Q
+Z = NULL
+J = 3
+lambda_M = .001
+lambda_beta = .0001
+lambda_gamma = .001
+intercept_row = T
+intercept_col = F
+L_a = NULL
+lambda_a = 0
+L_b = NULL
+lambda_b = 0
+maxit = 15
+thresh = 1e-5
+trace = T
+warm_start = NULL
+ls_initial = F
+
+fit <- IMR::fit(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
+
+                J=3, lambda_M = .01, lambda_beta=.0001, lambda_gamma=.01,
+                trace=T, ls_initial = FALSE,intercept_row = T, intercept_col = T)
+quick_camc_simu_res(dat, fit)
+
 
 
 col_means_cpp(dat$fit_data$Y_full, 400)

@@ -92,12 +92,15 @@ void add_to_cols_inplace_cpp(NumericVector yx,
   const int m = p.size() - 1;
   const R_xlen_t nnz = yx.size();
   for (int j = 0; j < m; ++j) {
-    const int pj = p[j];
+    const int start = p[j];
+    const int end   = p[j+1];
     const double v = alpha * add_per_col[j];
-    if(pj > 0 && pj < nnz)
-      for (int k = pj; k < p[j + 1]; ++k) yx[k] += v;
-    else
-      stop("Out of bound");
+    if(v == 0.0) continue;
+    // if(pj > 0 && pj < nnz)
+    for (int k = start; k < end; ++k)
+      yx[k] += v;
+    // else
+    //   stop("Out of bound");
   }
 }
 
