@@ -33,7 +33,7 @@ ls_initial = F
 fit <- IMR::fit(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
 
                 J=3, lambda_M = .01, lambda_beta=.0001, lambda_gamma=.01,
-                trace=T, ls_initial = FALSE,intercept_row = T, intercept_col = T)
+                trace=T, ls_initial = T,intercept_row = T, intercept_col = T)
 quick_camc_simu_res(dat, fit)
 
 

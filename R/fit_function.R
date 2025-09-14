@@ -66,7 +66,7 @@ fit <- function(
     Dsq <- warm_start$d
   } else {
     if (ls_initial) {
-      mfit <- fit_no_low_rank(Y, X, Z, T, T, lambda_beta, lambda_gamma)
+      mfit <- fit_no_low_rank(Y, X, Z, T, T, 0, 0)
       if (beta_flag) {
         beta <- mfit$beta
         xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -231,3 +231,179 @@ fit <- function(
     n_iter       = iter
   )
 }
+
+#----------------------------------
+#' @export
+fit_no_low_rank <- function(
+    Y,
+    X = NULL,
+    Z = NULL,
+    lambda_beta = NULL,
+    lambda_gamma = NULL,
+    intercept_row = FALSE,
+    intercept_col = FALSE,
+    maxit = 300,
+    thresh = 1e-5,
+    trace = FALSE) {
+  # Input checks & setup ----------------------------------------------------
+  stopifnot(is.Incomplete(Y))
+
+  dims <- dim(Y)
+  nr <- dims[1]
+  nc <- dims[2]
+  nz <- Matrix::nnzero(Y, na.counted = TRUE)
+
+  irow <- Y@i
+  pcol <- Y@p
+
+
+  # Laplacian flags (L_* expected as eigendecompositions) -------------------
+  beta_flag <- !(is.null(lambda_beta) | is.null(X))
+  gamma_flag <- !(is.null(lambda_gamma) | is.null(Z))
+  # initial everything to null ------------------------
+  beta <- gamma <- phi.a <- phi.b <- NULL
+
+  # 3) Warm-start or initialize ------------------------------------------------
+
+  if (beta_flag) {
+    beta <- matrix(0, ncol(X), nc)
+    xb_obs <- rep(0, nz)
+  }
+  if (gamma_flag) {
+    gamma <- matrix(0, nr, ncol(Z))
+    zg_obs <- rep(0, nz)
+  }
+  if (intercept_row) {
+    phi.a <- rep(0, nr)
+  }
+  if (intercept_col) {
+    phi.b <- rep(0, nc)
+  }
+
+  init <- opt_svd(naive_MC(as.matrix(Y)), J, nr, nc, FALSE, FALSE)
+
+
+  U <- init$u
+  Dsq <- init$d
+  V <- init$v
+  rm(init)
+
+
+  #  Main loop ---------------------------------------------------------------
+  ratio <- Inf
+  iter <- 0
+  while (ratio > thresh && iter < maxit) {
+    iter <- iter + 1
+    old_err <- Y@x[]
+
+    # Intercepts (row/column) ---------------------------------------------
+    # Row-level intercepts (phi.a), then apply delta to residuals.
+    if (intercept_row) {
+      old_val <- phi.a
+      phi.a <- row_means_cpp(Y, nc) + phi.a
+      change <- old_val - phi.a
+      add_to_rows_inplace_cpp(Y@x, Y@i, change)
+    }
+
+    # Column-level intercepts (phi.b), then apply delta to residuals.
+    if (intercept_col) {
+      old_val <- phi.b
+      phi.b <- col_means_cpp(Y, nr) + phi.b
+      change <- old_val - phi.b
+      add_to_cols_inplace_cpp(Y@x, Y@p, change)
+    }
+
+    #  Update beta via soft-threshold --------------------------------------
+    if (beta_flag) {
+      beta <- soft_threshold_cpp(
+        as.matrix((crossprod(X, Y)) + beta),
+        lambda_beta
+      )
+      old_val <- xb_obs
+      xb_obs <- partial_crossprod(X, beta, irow, pcol)
+      Y@x <- Y@x + old_val - xb_obs
+    }
+
+
+
+    #  Update gamma via soft-threshold -------------------------------------
+    if (gamma_flag) {
+      gamma <- soft_threshold_cpp(
+        as.matrix(Y %*% Z + gamma),
+        lambda_gamma
+      )
+
+      old_val <- zg_obs
+      zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
+      Y@x <- Y@x + old_val - zg_obs
+    }
+
+    # 4.7 Convergence check ----------------------------------------------------
+    ratio <- mean((Y@x-old_err)^2)
+
+    if (trace) {
+      obj <- (0.5 * sum(Y@x^2)  +
+                ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
+                ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
+      ) / nz
+      cat(iter, " obj=", round(obj, 5), " ratio=", ratio, "\n")
+    }
+  }
+
+  if (iter == maxit && trace) {
+    warning("Did not converge in ", maxit, " iterations.")
+  }
+
+  # 5) Trim effective rank and return -----------------------------------------
+  J_eff <- min(max(1, sum(Dsq > 0)), J)
+
+  list(
+    resid        = Y,
+    beta         = beta,
+    gamma        = gamma,
+    phi.a        = phi.a,
+    phi.b        = phi.b,
+    n_iter       = iter
+  )
+}
+
+
+#--------------------------------------
+#'@export
+error_metric = list(
+
+#--- error functions:
+unexplained_variance = function(predicted, true, adjusted = FALSE, k = NA) {
+   # SSE / SST
+   if(! adjusted){
+      return(sum((true - predicted) ^ 2) / sum((true - mean(true)) ^ 2))
+   }else{
+      n = length(true)
+      stopifnot(is.numeric(k))
+      return(((sum((true - predicted) ^ 2) /
+           sum((true - mean(true)) ^ 2)) *
+            (n - 1) / (n - k - 1)))
+   }
+},
+
+mape = function(predicted, true) {
+   mean(abs((true - predicted) / true), na.rm = TRUE) * 100
+},
+mae = function(predicted, true) {
+   mean(abs(true - predicted), na.rm = TRUE)
+},
+
+rmse_normalized = function(predicted, true) {
+   sqrt(mean((true - predicted) ^ 2, na.rm = TRUE)) / sd(true, na.rm = TRUE)
+},
+
+rmse = function(predicted, true) {
+   sqrt(mean((true - predicted) ^ 2, na.rm = TRUE))
+},
+
+spearman_R2 = function(predicted, true) {
+   cor(true, predicted, method = "spearman")
+}
+
+
+)
