@@ -54,7 +54,8 @@ Rcpp::List svd_small_nc_cpp(SEXP mS) {
     if (dj > eps) U.col(j) /= dj;
     else          U.col(j).zeros();     // rank-deficient: safe/finite
   }
-
+  // ensure that d is an R vector instead of an matrix
+  Rcpp::NumericVector d_out(d.begin(), d.end());
   return List::create(_["d"] = d, _["v"] = V, _["u"] = U);
 }
 
@@ -85,6 +86,7 @@ Rcpp::List svd_small_nr_cpp(SEXP mS) {
     if (dj > eps) V.col(j) /= dj;        // scale each column by 1/d_j
     else          V.col(j).zeros();      // rank-deficient guard
   }
-
-  return List::create(_["d"] = d, _["u"] = U, _["v"] = V);
+  // ensure that d is an R vector instead of an matrix
+  Rcpp::NumericVector d_out(d.begin(), d.end());
+  return List::create(_["d"] = d_out, _["u"] = U, _["v"] = V);
 }

@@ -1,9 +1,9 @@
 #' @export
-fit <- function(
+imr.fit <- function(
     Y,
     X = NULL,
     Z = NULL,
-    J = 2,
+    r = 2,
     lambda_M = 1,
     lambda_beta = NULL,
     lambda_gamma = NULL,
@@ -34,15 +34,15 @@ fit <- function(
   beta_flag <- !(is.null(lambda_beta) | is.null(X))
   gamma_flag <- !(is.null(lambda_gamma) | is.null(Z))
   # initial everything to null ------------------------
-  beta <- gamma <- phi.a <- phi.b <- NULL
+  beta <- gamma <- beta0 <- gamma0 <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
-  warm_start <- verify_warm_start(warm_start, J)
+  warm_start <- verify_warm_start(warm_start, r)
 
   if (!is.null(warm_start)) {
-    required <- c("u", "d", "v", "beta", "gamma", "phi.a", "phi.b")
+    required <- c("u", "d", "v", "beta", "gamma", "beta0", "gamma0")
     if (!all(required %in% names(warm_start))) {
-      stop("warm_start missing components: u, d, v, beta, gamma, phi.a, phi.b")
+      stop("warm_start missing components: u, d, v, beta, gamma, beta0, gamma0")
     }
 
     if (beta_flag) {
@@ -54,11 +54,11 @@ fit <- function(
       zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
     }
     if (intercept_row) {
-      phi.a <- warm_start$phi.a
+      beta0 <- warm_start$beta0
     }
 
     if (intercept_col) {
-      phi.b <- warm_start$phi.b
+      gamma0 <- warm_start$gamma0
     }
 
     U <- warm_start$u
@@ -66,7 +66,11 @@ fit <- function(
     Dsq <- warm_start$d
   } else {
     if (ls_initial) {
-      mfit <- fit_no_low_rank(Y, X, Z, T, T, 0, 0)
+      mfit <- IMR::imr.fit_no_low_rank(Y, X, Z,
+                                       lambda_beta = lambda_beta,
+                                       lambda_gamma = lambda_gamma,
+                                       intercept_row = intercept_row,
+                                       intercept_col = intercept_col)
       if (beta_flag) {
         beta <- mfit$beta
         xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -76,13 +80,13 @@ fit <- function(
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
       }
       if (intercept_row) {
-        phi.a <- mfit$phi.a
+        beta0 <- mfit$beta0
       }
       if (intercept_col) {
-        phi.b <- mfit$phi.b
+        gamma0 <- mfit$gamma0
       }
 
-      init <- opt_svd(naive_MC(as.matrix(mfit$resid)), J, nr, nc, FALSE, FALSE)
+      init <- opt_svd(naive_MC(as.matrix(mfit$resid)), r, nr, nc, FALSE, FALSE)
     } else {
       if (beta_flag) {
         beta <- matrix(0, ncol(X), nc)
@@ -93,13 +97,13 @@ fit <- function(
         zg_obs <- rep(0, nz)
       }
       if (intercept_row) {
-        phi.a <- rep(0, nr)
+        beta0 <- rep(0, nr)
       }
       if (intercept_col) {
-        phi.b <- rep(0, nc)
+        gamma0 <- rep(0, nc)
       }
 
-      init <- opt_svd(naive_MC(as.matrix(Y)), J, nr, nc, FALSE, FALSE)
+      init <- opt_svd(naive_MC(as.matrix(Y)), r, nr, nc, FALSE, FALSE)
     }
 
     U <- init$u
@@ -115,8 +119,8 @@ fit <- function(
   if (!is.null(warm_start)) {
     if (beta_flag) Y@x <- Y@x - xb_obs
     if (gamma_flag) Y@x <- Y@x - zg_obs
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, phi.a, -1)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, phi.b, -1)
+    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, beta0, -1)
+    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, gamma0, -1)
   }
 
   #  Main loop ---------------------------------------------------------------
@@ -130,19 +134,19 @@ fit <- function(
     D_old <- Dsq
 
     # Intercepts (row/column) ---------------------------------------------
-    # Row-level intercepts (phi.a), then apply delta to residuals.
+    # Row-level intercepts (beta0), then apply delta to residuals.
     if (intercept_row) {
-      old_val <- phi.a
-      phi.a <- row_means_cpp(Y, nc) + phi.a
-      change <- old_val - phi.a
+      old_val <- beta0
+      beta0 <- row_means_cpp(Y, nc) + beta0
+      change <- old_val - beta0
       add_to_rows_inplace_cpp(Y@x, Y@i, change)
     }
 
-    # Column-level intercepts (phi.b), then apply delta to residuals.
+    # Column-level intercepts (gamma0), then apply delta to residuals.
     if (intercept_col) {
-      old_val <- phi.b
-      phi.b <- col_means_cpp(Y, nr) + phi.b
-      change <- old_val - phi.b
+      old_val <- gamma0
+      gamma0 <- col_means_cpp(Y, nr) + gamma0
+      change <- old_val - gamma0
       add_to_cols_inplace_cpp(Y@x, Y@p, change)
     }
 
@@ -182,7 +186,7 @@ fit <- function(
     U <- U %*% B_mat$v
 
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],J,J), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],r,r), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -196,7 +200,7 @@ fit <- function(
     V <- V %*% A_mat$v
 
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],J,J), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],r,r), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -218,23 +222,23 @@ fit <- function(
   }
 
   # 5) Trim effective rank and return -----------------------------------------
-  J_eff <- min(max(1, sum(Dsq > 0)), J)
+  r_eff <- min(max(1, sum(Dsq > 0)), r)
 
   list(
-    u            = U[, seq_len(J_eff), drop = FALSE],
-    d            = Dsq[seq_len(J_eff)],
-    v            = V[, seq_len(J_eff), drop = FALSE],
+    u            = U[, seq_len(r_eff), drop = FALSE],
+    d            = Dsq[seq_len(r_eff)],
+    v            = V[, seq_len(r_eff), drop = FALSE],
     beta         = beta,
     gamma        = gamma,
-    phi.a        = phi.a,
-    phi.b        = phi.b,
+    beta0        = beta0,
+    gamma0        = gamma0,
     n_iter       = iter
   )
 }
 
 #----------------------------------
 #' @export
-fit_no_low_rank <- function(
+imr.fit_no_low_rank <- function(
     Y,
     X = NULL,
     Z = NULL,
@@ -261,7 +265,7 @@ fit_no_low_rank <- function(
   beta_flag <- !(is.null(lambda_beta) | is.null(X))
   gamma_flag <- !(is.null(lambda_gamma) | is.null(Z))
   # initial everything to null ------------------------
-  beta <- gamma <- phi.a <- phi.b <- NULL
+  beta <- gamma <- beta0 <- gamma0 <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
 
@@ -274,19 +278,11 @@ fit_no_low_rank <- function(
     zg_obs <- rep(0, nz)
   }
   if (intercept_row) {
-    phi.a <- rep(0, nr)
+    beta0 <- rep(0, nr)
   }
   if (intercept_col) {
-    phi.b <- rep(0, nc)
+    gamma0 <- rep(0, nc)
   }
-
-  init <- opt_svd(naive_MC(as.matrix(Y)), J, nr, nc, FALSE, FALSE)
-
-
-  U <- init$u
-  Dsq <- init$d
-  V <- init$v
-  rm(init)
 
 
   #  Main loop ---------------------------------------------------------------
@@ -297,19 +293,19 @@ fit_no_low_rank <- function(
     old_err <- Y@x[]
 
     # Intercepts (row/column) ---------------------------------------------
-    # Row-level intercepts (phi.a), then apply delta to residuals.
+    # Row-level intercepts (beta0), then apply delta to residuals.
     if (intercept_row) {
-      old_val <- phi.a
-      phi.a <- row_means_cpp(Y, nc) + phi.a
-      change <- old_val - phi.a
+      old_val <- beta0
+      beta0 <- row_means_cpp(Y, nc) + beta0
+      change <- old_val - beta0
       add_to_rows_inplace_cpp(Y@x, Y@i, change)
     }
 
-    # Column-level intercepts (phi.b), then apply delta to residuals.
+    # Column-level intercepts (gamma0), then apply delta to residuals.
     if (intercept_col) {
-      old_val <- phi.b
-      phi.b <- col_means_cpp(Y, nr) + phi.b
-      change <- old_val - phi.b
+      old_val <- gamma0
+      gamma0 <- col_means_cpp(Y, nr) + gamma0
+      change <- old_val - gamma0
       add_to_cols_inplace_cpp(Y@x, Y@p, change)
     }
 
@@ -354,15 +350,14 @@ fit_no_low_rank <- function(
     warning("Did not converge in ", maxit, " iterations.")
   }
 
-  # 5) Trim effective rank and return -----------------------------------------
-  J_eff <- min(max(1, sum(Dsq > 0)), J)
+  #  return -----------------------------------------
 
   list(
     resid        = Y,
     beta         = beta,
     gamma        = gamma,
-    phi.a        = phi.a,
-    phi.b        = phi.b,
+    beta0        = beta0,
+    gamma0        = gamma0,
     n_iter       = iter
   )
 }

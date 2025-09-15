@@ -171,12 +171,12 @@ generate_simulated_data <- function(
     # W_valid: 1 = train (kept), 0 = held-out validation entries
     W_valid <- MC_train_test_split(mask, testp = 0.2)
     Y_train <- Y * W_valid
+    Y_valid <- Y * (1- W_valid)
 
     fit_data <- list(
       train   = as(Y_train, "Incomplete"),
-      valid   = Y[W_valid == 0],
-      Y_full  = as(Y, "Incomplete"),
-      W_valid = W_valid
+      valid   = as(Y_valid, "Incomplete"),
+      Y_full  = as(Y, "Incomplete")
       # X       = list(Q = qr.Q(Xq), R = qr.R(Xq)),
       # Rbeta   = qr.R(Xq) %*% beta
     )
@@ -244,7 +244,7 @@ MC_train_test_split <-
     test.indices = indices[test.idx, ]
 
     new_mask = matrix(1, nrow = n_rows, ncol = n_cols)
-    new_mask[obs_mask == 0] <- 1
+    new_mask[obs_mask == 0] <- 0
     new_mask[as.matrix(test.indices[, c("row", "col")])] <- 0
 
     return(new_mask)

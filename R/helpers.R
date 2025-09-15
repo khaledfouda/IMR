@@ -37,7 +37,7 @@ verify_low_rank <- function(M, J, min_eigv = 1e-6) {
     Ua <- Ua - U %*% (t(U) %*% Ua)
     Ua <- svd_small_nc_cpp(Ua)$u
     M$u <- cbind(U, Ua)
-    M$v <- cbind(M$v, matrix(0, ncol(M$v), Ja))
+    M$v <- cbind(M$v, matrix(0, nrow(M$v), Ja))
   }
   M
 }
