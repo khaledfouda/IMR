@@ -1,6 +1,6 @@
 #----------------------------------------------------------------
 #' @export
-get_imr_default_hparams <- function(){
+get_imr_default_hpar <- function(){
   list(
     M = list(
       lambda_max    = NULL,   # = lambda_{M,min}
@@ -69,21 +69,22 @@ get_lambda_lasso_max <- function(
     X       = NULL,
     Z       = NULL,
     y_valid = NULL,
-    W_valid = NULL,
+    # W_valid = NULL,
     y       = NULL,
     # row_cov = TRUE,
     intercept_row = TRUE,
     intercept_col = TRUE,
-    hparams = get_imr_default_hparams(),
+    hpar = get_imr_default_hpar(),
     interior_loop_length = 20,
     maxit   = 100,
     verbose = 0,
     tol     = 1
 ) {
 
-  if( ((!is.null(X)) & (!is.null(Z))) & (is.null(X)&is.null(Z)))
-    stop("Either X or Z must be provided. You cannot provide both or neither.")
+  if(!xor(is.null(X), is.null(Z)))
+    stop("Either X or Z must be provided, but not both or neither.")
   lambda_beta <- lambda_gamma <- 0
+  row_cov <- is.null(Z)
   # lambda_beta <- if(row_cov) 0 else NULL
   # lambda_gamma <- if(row_cov) NULL else 0
   # if(row_cov){
@@ -95,59 +96,62 @@ get_lambda_lasso_max <- function(
   # }
   nr <- nrow(y_train)
   nc <- ncol(y_train)
-  #-...
-  if (is.null(y_valid) || is.null(W_valid)) {
+  # step 1: get an initial fit and find suitable lambda_M and rank before starting:
+  if (is.null(y_valid)) {
     mfit <- list()
-    mfit$fit <- CAMC_fit(
-      y           = y_train,
+    # if no validation set provided then fit with a generic r and lambda_M
+    mfit$fit <- IMR::imr.fit(
+      Y           = y_train,
       X           = X,
       Z           = Z,
-      J           = 10,
-      lambda_M    = 1,
-      lambda_beta = lambda_beta,
-      lambda_gamma = lambda_gamma,
+      r           = 5,
+      lambda_M    = 0,
+      lambda_beta = 0,
+      lambda_gamma = 0,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit       = maxit,
       trace       = F
     )
+    lambda_M <- 0
+    r = 5
   } else {
-    mfit <- CAMC_tv_M(
+    mfit <- IMR::imr.cv_M(
       y_train     = y_train,
+      y_valid     = y_valid,
       X           = X,
       Z           = Z,
-      y_valid     = y_valid,
-      W_valid     = W_valid,
-      y           = y,
-      lambda_beta = lambda_beta,
-      lambda_gamma = lambda_gamma,
+      Y_full      = y,
+      lambda_beta = 0,
+      lambda_gamma = 0,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       trace       = F,
       maxit       = maxit,
-      hpar        = hparams
+      hpar        = hpar
     )
+    lambda_M = mfit$lambda_M
+    J        = max(2, mfit$rank_M) # do not want the rank to be below 2
   }
-  lambda_M = mfit$lambda_M
-  J        = max(2, mfit$rank_M) # do not want the rank to be below 2
-  ## 2) Compute λ_max  --------------------------------
+
+  ##  Compute max value using kkt ------------
   residuals  <- y_train -
     mfit$fit$u %*% (mfit$fit$d * t(mfit$fit$v))
   if(intercept_row)
-    residuals <- residuals - mfit$fit$phi.a %*% matrix(1, 1, nc)
+    residuals <- residuals - mfit$fit$beta0 %*% matrix(1, 1, nc)
   if(intercept_col)
-    residuals <- residuals - matrix(1, nr, 1) %*% mfit$fit$phi.b
+    residuals <- residuals - matrix(1, nr, 1) %*% mfit$fit$gamma0
   if(row_cov){
     lambda_max <- max(crossprod(X, residuals))
   }else
     lambda_max <- max(residuals %*% Z)
   ## main_fit function -------------------
   onefit <- function(lambda_beta, lambda_gamma){
-    CAMC_fit(
-      y             = y_train,
+    IMR::imr.fit(
+      Y             = y_train,
       X             = X,
       Z             = Z,
-      J             = J,
+      r             = r,
       lambda_M      = lambda_M,
       lambda_beta   = lambda_beta,
       lambda_gamma  = lambda_gamma,
@@ -158,9 +162,10 @@ get_lambda_lasso_max <- function(
     )
   }
 
-  ## 3) Line search for supremum λ -------------------------------------------
+  ## 3) Line search for supremum value ---------------------------
   lambda_sup <- lambda_max
   mid_pt <- lambda_max / 2
+  # we fit at mid point
   mfit <- onefit(if(row_cov) mid_pt else lambda_beta,
                  if(row_cov) lambda_gamma else mid_pt)
   zero_ratio <- if(row_cov) mean(mfit$beta == 0) else mean(mfit$gamma == 0)
@@ -209,7 +214,7 @@ get_lambda_lasso_max <- function(
 
   if (verbose > 0) {
     message(sprintf(
-      "%s: λ_max = %.3f; λ_sup = %.3f (%.1f%% of λ_max)",
+      "%s: lambda: max = %.3f; sup = %.3f (%.1f%% of max)",
       ifelse(row_cov, "Beta", "Gamma"),
       lambda_max,
       lambda_sup,

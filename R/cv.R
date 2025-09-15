@@ -1,5 +1,5 @@
 #' @export
-imr.cv.M <- function(
+imr.cv_M <- function(
   y_train,
   y_valid,
   X = NULL,

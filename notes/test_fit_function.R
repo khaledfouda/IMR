@@ -45,6 +45,12 @@ fit2 <- IMR::imr.cv.M(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$X$Q,
 quick_camc_simu_res(dat, fit2$fit)
 
 
+IMR::get_lambda_lasso_max(dat$fit_data$train, dat$fit_data$X$Q,
+                          dat$fit_data$Z$Q, dat$fit_data$valid,
+                          dat$fit_data$Y_full, T, T, verbose = T
+                          )
+
+
 microbenchmark::microbenchmark(
 a = partial_crossprod(dat$X, (dat$beta), dat$fit_data$train@i, dat$fit_data$train@p,F),
 b =  partial_crossprod_cpp(dat$X, (dat$beta), dat$fit_data$train@i, dat$fit_data$train@p,F),
