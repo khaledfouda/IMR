@@ -25,7 +25,7 @@ imr.cv.M <- function(
 
   # lambda lambda_m sequence
   if(is.null(hpar$M$lambda_max)){
-    hpar$M$lambda_max <- lambdaM.max(y_train, X, Z, T, T,
+    hpar$M$lambda_max <- get_lambda_M_max(y_train, X, Z, T, T,
                                            lambda_beta, lambda_gamma) *
       hpar$M$lambda_factor
   }
@@ -168,68 +168,6 @@ imr.cv.M <- function(
   return(best_fit)
 }
 
-#----------------------------------------------------------------
-#' @export
-get_imr_default_hparams <- function(){
-  list(
-    M = list(
-      lambda_max    = NULL,   # = lambda_{M,min}
-      lambda_factor  = 1 / 4,  # ignored if lambda_init is provided
-      n.lambda       = 20,     # sequence from lambda_init to 0 (inclusive)
-      rank.init      = 2,
-      rank.max       = 30,
-      rank.min       = 2,
-      rank.step      = 2,
-      early.stopping = 1
-    ),
-    beta = list(
-      lambda_max = NULL,  # if NULL, computed internally (recommended)
-      n.lambda   = 20,
-      init.tol   = 3
-    ),
-    gamma = list(
-      lambda_max = NULL,
-      n.lambda   = 20,
-      init.tol   = 3
-    ),
-    laplacian = list(
-      lambda_a = 0,
-      L_a      = NULL,
-      lambda_b = 0,
-      S_b      = NULL
-    )
-  )
-}
-
 
 #-----------------------------------------------------------
-#' @export
-lambdaM.max <-
-  function(Y,
-           X = NULL,
-           Z = NULL,
-           intercept_row = FALSE,
-           intercept_col = FALSE,
-           lambda_beta = NULL,
-           lambda_gamma = NULL,
-           maxit = 30){
-    need_fit <- any(!is.null(X), !is.null(Z), intercept_row, intercept_col)
-
-
-    if (need_fit) {
-      mfit <- imr.fit_no_low_rank(
-        Y,
-        X = X,
-        Z = Z,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        trace = FALSE
-      )
-    }
-    # return largest singular value
-    svd::propack.svd(naive_MC(as.matrix(mfit$resid)),neig =  1, opts = list(kmax = maxit))$d[1]
-  }
-#------------------------------------------------
 
