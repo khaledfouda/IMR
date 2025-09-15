@@ -31,8 +31,8 @@ imr.fit <- function(
 
 
   # Laplacian flags (L_* expected as eigendecompositions) -------------------
-  beta_flag <- !(is.null(lambda_beta) | is.null(X))
-  gamma_flag <- !(is.null(lambda_gamma) | is.null(Z))
+  beta_flag <- !(is.null(X))
+  gamma_flag <- !(is.null(Z))
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- NULL
 

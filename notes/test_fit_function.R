@@ -51,6 +51,9 @@ IMR::get_lambda_lasso_max(dat$fit_data$train, dat$fit_data$X$Q,
                           )
 
 
+
+future::plan(future::multisession, workers = 4)
+
 microbenchmark::microbenchmark(
 a = partial_crossprod(dat$X, (dat$beta), dat$fit_data$train@i, dat$fit_data$train@p,F),
 b =  partial_crossprod_cpp(dat$X, (dat$beta), dat$fit_data$train@i, dat$fit_data$train@p,F),

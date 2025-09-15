@@ -85,15 +85,6 @@ get_lambda_lasso_max <- function(
     stop("Either X or Z must be provided, but not both or neither.")
   lambda_beta <- lambda_gamma <- 0
   row_cov <- is.null(Z)
-  # lambda_beta <- if(row_cov) 0 else NULL
-  # lambda_gamma <- if(row_cov) NULL else 0
-  # if(row_cov){
-  #   stopifnot(! is.null(X))
-  #   Z = NULL
-  # }else{
-  #   stopifnot(! is.null(Z))
-  #   X = NULL
-  # }
   nr <- nrow(y_train)
   nc <- ncol(y_train)
   # step 1: get an initial fit and find suitable lambda_M and rank before starting:
