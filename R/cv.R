@@ -181,7 +181,7 @@ imr.cv <- function(
     lambda_beta = NULL,
     lambda_gamma = NULL,
     val_prop = 0.2,
-    hpar = get_imr_default_hpar(),
+    hpar = get_imr_default_hparams(),
     error_function = error_metric$rmse,
     thresh = 1e-6,
     maxit = 300,
@@ -198,9 +198,9 @@ imr.cv <- function(
     stopifnot(is.Incomplete(Y))
     message("Performing train/valid split")
     obs_mask <- as.matrix(Y != 0)
-    valid_mask <- mask_train_test_split(obs_mask, val_prop, seed)
-    y_train <- as(Y * valid_mask, "Incomplete")
-    y_valid <- as(Y * (1- valid_mask), "Incomplete")
+    valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
+    y_train <- as(Y * (1-valid_mask), "Incomplete")
+    y_valid <- as(Y * (valid_mask), "Incomplete")
     rm(obs_mask)
     rm(valid_mask)
   }else{
@@ -217,7 +217,7 @@ imr.cv <- function(
     return(IMR::imr.cv_M(
       y_train = y_train,
       y_valid = y_valid,
-      y_full = Y,
+      Y_full = Y,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       hpar = hpar,
@@ -230,7 +230,7 @@ imr.cv <- function(
 
   # obtain upperbounds to the lambda hyperparameters
   if(beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)){
-    hpar$beta$lambda$max <- get_lambda_lasso_max(
+    hpar$beta$lambda_max <- get_lambda_lasso_max(
       y_train = y_train,
       X = X,
       y_valid = y_valid,
@@ -241,7 +241,7 @@ imr.cv <- function(
     )
   }
   if(gamma_flag & is.null(hpar$gamma$lambda_max) & is.null(lambda_gamma)){
-    hpar$gamma$lambda$max <- get_lambda_lasso_max(
+    hpar$gamma$lambda_max <- get_lambda_lasso_max(
       y_train = y_train,
       Z = Z,
       y_valid = y_valid,
@@ -258,7 +258,8 @@ imr.cv <- function(
       to  = 0,
       length.out = hpar$beta$n.lambda
     )
-  }else lambda_beta_grid <- c(lambda_beta)
+  }else
+    lambda_beta_grid <- c(if(is.null(lambda_beta)) 0 else lambda_beta)
 
   if(gamma_flag & is.null(lambda_gamma)){
     lambda_gamma_grid <- seq(
@@ -266,33 +267,35 @@ imr.cv <- function(
       to = 0,
       length.out = hpar$gamma$n.lambda
     )
-  }else lambda_gamma_grid <- c(lambda_gamma)
+  }else
+    lambda_gamma_grid <- c(if(is.null(lambda_gamma)) 0 else lambda_gamma)
 
   #---------------------------
   # parallel setup
   inner_trace = verbose > 2
-  grid <- list(lambda_beta  = lambda_beta_grid,
-               lambda_gamma = lambda_gamma_grid)
+  grid <- list(lambda_beta  = 0,
+               lambda_gamma = 0)
 
-  # run_call <- function(...){
-  #   fit <- IMR::imr.cv_M(
-  #     y_train = y_train,
-  #     y_valid = y_valid,
-  #     X = X,
-  #     Z = Z,
-  #     Y_full = Y,
-  #     lambda_beta = lambda_beta,
-  #     lambda_gamma = lambda_gamma,
-  #     intercept_row = intercept_row,
-  #     intercept_col = intercept_col,
-  #     hpar = hpar,
-  #     error_function = error_function,
-  #     thresh = thresh,
-  #     maxit = maxit,
-  #     trace = trace,
-  #     seed = seed
-  #   )
-  # }
+  run_call <- function(...){
+    require(IMR)
+    fit <- IMR::imr.cv_M(...
+      # y_train = y_train,
+      # y_valid = y_valid,
+      # X = X,
+      # Z = Z,
+      # Y_full = Y,
+      # lambda_beta = lambda_beta,
+      # lambda_gamma = lambda_gamma,
+      # intercept_row = intercept_row,
+      # intercept_col = intercept_col,
+      # hpar = hpar,
+      # error_function = error_function,
+      # thresh = thresh,
+      # maxit = maxit,
+      # trace = trace,
+      # seed = seed
+    )
+  }
 
   results <- parallel_grid(grid, IMR::imr.cv_M,
                            "list",

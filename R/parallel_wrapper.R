@@ -52,7 +52,6 @@ parallel_grid <- function(grid,
       future.apply::future_lapply(
         X = tasks,
         FUN = worker,
-        #p = p,
         future.seed = .seed,
         future.packages = .packages
       )

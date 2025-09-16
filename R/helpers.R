@@ -23,9 +23,9 @@ mask_train_test_split <-
   function(obs_mask,
            testp = 0.2,
            seed = NULL) {
-    #' returns a new mask similar to mask with a new train-test sets.
-    #' testp: proportion of test out of the nonzero cells in mask
-    #' new_mask:
+    # returns a new mask similar to mask with a new train-test sets.
+    # testp: proportion of test out of the nonzero cells in mask
+    # new_mask:
     #------------------------------------------------------------------
     #  0 -> train    (obs_mask=1) |
     #  1 -> test(valid)(obs_mask=1) |
@@ -165,7 +165,7 @@ opt_svd <-
 
 
 # partial cross product at certain indices and returns a vector
-#' @export
+#'
 # partial_crossprod <-
 #   function(u, v, irow, pcol, vtranpose = FALSE) {
 #     dd <- dim(u)

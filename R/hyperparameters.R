@@ -1,6 +1,6 @@
 #----------------------------------------------------------------
 #' @export
-get_imr_default_hpar <- function(){
+get_imr_default_hparams <- function(){
   list(
     M = list(
       lambda_max    = NULL,   # = lambda_{M,min}
@@ -58,7 +58,8 @@ get_lambda_M_max <-
       )
     }
     # return largest singular value
-    svd::propack.svd(naive_MC(as.matrix(mfit$resid)),neig =  1, opts = list(kmax = maxit))$d[1]
+    svd::propack.svd(as.matrix(naive_MC(mfit$resid)),
+                     neig =  1, opts = list(kmax = maxit))$d[1]
   }
 #------------------------------------------------
 #' this return that max value for either row covariates or column covariates.
@@ -74,7 +75,7 @@ get_lambda_lasso_max <- function(
     # row_cov = TRUE,
     intercept_row = TRUE,
     intercept_col = TRUE,
-    hpar = get_imr_default_hpar(),
+    hpar = get_imr_default_hparams(),
     interior_loop_length = 20,
     maxit   = 100,
     verbose = 0,
@@ -122,7 +123,7 @@ get_lambda_lasso_max <- function(
       hpar        = hpar
     )
     lambda_M = mfit$lambda_M
-    J        = max(2, mfit$rank_M) # do not want the rank to be below 2
+    r        = max(2, mfit$rank_M) # do not want the rank to be below 2
   }
 
   ##  Compute max value using kkt ------------

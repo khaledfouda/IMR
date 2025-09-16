@@ -103,7 +103,7 @@ imr.fit <- function(
         gamma0 <- rep(0, nc)
       }
 
-      init <- opt_svd(naive_MC(as.matrix(Y)), r, nr, nc, FALSE, FALSE)
+      init <- opt_svd(naive_MC(Y), r, nr, nc, FALSE, FALSE)
     }
 
     U <- init$u
