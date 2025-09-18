@@ -110,21 +110,23 @@ void add_to_cols_inplace_cpp(NumericVector yx,
 double frob_ratio_cpp(const arma::mat& Uold,  const arma::vec& Dsqold, const arma::mat& Vold,
                       const arma::mat& U,     const arma::vec& Dsq,    const arma::mat& V) {
   const arma::uword r = Dsq.n_elem;
-  if (U.n_cols != r || V.n_cols != r ||
-      Uold.n_cols != r || Vold.n_cols != r ||
-      Dsqold.n_elem != r) {
-    Rcpp::stop("Dimension mismatch: ranks must agree.");
-  }
+  const arma::uword ro = Dsqold.n_elem;
+
+  // if (U.n_cols != r || V.n_cols != r ||
+  //     Uold.n_cols != r || Vold.n_cols != r ||
+  //     Dsqold.n_elem != r) {
+  //   Rcpp::stop("Dimension mismatch: ranks must agree.");
+  // }
 
   // r x r Gram blocks (BLAS-backed)
-  arma::mat GU = U.t() * Uold;   // crossprod(U, Uold)
-  arma::mat GV = Vold.t() * V;   // crossprod(Vold, V)
+  arma::mat GU = U.t() * Uold;   // crossprod(U, Uold) size r x ro
+  arma::mat GV = Vold.t() * V;   // crossprod(Vold, V) size ro x r
 
   // uvprod = sum_{i,j} Dsq[i] * GU(i,j) * Dsqold[j] * GV(j,i)
   double uvprod = 0.0;
   for (arma::uword i = 0; i < r; ++i) {
     const double di = Dsq(i);
-    for (arma::uword j = 0; j < r; ++j) {
+    for (arma::uword j = 0; j < ro; ++j) {
       uvprod += di * GU(i, j) * (Dsqold(j) * GV(j, i));
     }
   }

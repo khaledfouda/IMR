@@ -56,7 +56,7 @@ Rcpp::List svd_small_nc_cpp(SEXP mS) {
   }
   // ensure that d is an R vector instead of an matrix
   Rcpp::NumericVector d_out(d.begin(), d.end());
-  return List::create(_["d"] = d, _["v"] = V, _["u"] = U);
+  return List::create(_["d"] = d_out, _["v"] = V, _["u"] = U);
 }
 
 // [[Rcpp::export]]

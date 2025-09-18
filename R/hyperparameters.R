@@ -45,18 +45,20 @@ get_lambda_M_max <-
     need_fit <- any(!is.null(X), !is.null(Z), intercept_row, intercept_col)
 
 
-    if (need_fit) {
-      mfit <- imr.fit_no_low_rank(
-        Y,
-        X = X,
-        Z = Z,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        trace = FALSE
-      )
-    }
+    if (! need_fit) {
+      return(svd::propack.svd(as.matrix(naive_MC(Y)),
+                              neig =  1, opts = list(kmax = maxit))$d[1])
+      }
+    mfit <- imr.fit_no_low_rank(
+      Y,
+      X = X,
+      Z = Z,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      lambda_beta = lambda_beta,
+      lambda_gamma = lambda_gamma,
+      trace = FALSE
+    )
     # return largest singular value
     svd::propack.svd(as.matrix(naive_MC(mfit$resid)),
                      neig =  1, opts = list(kmax = maxit))$d[1]
@@ -125,7 +127,6 @@ get_lambda_lasso_max <- function(
     lambda_M = mfit$lambda_M
     r        = max(2, mfit$rank_M) # do not want the rank to be below 2
   }
-
   ##  Compute max value using kkt ------------
   residuals  <- y_train -
     mfit$fit$u %*% (mfit$fit$d * t(mfit$fit$v))

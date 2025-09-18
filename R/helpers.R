@@ -18,6 +18,8 @@ inv <- function(X, is_square = nrow(X) == ncol(X)) {
 }
 
 #-----------------------------
+trim_eig <- function(d, tol=1e-10) d[d>0 & !is.nan(d) & !is.na(d)]
+
 #' @export
 mask_train_test_split <-
   function(obs_mask,
@@ -113,18 +115,23 @@ error_metric = list(
   },
 
   mape = function(predicted, true) {
-    mean(abs((true - predicted) / true), na.rm = TRUE) * 100
+    mean(abs((as.double(true) - as.double(predicted)) / true), na.rm = TRUE) * 100
   },
   mae = function(predicted, true) {
-    mean(abs(true - predicted), na.rm = TRUE)
+    mean(abs(as.double(true) - as.double(predicted)), na.rm = TRUE)
   },
 
   rmse_normalized = function(predicted, true) {
-    sqrt(mean((true - predicted) ^ 2, na.rm = TRUE)) / sd(true, na.rm = TRUE)
+    sqrt(mean((as.double(true) - as.double(predicted)) ^ 2, na.rm = TRUE)) /
+      sd(as.double(true), na.rm = TRUE)
   },
 
   rmse = function(predicted, true) {
-    sqrt(mean((true - predicted) ^ 2, na.rm = TRUE))
+    sqrt(mean((as.double(true) - as.double(predicted)) ^ 2, na.rm = TRUE))
+  },
+  rel.rmse = function(predicted, true) {
+    sqrt(sum((true - predicted) ^ 2, na.rm = TRUE)) /
+      sqrt(sum(true^ 2, na.rm = TRUE))
   },
 
   spearman_R2 = function(predicted, true) {

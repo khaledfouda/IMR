@@ -35,9 +35,9 @@ generate_simulated_data <- function(
 
   # 3) Simulate covariates X and Z ---------------------------------------------
   if(p > 0)
-    X <- matrix(rnorm(n * p), nrow = n, ncol = p)
+    X <- matrix(runif(n * p), nrow = n, ncol = p)
   if(q >0)
-    Z <- matrix(rnorm(m * q), nrow = m, ncol = q)
+    Z <- matrix(runif(m * q), nrow = m, ncol = q)
 
   # if (half_discrete) {
   #   n_disc    <- ceiling(p / 2)
@@ -58,8 +58,8 @@ generate_simulated_data <- function(
   # 4) Simulate coefficient matrices beta and gamma ----------------------------
   if (mv_coeffs) {
     # simulate the means from unif[1,3] U unif[-1,-3]
-    if(p>0) beta_means <- runif(p, 1, 3) * sample(c(-1, 1), p, replace = TRUE)
-    if(q>0) gamma_means <- runif(q, 1, 3) * sample(c(-1,1), q, replace = TRUE)
+    if(p>0) beta_means <- runif(p, .1, 1) * sample(c(-1, 1), p, replace = TRUE)
+    if(q>0) gamma_means <- runif(q, .1, 1) * sample(c(-1,1), q, replace = TRUE)
 
     # simulate standard deviation from  unif[0.5,1]
     if(p>0) beta_vars  <- runif(p, 0.5, 1)^2
@@ -89,8 +89,8 @@ generate_simulated_data <- function(
   # 5) Low-rank structure M orthogonal to col(X) -------------------------------
   # Projector onto col(X): P_X = X (X'X)^{-1} X'
   # Then P_perp = I - P_X, and M = P_perp U V with U ∈ R^{n×r}, V ∈ R^{r×m}
-  U     <- matrix(runif(n * r), nrow = n, ncol = r)
-  V     <- matrix(runif(m * r), nrow = m, ncol = r)
+  U     <- matrix(runif(n * r, -1, 1), nrow = n, ncol = r)
+  V     <- matrix(runif(m * r, -1, 1), nrow = m, ncol = r)
   # we now make sure that the column space of X and U are othogonal
   # and the row space of Z and V are orthogonal.
   if(p>0){
@@ -101,7 +101,7 @@ generate_simulated_data <- function(
   if(q>0){
     qrz <- qr(Z)
     qrz.Q <- qr.Q(qrz)
-    V <- (diag(1,m,m) - qrz.Q%*%t(qrz.Q)) %*% V
+   V <- (diag(1,m,m) - qrz.Q%*%t(qrz.Q)) %*% V
   }
   M <- U %*% t(V)
   # P_X   <- X %*% solve(crossprod(X)) %*% t(X)
@@ -115,13 +115,13 @@ generate_simulated_data <- function(
   )
 
   # 7) Enforce proportion of informative covariates  ---------------------------
-  if (sparsity_beta < 1 & p > 0) {
+  if (sparsity_beta >0 & p > 0) {
     total_beta <- length(beta)
 
-    if (mar_sparse) {
+    if (cov_sparsity_mar) {
       # Entrywise sparsity: randomly zero individual beta entries
       to_zero <- sample(seq_len(total_beta),
-                        size = round(sparsity_beta * total_beta))
+                        size = round( sparsity_beta * total_beta))
       beta[to_zero] <- 0
     } else {
       # Rowwise sparsity: keep only a proportion of informative covariate rows
@@ -135,13 +135,13 @@ generate_simulated_data <- function(
     }
   }
   # fill it later >>
-  if (sparsity_gamma < 1 & q>0) {
+  if (sparsity_gamma > 0 & q>0) {
     total_gamma <- length(gamma)
 
-    if (mar_sparse) {
+    if (cov_sparsity_mar) {
       # Entrywise sparsity: randomly zero individual beta entries
       to_zero <- sample(seq_len(total_gamma),
-                        size = round((1 - sparsity_gamma) * total_gamma))
+                        size = round((sparsity_gamma) * total_gamma))
       gamma[to_zero] <- 0
     } else {
       # Rowwise sparsity: keep only a proportion of informative covariate rows
@@ -174,9 +174,9 @@ generate_simulated_data <- function(
     Y_valid <- Y * (1- W_valid)
 
     fit_data <- list(
-      train   = as(Y_train, "Incomplete"),
-      valid   = as(Y_valid, "Incomplete"),
-      Y_full  = as(Y, "Incomplete")
+      train   = IMR::as.Incomplete(Y_train),
+      valid   = IMR::as.Incomplete(Y_valid),
+      Y_full  = IMR::as.Incomplete(Y)
       # X       = list(Q = qr.Q(Xq), R = qr.R(Xq)),
       # Rbeta   = qr.R(Xq) %*% beta
     )
@@ -253,9 +253,14 @@ MC_train_test_split <-
 quick_camc_simu_res <- function(
     dat,
     fit,
-    test_error  = error_metric$rmse
+    mcci = FALSE,
+    test_error  = IMR:::error_metric$rmse
 ) {
+  # you need to set M.estimates, beta.estim, gamma.estim, and estimates
   # Split train vs test
+  if(!mcci)
+  {
+
   M.estimates <- fit$u %*% (fit$d * t(fit$v))
   beta.estim <- tryCatch( solve(dat$fit_data$X$R) %*% fit$beta,
                           error = function(e) 0)
@@ -273,7 +278,12 @@ quick_camc_simu_res <- function(
                         error = function(e) estimates)
   estimates <- tryCatch(estimates + matrix(1,nrow(M.estimates),1) %*% fit$phi.b,
                         error = function(e) estimates)
-
+  }else{
+    beta.estim <- fit$beta
+    M.estimates <- fit$M
+    gamma.estim <- 0
+    estimates <- fit$estimates
+  }
   mask <- as.matrix(dat$fit_data$Y_full == 0)
   estim.test  <- estimates[mask]
   estim.train <- estimates[mask == 0]

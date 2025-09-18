@@ -132,7 +132,6 @@ imr.fit <- function(
     U_old <- U
     V_old <- V
     D_old <- Dsq
-
     # Intercepts (row/column) ---------------------------------------------
     # Row-level intercepts (beta0), then apply delta to residuals.
     if (intercept_row) {
@@ -177,16 +176,19 @@ imr.fit <- function(
 
     #  Update (V, Dsq, U) from the "B" side --------------------------------
 
-
     B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M)
     B_mat <- svd_small_nc_cpp(B_mat)
 
-    V <- B_mat$u
-    Dsq <- B_mat$d
-    U <- U %*% B_mat$v
+    Dsq <- trim_eig(B_mat$d, eig.tol)
+    numEig <- length(Dsq)
+    V <- B_mat$u[,seq_len(numEig), drop=FALSE]
+    U <- U[,seq_len(numEig), drop=FALSE] %*% B_mat$v[seq_len(numEig),seq_len(numEig), drop=FALSE]
+    # V <- B_mat$u
+    # Dsq <- B_mat$d
+    # U <- U %*% B_mat$v
 
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],r,r), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq,numEig,numEig), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -195,19 +197,20 @@ imr.fit <- function(
 
     A_mat <- update_A_cpp(Y, V, U, Dsq, lambda_M)
     A_mat <- svd_small_nc_cpp(A_mat)
-    U <- A_mat$u
-    Dsq <- A_mat$d
-    V <- V %*% A_mat$v
 
+    # Dsq <- A_mat$d[A_mat$d > 0]
+    Dsq <- trim_eig(A_mat$d, eig.tol)
+    numEig <- length(Dsq)
+    U <- A_mat$u[,seq_len(numEig), drop=FALSE]
+    V <- V[,seq_len(numEig), drop=FALSE] %*% A_mat$v[seq_len(numEig),seq_len(numEig), drop=FALSE]
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq[,1],r,r), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq,numEig,numEig), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
 
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
-
     if (trace) {
       obj <- (0.5 * sum(Y@x^2) + lambda_M * sum(Dsq) +
         ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
@@ -216,7 +219,6 @@ imr.fit <- function(
       cat(iter, " obj=", round(obj, 5), " ratio=", ratio, "\n")
     }
   }
-
   if (iter == maxit && trace) {
     warning("Did not converge in ", maxit, " iterations.")
   }

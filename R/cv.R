@@ -51,7 +51,8 @@ imr.cv_M <- function(
   for(i in seq_along(lambda_seq)){
     loop_size <- loop_size + 1
     # fit
-    old_fit <- imr.fit(
+
+    old_fit <- IMR::imr.fit(
       Y = y_train,
       X = X,
       Z = Z,
@@ -66,7 +67,7 @@ imr.cv_M <- function(
       L_a = hpar$laplacian$L_a,
       L_b = hpar$laplacian$L_b,
       warm_start = old_fit,
-      trace = FALSE,
+      trace = F,
       thresh = thresh,
       maxit = maxit
     )
@@ -273,29 +274,8 @@ imr.cv <- function(
   #---------------------------
   # parallel setup
   inner_trace = verbose > 2
-  grid <- list(lambda_beta  = 0,
-               lambda_gamma = 0)
-
-  run_call <- function(...){
-    require(IMR)
-    fit <- IMR::imr.cv_M(...
-      # y_train = y_train,
-      # y_valid = y_valid,
-      # X = X,
-      # Z = Z,
-      # Y_full = Y,
-      # lambda_beta = lambda_beta,
-      # lambda_gamma = lambda_gamma,
-      # intercept_row = intercept_row,
-      # intercept_col = intercept_col,
-      # hpar = hpar,
-      # error_function = error_function,
-      # thresh = thresh,
-      # maxit = maxit,
-      # trace = trace,
-      # seed = seed
-    )
-  }
+  grid <- list(lambda_beta  = lambda_beta_grid,
+               lambda_gamma = lambda_gamma_grid)
 
   results <- parallel_grid(grid, IMR::imr.cv_M,
                            "list",
@@ -316,12 +296,44 @@ imr.cv <- function(
                            trace = inner_trace,
                            seed = seed
                            )
+
+
+  # Select the best fit
+  errors <- vapply(results, `[[`, numeric(1), "error")
+  best_idx <- which.min(errors)
+  best_fit <- results[[best_idx]]
+  #--------------------
+  # message >>
+  if (verbose >= 1) {
+    for (res in results) {
+      message(sprintf(
+        "<< lambda_beta=%.4g | sparsity=%.2f | lambda_gamma=%.4g | sparsity=%.2f | err=%.5f | iters=%d | rank_M=%d | λ_M=%.4g >>",
+        res$lambda_beta,
+        sum(res$fit$beta == 0) / length(res$fit$beta),
+        res$lambda_gamma,
+        sum(res$fit$gamma == 0) / length(res$fit$gamma),
+        res$error,
+        res$loop_size,
+        res$rank_M,
+        res$lambda_M
+      ))
+    }
+    message(sprintf(
+      "<< Best fit >> lambda_beta=%.4g | sparsity=%.2f | lambda_gamma=%.4g | sparsity=%.2f | err=%.5f | iters=%d | rank_M=%d | λ_M=%.4g >>",
+      best_fit$lambda_beta,
+      sum(best_fit$fit$beta == 0) / length(best_fit$fit$beta),
+      best_fit$lambda_gamma,
+      sum(best_fit$fit$gamma == 0) / length(best_fit$fit$gamma),
+      best_fit$error,
+      best_fit$loop_size,
+      best_fit$rank_M,
+      best_fit$lambda_M
+    ))
+    best_fit$init_hparams <- hpar
+  }
+  rm(results)
+  return(best_fit)
 }
-
-
-
-
-
 
 
 

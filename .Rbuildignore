@@ -2,4 +2,5 @@
 ^\.Rproj\.user$
 ^man/.*\.Rd$
 ^notes/.*$
+^other\_models/.*$
 ^dev$
