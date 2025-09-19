@@ -90,7 +90,7 @@ simpute.cv <- function(y_train,
       )
     #-------------------------
     # register best fir
-    if (err < best_fit$error) {
+    if (err <= best_fit$error) {
       best_fit$error = err
       best_fit$rank_M = rank
       best_fit$lambda = lamseq[i]

@@ -96,12 +96,12 @@ generate_simulated_data <- function(
   if(p>0){
     qrx <- qr(X)
     qrx.Q <- qr.Q(qrx)
-    U <- (diag(1,n,n) - qrx.Q%*%t(qrx.Q)) %*% U
+   U <- (diag(1,n,n) - qrx.Q%*%t(qrx.Q)) %*% U
   }
   if(q>0){
     qrz <- qr(Z)
     qrz.Q <- qr.Q(qrz)
-   V <- (diag(1,m,m) - qrz.Q%*%t(qrz.Q)) %*% V
+  V <- (diag(1,m,m) - qrz.Q%*%t(qrz.Q)) %*% V
   }
   M <- U %*% t(V)
   # P_X   <- X %*% solve(crossprod(X)) %*% t(X)

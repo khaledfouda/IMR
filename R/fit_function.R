@@ -311,16 +311,6 @@ imr.fit_no_low_rank <- function(
       add_to_cols_inplace_cpp(Y@x, Y@p, change)
     }
 
-    #  Update beta via soft-threshold --------------------------------------
-    if (beta_flag) {
-      beta <- soft_threshold_cpp(
-        as.matrix((crossprod(X, Y)) + beta),
-        lambda_beta
-      )
-      old_val <- xb_obs
-      xb_obs <- partial_crossprod(X, beta, irow, pcol)
-      Y@x <- Y@x + old_val - xb_obs
-    }
 
 
 
@@ -336,6 +326,16 @@ imr.fit_no_low_rank <- function(
       Y@x <- Y@x + old_val - zg_obs
     }
 
+    #  Update beta via soft-threshold --------------------------------------
+    if (beta_flag) {
+      beta <- soft_threshold_cpp(
+        as.matrix((crossprod(X, Y)) + beta),
+        lambda_beta
+      )
+      old_val <- xb_obs
+      xb_obs <- partial_crossprod(X, beta, irow, pcol)
+      Y@x <- Y@x + old_val - xb_obs
+    }
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- mean((Y@x-old_err)^2)
 

@@ -15,6 +15,7 @@ imr.cv_M <- function(
   maxit = 300,
   trace = TRUE,
   old_fit = NULL,
+  ls_initial = TRUE,
   seed = NULL
 ){
   # set seed and check input matrix type
@@ -69,7 +70,8 @@ imr.cv_M <- function(
       warm_start = old_fit,
       trace = F,
       thresh = thresh,
-      maxit = maxit
+      maxit = maxit,
+      ls_initial = ls_initial
     )
 
     # compute validation error
@@ -102,7 +104,7 @@ imr.cv_M <- function(
     }
 
     # track best model & early stopping
-    if (verror < best_fit$error) {
+    if (verror <= best_fit$error) {
       best_fit <- list(
         error     = verror,
         rank_M    = current_rank,
@@ -157,7 +159,8 @@ imr.cv_M <- function(
       warm_start = old_fit,
       trace = FALSE,
       thresh = thresh,
-      maxit = maxit
+      maxit = maxit,
+      ls_initial = ls_initial
     )
     loop_size <- loop_size + 1
   }
@@ -188,6 +191,7 @@ imr.cv <- function(
     maxit = 300,
     verbose = 0,
     max_cores = 8,
+    ls_initial = FALSE,
     seed = NULL
     )
 {
@@ -226,6 +230,7 @@ imr.cv <- function(
       thresh = thresh,
       trace = verbose > 0,
       maxit = maxit,
+      ls_initial = ls_initial,
       seed = seed
     ))
 
@@ -294,6 +299,7 @@ imr.cv <- function(
                            thresh = thresh,
                            maxit = maxit,
                            trace = inner_trace,
+                           ls_initial = ls_initial,
                            seed = seed
                            )
 
