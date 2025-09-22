@@ -194,7 +194,8 @@ nlrr.cv <- function(
   y_train <- as(nfit$resid * (1-valid_mask), "Incomplete")
   y_valid <- as(nfit$resid * (valid_mask), "Incomplete")
   mfit <- IMR::imr.cv_M(y_train, y_valid, Y_full = nfit$resid, hpar=hpar,
-                        error_function = error_function)
+                        error_function = error_function,trace = inner_trace,
+                        ls_initial = FALSE)
 
   nfit$u <- mfit$fit$u
   nfit$v <- mfit$fit$v
@@ -213,7 +214,9 @@ nlrr.cv <- function(
     thresh = thresh,
     maxit = maxit,
     trace = inner_trace,
-    warm_start = nfit
+    ls_initial = F,
+    warm_start = nfit,
+
     )
   mfit$rank_M -> best_fit$rank_M
   mfit$lambda_M -> best_fit$lambda_M
