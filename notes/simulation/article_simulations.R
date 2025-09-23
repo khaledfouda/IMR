@@ -126,13 +126,23 @@ saveRDS(results5, "./notes/saved/results51000.rds")
 
 results5 %>%
   dplyr::group_by(model) %>%
-  summarize_all(function(x) paste0(round(mean(x),3),"(",round(sd(x),3),")") )
+  summarize_all(compute.mean.sd )
 
 #----- combine results
+compute.mean.sd <- function(x){
+  s <- sd(x)
+  if(is.na(s)) "" else paste0(round(mean(x),3)," (", round(s,3) ,")")
+}
+
+results3 <- readRDS("./notes/saved/results2800.rds")
+results2 <- readRDS("./notes/saved/results2600.rds")
+results4 <- readRDS("./notes/saved/results4400.rds")
+results5 <- readRDS("./notes/saved/results51000.rds")
+
 results3 %>%
   dplyr::select(-gamma) %>%
   dplyr::group_by(model) %>%
-  summarize_all(function(x) paste0(round(mean(x),3),"(",round(sd(x),3),")") ) %>%
+  summarize_all(compute.mean.sd ) %>%
   mutate(n = 800) %>%
   pivot_longer(c("beta", "M", "theta", "test", "rank"),
                names_to = c("metric")) %>%
@@ -140,7 +150,7 @@ results3 %>%
        results2 %>%
          dplyr::select(-gamma) %>%
          dplyr::group_by(model) %>%
-         summarize_all(function(x) paste0(round(mean(x),3),"(",round(sd(x),3),")") ) %>%
+         summarize_all(compute.mean.sd ) %>%
          mutate(n = 600) %>%
          pivot_longer(c("beta", "M", "theta", "test", "rank"), names_to = c("metric"))
        ) %>%
@@ -148,7 +158,7 @@ results3 %>%
     results4 %>%
       dplyr::select(-gamma) %>%
       dplyr::group_by(model) %>%
-      summarize_all(function(x) paste0(round(mean(x),3),"(",round(sd(x),3),")") ) %>%
+      summarize_all(compute.mean.sd ) %>%
       mutate(n = 400) %>%
       pivot_longer(c("beta", "M", "theta", "test", "rank"), names_to = c("metric"))
   ) %>%
@@ -156,14 +166,16 @@ results3 %>%
     results5 %>%
       dplyr::select(-gamma) %>%
       dplyr::group_by(model) %>%
-      summarize_all(function(x) paste0(round(mean(x),3),"(",round(sd(x),3),")") ) %>%
+      summarize_all(compute.mean.sd ) %>%
       mutate(n = 1000) %>%
       pivot_longer(c("beta", "M", "theta", "test", "rank"), names_to = c("metric"))
-  )-> tab
+  )-> sim1.tab
 
 # saveRDS(tab, "./notes/saved/tab_sim1.rds")
 sim1.tab <- readRDS("./notes/saved/tab_sim1.rds")
 require(kableExtra)
+
+
 
 metric_labels <- c(
   beta = "RMSE($\\beta$)",
@@ -193,21 +205,38 @@ panel_index  <- stats::setNames(panel_counts$rows,
 # Build table
 kbl(
   wide %>% select(-n),
+  format    = "latex",
   booktabs  = TRUE,
   escape    = FALSE,  # keep LaTeX math in headers
  # col.names = c("Method", setdiff(names(wide), c("n", "method"))),
   align     = c("l", rep("r", ncol(wide) - 2)),
-  caption   = paste("<span style='color:#000'>",
-                    "RMSE, test error, estimated ranks, and their standard errors (in parenthes",
-  "under model $\\Theta=X\\beta+M$ and with rank(M)=10, number of covariates = 20,",
-  "true rank of $\\Theta=30$, 20% observation rate of $\\Theta$, (n,m)=(600,600),(800,800),",
-  "and 50% of $\\beta$ is 0, at random.</span>")
+  caption   = paste(
+                    "Empirical root mean square errors (RMSEs), test error,",
+                    "estimated ranks, and their standard errors (in parenthes)",
+  "under model $\\Theta=X\\beta+M$ and with $(n,m)=(400,400),(600,600),(800,800),(1000,1000)$,",
+  "rank$(\\Theta)=30$, $r = 10$, $p= 20$, 20% observation rate of $\\Theta$,",
+  "and 50% of $\\beta$ is 0, at random.")
 ) |>
   pack_rows(index = panel_index) |>
   kable_styling(latex_options = c("hold_position", "striped"), font_size = 12) |>
-  row_spec(0, color = "#000") |>
-  row_spec(1:nrow(wide), color = "#000")
+  row_spec(0, color = "black") |>
+  row_spec(1:nrow(wide), color = "black") -> sim1.tbl;sim1.tbl
 
+
+osr <- function(n,m,r, pi=NULL, rho=NULL){
+  if(is.null(pi)){
+    stopifnot(!is.null(rho))
+    pi = (rho * r * (n+m-r))/(n+m)
+    return(pi)
+  }else if(is.null(rho)){
+    stopifnot(! is.null(pi))
+    rho = (pi * (n+m)) / (r*(n+m-r))
+    return(rho)
+  }
+  stop("something is wrong")
+}
+
+osr(800,800, 2, rho=.5)
 #==================================================================
 #' we now work on second part of the simulation
 #' Results needed: Rmse > beta, gamma, M, test
@@ -285,10 +314,7 @@ saveRDS(lambdas, "./notes/saved/sim2_parameters.rds")
 saveRDS(sim2.res, "./notes/saved/sim2_results.rds")
 }
 #--------------------------------
-compute.mean.sd <- function(x){
-  s <- sd(x)
-  if(is.na(s)) "" else paste0(round(mean(x),3)," (", round(s,3) ,")")
-}
+
 
 lambdas %>%
   mutate(sparsity = round(sparsity, 2)) %>%
@@ -329,17 +355,20 @@ sim2.long %<>%
   mutate(metric_lab = factor(metric,
                              levels=names(metric_labels),
                              labels = unname(metric_labels)))
+okabe_ito <- c("#56B4E9","#E69F00")
 metrics <- unique(sim2.long$metric)
 require(scales)
 ggplot(sim2.long, aes(x = sparsity, y = mean, color = model, fill = model, group = model)) +
   geom_ribbon(aes(ymin = ymin, ymax = ymax), alpha = 0.15, color = NA) +
   geom_line(size = 1) +
   geom_point(size = 1.6) +
+  scale_color_manual(values = okabe_ito) +
+  scale_fill_manual(values  = okabe_ito) +
   scale_x_continuous(labels = percent_format(accuracy = 1), breaks = seq(.02, 0.3, 0.04)) +
   facet_wrap(~ metric_lab, labeller = label_parsed, ncol=3, scales="free_y") +
   # facet_wrap(~ factor(metric, levels = metrics, labels = metric_labels[metrics]),
   #            scales = "free_y", ncol = 3) +
-  labs(x = "Observation Rate", y = "Error", color = "Model", fill = "Model") +
+  labs(x = "Observation rate", y = "Error", color = "Model", fill = "Model") +
    theme_minimal(base_size = 10) +
   #cowplot::theme_cowplot()+
   theme_bw() +
@@ -359,11 +388,89 @@ lambdas %>%
   group_by(sparsity) %>%
   summarize_all(mean) %>%
   # summarise_all(function(x) paste(round(mean(x),5),"-",round(sd(x),5))) %>%
-  ungroup()
+  ungroup() %>%
+  select(-n) -> lambdas
 
-sim2.2.fit <- function(sparsity, beta, gamma, M, r){
 
+future::plan(future::sequential)
+future::plan(future::multisession, workers = 9)
+
+time_results <- data.frame()
+
+for(b in 1:30){
+  seed = 2025 + b
+  dat <-
+    generate_simulated_data(1000, 1000, 10, 20, 20, 0.7-.02,
+                            sparsity_beta = .5, sparsity_gamma = 0.5,
+                            prepare_for_fitting = T,mv_coeffs = T,seed = seed)
+
+
+  for(s in 1:15){
+
+    dat <- increase_sparsity(dat, .02)
+    dat$sparsity <- round(dat$sparsity,2)
+    stopifnot(dat$sparsity == lambdas$sparsity[s])
+
+    bench::bench_time(
+      IMR::imr.fit(
+      Y = dat$fit_data$Y_full,
+      X = dat$fit_data$X$Q,
+      Z = dat$fit_data$Z$Q,
+      r = lambdas$r[s],
+      lambda_M = lambdas$M[s],
+      lambda_beta = lambdas$beta[s],
+      lambda_gamma = lambdas$gamma[s],
+      trace = FALSE,
+      ls_initial = T
+    )) -> imrt
+
+
+    bench::bench_time(softImpute::softImpute(dat$Y,
+                                    rank.max = lambdas$r[s],
+                                    lambda = lambdas$M[s])) -> sit
+  time_results %<>% rbind(
+    data.frame(sparsity = dat$sparsity,
+         model = c("IMR", "SoftImpute"),
+         time = c(as.numeric(imrt,"sec")[2], as.numeric(sit, "sec")[2])))
+
+    print(time_results)
+  }
+  saveRDS(time_results, "./notes/saved/sim2_time.rds")
 }
+
+time_results %>%
+  group_by(model, sparsity) %>%
+  summarise_all(c(time_mean=mean,time_sd= sd)) %>%
+  arrange(model, sparsity) %>%
+  mutate(
+    sparsity = 1 - sparsity,
+    se   = time_sd / sqrt(30),
+    ymin =  pmax(0, time_mean - 1.96 * se) ,
+    ymax = (time_mean + 1.96 * se)
+  ) -> time_df
+
+
+ggplot(time_df, aes(x = sparsity, y = time_mean,
+                color = model, fill = model, group = model)) +
+  geom_ribbon(aes(ymin = ymin, ymax = ymax), alpha = 0.15, color = NA) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 1.8) +
+  scale_x_continuous("Observation rate", labels = percent_format(accuracy = 1),
+                     breaks = seq(0.02, 0.3, 0.04)) +
+  scale_y_continuous("Time (s)") +
+  scale_color_manual(values = okabe_ito) +
+  scale_fill_manual(values  = okabe_ito) +
+  labs(linetype = "Model", color = "Model", fill = "Model"
+       #title =  "Fit time vs. sparsity (mean ± 95% CI)"
+       ) +
+  #theme_classic(base_size = 11) +
+  theme_bw()+
+  theme(legend.position = "top",
+        legend.justification = "left",
+        strip.text = element_text(face = "bold"))->sim2.g2;sim2.g2
+
+ggsave("./notes/saved/sim2_plot2.png", sim2.g2, width = 320/25.4, height = 150/25.4, dpi = 600)
+
 
 #
 #     sim2.res %>%
