@@ -226,17 +226,19 @@ kbl(
 osr <- function(n,m,r, pi=NULL, rho=NULL){
   if(is.null(pi)){
     stopifnot(!is.null(rho))
-    pi = (rho * r * (n+m-r))/(n+m)
+    pi = (rho * r * (n+m-r))/(n*m)
     return(pi)
   }else if(is.null(rho)){
     stopifnot(! is.null(pi))
-    rho = (pi * (n+m)) / (r*(n+m-r))
+    rho = (pi * (n*m)) / (r*(n+m-r))
     return(rho)
   }
   stop("something is wrong")
 }
 
-osr(800,800, 2, rho=.5)
+for(n in seq(200, 1200,200))
+  print(osr(n, n, 10, rho=5))
+
 #==================================================================
 #' we now work on second part of the simulation
 #' Results needed: Rmse > beta, gamma, M, test
