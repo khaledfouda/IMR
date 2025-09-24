@@ -4,8 +4,12 @@ fit_MA25_movielens <- function(input_tag = "_c_10_98_",
 
   if(is.numeric(seed)) set.seed(seed)
 
-  load("./notes/movielens/data/ml-1m/Movie_X.Rdata") #X
-  Y <-     readRDS(paste0("./notes/movielens/data/ml-1m/Movie_Y",input_tag,".Rdata"))
+  load("./notes/movielens/data/Movie_X.Rdata") #X
+  X <- X[,1:4]
+  if(input_tag == ""){
+    load("notes/movielens/data/Movie_Y.Rdata",verbose = T)
+  }else
+    Y <-     readRDS(paste0("./notes/movielens/data/Movie_Y",input_tag,".Rdata"))
   # query <- readRDS(paste0("./notes/movielens/data/ml-1m/Movie_Q",input_tag,".Rdata"))
 
   # load original MA functions

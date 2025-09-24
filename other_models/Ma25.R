@@ -3,7 +3,7 @@ MA25.fit <- function(Y,
                      X,
                      max_iter = 30L,
                      tol=1e-6,
-                     C_h=0.3,
+                     C_h=0.2,
                      delta_h=0.1,
                      r_bar = 8,
                      save_to_file=FALSE,
@@ -29,8 +29,10 @@ MA25.fit <- function(Y,
   if(save_to_file){
     if(is.null(file_location)){
       message("file location must be provided")
-    }else
+    }else{
+      message(paste("Saving file at :", file_location))
       saveRDS(M, file_location)
+    }
   }
   return(M)
 }
