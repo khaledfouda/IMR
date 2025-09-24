@@ -16,6 +16,45 @@ inv <- function(X, is_square = nrow(X) == ncol(X)) {
       return(MASS::ginv(X))
   }
 }
+#-------------------------------------
+#' @export
+reconstruct <- function(fit, dat, partial=FALSE, trace=TRUE){
+  out <- list(beta=NA, gamma=NA, M = NA, xbeta=NA, gammaz=NA, estimates=0)
+  check_mat <- function(mat, is_matrix=TRUE){
+    if(is.na(mat)) return(FALSE)
+    if(is_matrix & is.matrix(mat)) return(TRUE)
+    if(is_matrix) return(FALSE)
+    if(is.vector(mat)) return(TRUE)
+    return(FALSE)
+  }
+  #-----
+  if(check_mat(fit$u) & check_mat(fit$d,FALSE) & check_mat(fit$v)){
+    if(trace) message("Constructing M ...")
+    out$M <- fit$u %*% (fit$d * t(fit$v))
+    out$estimates <- out$M
+  }
+  if(check_mat(fit$beta) & check_mat(dat$X) & check_mat(dat$Xr)){
+    if(trace) message("Constructing XBeta ...")
+    out$beta <- solve(dat$Xr) %*% fit$beta
+    out$xbeta <- dat$X %*% out$beta
+    out$estimates <- out$estimates + out$xbeta
+  }
+  if(check_mat(fit$gamma) & check_mat(dat$Z) & check_mat(dat$Zr)){
+    if(trace) message("Constructing GammaZ ...")
+    out$gamma <- fit$gamma %*% solve(t(dat$Zr))
+    out$gammaz <- out$gamma %*% t(dat$Z)
+    out$estimates <- out$estimates + out$gammaz
+  }
+  if(check_mat(fit$beta0)){
+    if(trace) message("Constructing row intercepts ...")
+    out$estimates <- out$estimates + fit$beta0 %*% matrix(1,1,ncol(out$estimates))
+  }
+  if(check_mat(fit$gamma0)){
+    if(trace) message("Constructing column intercepts ...")
+    out$estimates <- out$estimates + matrix(1,nrow(out$estimates),1) %*% t(fit$gamma0)
+  }
+  if(trace) message("done.")
+}
 
 #-----------------------------
 trim_eig <- function(d, tol=1e-10) d[d>0 & !is.nan(d) & !is.na(d)]

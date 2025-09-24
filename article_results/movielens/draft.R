@@ -1,5 +1,6 @@
 
-
+require(tidyverse)
+require(magrittr)
 fit_IMR_movielens <- function(input_tag = "_c_0_",
                                    seed = 2025,
                               intercept_row = FALSE,
@@ -15,6 +16,50 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
   Y <-     readRDS(paste0("notes/movielens/data/Movie_Y",input_tag,".Rdata"))
   query <- readRDS(paste0("notes/movielens/data/Movie_Q",input_tag,".Rdata"))
   #========================================================
+  Z <- data.table::fread(
+    file = "notes/movielens/data/movies_Z.dat",
+    sep = NULL,
+    encoding = "Latin-1",
+    header = FALSE
+  ) %>%
+    tidyr::separate(
+      V1,
+      into = c("movie_id", "title", "genres"),
+      sep = "::"
+    )
+
+  genre_labels <- c(
+    "Action", "Adventure", "Animation", "Children's", "Comedy", "Crime",
+    "Documentary", "Drama", "Fantasy", "Film-Noir", "Horror", "Musical",
+    "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"
+  )
+  Z %>%
+    transmute(genre = as.vector(strsplit(Z$genres, "|", fixed=TRUE))) ->
+    genres
+  genres = genres[[1L]]
+  i <- rep(seq_along(genres), lengths(genres))
+  j <- match(unlist(genres, use.names = FALSE), genre_labels)
+  keep <- !is.na(j)
+  genre_sparse <- Matrix::sparseMatrix(
+    i = i[keep], j = j[keep], x = 1L,
+    dims = c(length(genres), length(genre_labels)),
+    dimnames = list(NULL, genre_labels)
+  )
+  genre_df <- as.data.frame(as.matrix(genre_sparse), check.names = FALSE)
+
+  Z <- cbind(Z[,1:2], genre_df)
+  Z %<>% mutate(movie_id = as.numeric(movie_id))
+  movies_no_genre <- (1:3952)[!(1:3952 %in% Z$movie_id)]
+  extra.rows <- data.frame(movie_id = movies_no_genre, title = "")
+  for(genre in genre_labels)
+    extra.rows[genre] <- 0
+  rbind(Z, extra.rows) %>%
+    arrange(movie_id) %>%
+    select(-movie_id, -title) %>%
+    as.matrix() ->
+    Z
+
+  #========================================================
   # prepare data
   idx   <- cbind(query[, 1], query[, 2])
   truths <- query[, 3]
@@ -24,13 +69,16 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
   mean(obs_mask==0)
   # we need X to be orthonormal
   Xqr <- qr(as.matrix(X))
+  Zqr <- qr(as.matrix(Z))
 
   dat <- list(
     Y = Y,
     Y.mat = as.matrix(Y),
     obs_mask = as.matrix(obs_mask),
     Xq = qr.Q(Xqr),
-    Xr = qr.R(Xqr)
+    Xr = qr.R(Xqr),
+    Zq = qr.Q(Zqr),
+    Zr = qr.R(Zqr)
   )
   #====================================================
   # fitting CAMC
