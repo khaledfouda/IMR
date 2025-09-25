@@ -21,7 +21,7 @@ inv <- function(X, is_square = nrow(X) == ncol(X)) {
 reconstruct <- function(fit, dat, partial=FALSE, trace=TRUE){
   out <- list(beta=NA, gamma=NA, M = NA, xbeta=NA, gammaz=NA, estimates=0)
   check_mat <- function(mat, is_matrix=TRUE){
-    if(is.na(mat)) return(FALSE)
+    if(any(is.na(mat))) return(FALSE)
     if(is_matrix & is.matrix(mat)) return(TRUE)
     if(is_matrix) return(FALSE)
     if(is.vector(mat)) return(TRUE)
@@ -45,15 +45,16 @@ reconstruct <- function(fit, dat, partial=FALSE, trace=TRUE){
     out$gammaz <- out$gamma %*% t(dat$Z)
     out$estimates <- out$estimates + out$gammaz
   }
-  if(check_mat(fit$beta0)){
+  if(check_mat(fit$beta0, FALSE)){
     if(trace) message("Constructing row intercepts ...")
     out$estimates <- out$estimates + fit$beta0 %*% matrix(1,1,ncol(out$estimates))
   }
-  if(check_mat(fit$gamma0)){
+  if(check_mat(fit$gamma0, FALSE)){
     if(trace) message("Constructing column intercepts ...")
     out$estimates <- out$estimates + matrix(1,nrow(out$estimates),1) %*% t(fit$gamma0)
   }
   if(trace) message("done.")
+  return(out)
 }
 
 #-----------------------------

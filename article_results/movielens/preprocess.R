@@ -9,9 +9,9 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
   require(dplyr)
   require(magrittr)
 
-  load("notes/movielens/data/Movie_Y.Rdata") # Y
-  load("notes/movielens/data/Movie_X.Rdata") # X
-  load("notes/movielens/data/Movie_Q.Rdata") # Query (testing set for evaluating the performance)
+  load("article_results/movielens/data/Movie_Y.Rdata") # Y
+  load("article_results/movielens/data/Movie_X.Rdata") # X
+  load("article_results/movielens/data/Movie_Q.Rdata") # Query (testing set for evaluating the performance)
   query <- as.data.frame(query)
   colnames(query) <- c("row_id", "column_id", "value")
   # remove interactions from data
@@ -65,8 +65,8 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
   summ_Y(Y)
   keyword = paste0("_c_",min_obs_per_col,"_")
   message("Saving data with keyword: ", keyword)
-  saveRDS(Y, paste0("notes/movielens/data/Movie_Y",keyword,".Rdata"))
-  saveRDS(query, paste0("notes/movielens/data/Movie_Q",keyword,".Rdata"))
+  saveRDS(Y, paste0("article_results/movielens/data/Movie_Y",keyword,".Rdata"))
+  saveRDS(query, paste0("article_results/movielens/data/Movie_Q",keyword,".Rdata"))
   #=========
   if(increase_missing)
   {
@@ -128,8 +128,8 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
     summ_Y(Y)
     keyword = paste0("_c_",min_obs_per_col,"_", round(100*prop_miss),"_")
     message("Saving data with keyword: ", keyword)
-    saveRDS(Y, paste0("notes/movielens/data/Movie_Y", keyword, ".Rdata"))
-    saveRDS(query, paste0("notes/movielens/data/Movie_Q",keyword,".Rdata"))
+    saveRDS(Y, paste0("article_results/movielens/data/Movie_Y", keyword, ".Rdata"))
+    saveRDS(query, paste0("article_results/movielens/data/Movie_Q",keyword,".Rdata"))
     #=========
   }
   message("Finally, we save the data as .dat for Python fit")
@@ -137,13 +137,13 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
   py.Y <- data.frame(userID=obs_ind[,1], movieID=obs_ind[,2], rating=Y[obs_ind])
   colnames(query) <- c("userID", "movieID", "rating")
   write.table(py.Y,
-              paste0("notes/movielens/data/Movie_Y",keyword, ".dat"),
+              paste0("article_results/movielens/data/Movie_Y",keyword, ".dat"),
               sep       = "::",
               row.names = FALSE,
               col.names = FALSE,
               quote     = FALSE)
   write.table(query,
-              paste0("notes/movielens/data/Movie_test",keyword,".dat"),
+              paste0("article_results/movielens/data/Movie_test",keyword,".dat"),
               sep       = "::",
               row.names = FALSE,
               col.names = FALSE,

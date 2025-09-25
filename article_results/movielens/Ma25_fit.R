@@ -4,18 +4,18 @@ fit_MA25_movielens <- function(input_tag = "_c_10_98_",
 
   if(is.numeric(seed)) set.seed(seed)
 
-  load("./notes/movielens/data/Movie_X.Rdata") #X
+  load("./article_results/movielens/data/Movie_X.Rdata") #X
   X <- X[,1:4]
   if(input_tag == ""){
-    load("notes/movielens/data/Movie_Y.Rdata",verbose = T)
+    load("article_results/movielens/data/Movie_Y.Rdata",verbose = T)
   }else
-    Y <-     readRDS(paste0("./notes/movielens/data/Movie_Y",input_tag,".Rdata"))
-  # query <- readRDS(paste0("./notes/movielens/data/ml-1m/Movie_Q",input_tag,".Rdata"))
+    Y <-     readRDS(paste0("./article_results/movielens/data/Movie_Y",input_tag,".Rdata"))
+  # query <- readRDS(paste0("./article_results/movielens/data/ml-1m/Movie_Q",input_tag,".Rdata"))
 
   # load original MA functions
   source('./other_models/Ma25.R')
   #============
-  file_location <- paste0("./notes/movielens/data/saved_models/Ma_fit",input_tag,".rds")
+  file_location <- paste0("./article_results/movielens/data/saved_models/Ma_fit",input_tag,".rds")
   M <- MA25.fit(Y, X, save_to_file = T, file_location = file_location)
   return(M)
 

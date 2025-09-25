@@ -8,16 +8,16 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
                                    hpar = IMR::get_imr_default_hparams()){
 
   if(is.numeric(seed)) set.seed(seed)
-  setwd("~/Research/CASMC/MovieLens/")
-  load("notes/movielens/data/Movie_X.Rdata") #X
-  load("notes/movielens/data/Movie_Y.Rdata",verbose = T)
+  load("article_results/movielens/data/Movie_X.Rdata") #X
+  load("article_results/movielens/data/Movie_Y.Rdata",verbose = T)
   Y0 <- Y
   X <- X[,1:4]
-  Y <-     readRDS(paste0("notes/movielens/data/Movie_Y",input_tag,".Rdata"))
-  query <- readRDS(paste0("notes/movielens/data/Movie_Q",input_tag,".Rdata"))
+  input_tag = "_c_0_"
+  Y <-     readRDS(paste0("article_results/movielens/data/Movie_Y",input_tag,".Rdata"))
+  query <- readRDS(paste0("article_results/movielens/data/Movie_Q",input_tag,".Rdata"))
   #========================================================
   Z <- data.table::fread(
-    file = "notes/movielens/data/movies_Z.dat",
+    file = "article_results/movielens/data/movies_Z.dat",
     sep = NULL,
     encoding = "Latin-1",
     header = FALSE
@@ -78,19 +78,25 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
     Xq = qr.Q(Xqr),
     Xr = qr.R(Xqr),
     Zq = qr.Q(Zqr),
-    Zr = qr.R(Zqr)
+    Zr = qr.R(Zqr),
+    X  = X,
+    Z = Z
   )
   #====================================================
   # fitting CAMC
   hpar$beta$lambda_max <- 2
+  hpar$gamma$lambda_max <- 2
   hpar$M$n.lambda <- 40
+  hpar$beta$n.lambda <- 10
+  hpar$gamma$n.lambda <- 10
 
   future::plan(future::sequential)
-  future::plan(future::multisession, workers = 4)
+  future::plan(future::multisession, workers = 9)
 
-  fit.imr2 <- IMR::imr.cv(
+  fit.imr <- IMR::imr.cv(
     Y = Y,
     X = dat$Xq,
+    Z = dat$Zq,
     intercept_row = T,
     intercept_col = T,
     hpar = hpar,
@@ -98,35 +104,24 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
     max_cores = 9,
     seed = 2025
   )
-
-  fit <- fit.imr$fit
-  fit$Rbeta     <- fit$beta
-  fit$beta      <- MASS::ginv(dat$Xr) %*% fit$Rbeta
-  fit$beta      <- round(fit$beta, 10) # set small values to 0
-  fit$M         <- fit$u %*% (fit$d * t(fit$v))
-  fit$Xbeta     <- dat$Xq %*% fit$Rbeta
-  fit$estimates <- fit$M + fit$Xbeta
-
-  fit$estimates <- fit$estimates + fit$beta0 %*% matrix(1,1,ncol(Y))
-  fit$estimates <- fit$estimates + matrix(1,nrow(Y), 1) %*% t(fit$gamma0)
+  out <- IMR:::reconstruct(fit.imr$fit, dat)
   prepare_output_movielens(
     "CAMC",
     time       = fit.imr$time,
     X           = X,
-    estim.test  = fit$estimates[idx],
-    estim.train = fit$estimates[dat$obs_mask==1],
+    estim.test  = out$estimates[idx],
+    estim.train = out$estimates[dat$obs_mask==1],
     obs.test    = truths,
     obs.train   = dat$Y[dat$obs_mask==1],
-    beta.estim  = fit$beta,
-    M.estim     = fit$M,
+    beta.estim  = out$beta,
+    M.estim     = out$M,
     rank.M      = fit.imr$rank_M,
     total_num_fits = fit.imr$total_num_fits,
     time_per_fit   = fit.imr$time_per_fit
-  ) -> results.camc
-  results.camc
+  ) -> results.camc; results.camc
 
-
-  M <- readRDS(paste0("notes/movielens/data/saved_models/Ma_fit",input_tag,".rds"))
+colMeans(out$gamma) %>% sort()
+  M <- readRDS(paste0("article_results/movielens/data/saved_models/Ma_fit",input_tag,".rds"))
 
   rhat <- M$rank_est$est['h'] # get the estimated rank
   M$fit[[1]]$rmse # training error
