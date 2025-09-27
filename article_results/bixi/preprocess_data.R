@@ -51,8 +51,31 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     arrange(desc(abs(r))) %>%
     mutate(r = round(r, 2)) %>%
     print()
-
+  #-------------------------------------------------------------------------
+  # the following 8 stations have less than 5 observations so I'll discard them.
+  low.obs.stations <- c(
+    "6194 - Métro Atwater (Atwater / Ste-Catherine)",
+    "6019 - Métro Sherbrooke (de Rigaud / Berri)",
+    "6036 - de la Commune / St-Sulpice",
+    "6181 - Clark / Rachel",
+    "6157 - de Brébeuf / du Mont-Royal",
+    "6227 - de l'Esplanade / Laurier",
+    "6136 - Métro Laurier (Rivard / Laurier)",
+    "6184 - Métro Mont-Royal (Rivard / du Mont-Royal)"
+  )
+  data_df %<>%
+    filter(!(column %in% low.obs.stations))
   #----------------------------------------------------------------------------------
+  test50  <- readRDS("article_results/bixi/data/splits/50percent_25Sep_test.rds")
+  data_df %<>%
+    left_join(
+      test50 %>%
+        select(row, column) %>%
+        mutate(flag = TRUE),
+      by = c("row", "column")
+    ) %>%
+    mutate(u = ifelse(isTRUE(flag), NA, y)) %>%
+    select(-flag)
 
   # Initialize train/test -----------------------------------
 
@@ -60,7 +83,7 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
   # Determine dimensions & thresholds -----------------------
   num_rows    <- length(unique(data_df$row))
   num_columns <- length(unique(data_df$column))
-  min_obs     <- 13
+  min_obs     <- 0
   # but consider that we remove 95% or missing_rate of each column
   #min_obs <- min_obs / ( (1 - miss_pct) * 0.8)
   # the 0.8 is for the CV with 5 folds
@@ -162,13 +185,13 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     select(-row_id, -orig_y)
   #=================================================================
   # recheck the amount the missing per column
-
   train_df %>%
     group_by(column) %>%
     summarize(na.sum = sum(!is.na(y))) %>%
     arrange(na.sum) %>%
     filter(na.sum < min_obs) %>%
     select(column) -> cols_to_remove
+  print(cols_to_remove$column)
   message("Removing ", length(unique(cols_to_remove$column)),
           " columns for containing less observations",
           " than required")
@@ -219,8 +242,11 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     timestamp,
     "_"
   )
+  if(file.exists(paste0(file_prefix, "train.rds"))){
+    stop("File already exists: ", paste0(file_prefix, "train.rds"))
+  }
   saveRDS(train_df, file = paste0(file_prefix, "train.rds"))
-  saveRDS(test_df,  file = paste0(file_prefix, "test.rds"))
+  saveRDS(test50,  file = paste0(file_prefix, "test.rds"))
 }
 ######################
 
@@ -240,9 +266,7 @@ prepare_bixi_data <- function(miss_p = 0.8,
     timestamp,
     "_"
   )
-  if(file.exists(paste0(file_prefix, "train.rds"))){
-    stop("File already exists: ", paste0(file_prefix, "train.rds"))
-  }
+
   train_df <- readRDS(paste0(file_prefix, "train.rds"))
   test_df  <- readRDS(paste0(file_prefix, "test.rds"))
 

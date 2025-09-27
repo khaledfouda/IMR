@@ -149,3 +149,86 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
               col.names = FALSE,
               quote     = FALSE)
 }
+#-------------------------------------------------------------------------------
+
+
+
+prepare_output_movielens <- function(
+    model_name,
+    X,
+    Z = NA,
+    estim.test,
+    estim.train,
+    obs.test,
+    obs.train,
+    time = NA,
+    beta.estim  = NA,
+    gamma.estim = NA,
+    M.estim     = NA,
+    rank.M      = NA,
+    test_error  = IMR::error_metric$rmse,
+    time_per_fit = NA,
+    total_num_fits = NA
+) {
+  # Core metrics
+  results <- list(
+    model = model_name,
+    time = time,
+    time_per_fit = time_per_fit,
+    total_num_fits = total_num_fits,
+    error.test  = test_error(estim.test, obs.test),
+    corr.test   = cor(estim.test, obs.test),
+    error.train = test_error(estim.train, obs.train),
+    #rank_M      = tryCatch(
+    #  qr(M.estim)$rank,
+    #  error = function(e) NA
+    #),
+    rank_M = rank.M,
+    rank_beta   = tryCatch(
+      qr(beta.estim)$rank,
+      error = function(e) NA
+    ),
+    rank_gamma   = tryCatch(
+      qr(gamma.estim)$rank,
+      error = function(e) NA
+    ),
+    sparsity_beta    = tryCatch(
+      sum(beta.estim == 0) / length(beta.estim),
+      error = function(e) NA
+    ),
+    sparsity_gamma    = tryCatch(
+      sum(gamma.estim == 0) / length(gamma.estim),
+      error = function(e) NA
+    )
+  )
+
+
+  # Covariate coefficient summaries
+  results$cov_summaries_rows <- tryCatch({
+    apply(beta.estim, 1, summary) |>
+      as.data.frame() |>
+      t() |>
+      as.data.frame() |>
+      dplyr::mutate(
+        prop_non_zero = apply(beta.estim, 1, function(x)
+          sum(x != 0) / length(x)
+        )
+      ) |>
+      `rownames<-`(colnames(X))
+  }, error = function(e) NA)
+
+  results$cov_summaries_cols <- tryCatch({
+    apply(gamma.estim, 2, summary) |>
+      as.data.frame() |>
+      t() |>
+      as.data.frame() |>
+      dplyr::mutate(
+        prop_non_zero = apply(gamma.estim, 2, function(x)
+          sum(x != 0) / length(x)
+        )
+      ) |>
+      `rownames<-`(colnames(Z))
+  }, error = function(e) NA)
+
+  results
+}

@@ -190,7 +190,6 @@ imr.cv <- function(
     thresh = 1e-6,
     maxit = 300,
     verbose = 0,
-    max_cores = 8,
     ls_initial = FALSE,
     seed = NULL
     )
@@ -298,7 +297,7 @@ imr.cv <- function(
                            error_function = error_function,
                            thresh = thresh,
                            maxit = maxit,
-                           trace = inner_trace,
+                           trace = verbose >= 1,
                            ls_initial = ls_initial,
                            seed = seed
                            )

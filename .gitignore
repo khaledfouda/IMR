@@ -7,3 +7,4 @@ src/*.so
 src/*.dll
 *.rds
 *.Rdata
+article_results/movielens/data/saved_models/IMR_fit

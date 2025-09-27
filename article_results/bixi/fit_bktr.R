@@ -47,8 +47,8 @@ fit_BKTR_to_Bixi <- function(miss      = 0.8,
   return_obj <- list(fit = bktr_fit, time = time)
 
   saveRDS(return_obj, paste0("./article_results/bixi/data/bktr_",round(100*miss),"_fit.rds"))
-  bktr_fit$beta_covariates_summary %>% kable() %>% print()
-  bktr_fit |> summary() %>% print()
+  #bktr_fit$beta_covariates_summary %>% knitr::kable() %>% print()
+  #bktr_fit |> summary() %>% print()
 
   return(return_obj)
 }

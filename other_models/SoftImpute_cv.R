@@ -1,7 +1,7 @@
-simpute.cv <- function(y_train,
-                       y_valid,
+simpute.cv <- function(y_full,
+                       y_train = NULL,
+                       y_valid = NULL,
                        # mask_valid,
-                       y_full,
                        n.lambda = 20,
                        lambda0_fun = softImpute::lambda0,
                        trace = FALSE,
@@ -12,6 +12,7 @@ simpute.cv <- function(y_train,
                        rank.limit = 50,
                        rank.step = 2,
                        maxit = 300,
+                       val_prop = 0.2,
                        test_error = IMR::error_metric$rmse,
                        seed = NULL) {
   # W: validation only wij=0. For train and test make wij=1. make Yij=0 for validation and test. Aij=0 for test only.
@@ -21,10 +22,19 @@ simpute.cv <- function(y_train,
   # valid_ind <- mask_valid == 0
   #y_full[y_full == 0] = NA
   #y_train[y_train == 0] = NA
-
-  stopifnot(IMR::is.Incomplete(y_train))
-  stopifnot(IMR::is.Incomplete(y_valid))
   stopifnot(IMR::is.Incomplete(y_full))
+  if(is.null(y_train)| is.null(y_valid)){
+    message("Performing train/valid split")
+    obs_mask <- as.matrix(Y != 0)
+    valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
+    y_train <- as(Y * (1-valid_mask), "Incomplete")
+    y_valid <- as(Y * (valid_mask), "Incomplete")
+    rm(obs_mask)
+    rm(valid_mask)
+  }else{
+    stopifnot(is.Incomplete(y_train))
+    stopifnot(is.Incomplete(y_valid))
+  }
 
   lam0 <- lambda0_fun(y_full)
 

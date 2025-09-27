@@ -8,8 +8,11 @@ MA25.fit <- function(Y,
                      r_bar = 8,
                      save_to_file=FALSE,
                      file_location = NULL){
+
+  start_time <- Sys.time()
   M <- MC_alt_LS_rank_solver(Y=Y, X=X, intercept_val=1,
                              max_iter = max_iter, .tol = tol, missing_model = 'logistic')
+
   rm(X, Y)
   M$.make_obs()
   # estimate missing model
@@ -26,6 +29,9 @@ MA25.fit <- function(Y,
   rhat <- M$rank_est$est['h'] # get the rank estimation result
   # Fitting with the estimated rank
   M$fitting(with_rs = rhat)
+
+  M$time <- round(as.numeric(difftime(Sys.time(), start_time,units = "mins")),2)
+
   if(save_to_file){
     if(is.null(file_location)){
       message("file location must be provided")

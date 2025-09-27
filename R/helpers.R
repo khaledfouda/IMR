@@ -16,6 +16,15 @@ inv <- function(X, is_square = nrow(X) == ncol(X)) {
       return(MASS::ginv(X))
   }
 }
+#------------------------------
+#' @export
+initialize_parallel_workers <- function(num_cores = 4L){
+  if(! is.numeric(num_cores) | num_cores < 1)
+    stop("num_cores must be numeric and strictly positive")
+  future::plan(future::sequential)
+  if(round(num_cores) > 1)
+    future::plan(future::multisession, workers = round(num_cores))
+}
 #-------------------------------------
 #' @export
 reconstruct <- function(fit, dat, partial=FALSE, trace=TRUE){
