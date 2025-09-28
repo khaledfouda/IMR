@@ -2,59 +2,32 @@
 #' @export
 nlrr.cv <- function(
     inp.dat,
-    # Y = NULL,
-    # y_train = NULL,
-    # y_valid = NULL,
-    # X = NULL,
-    # Z = NULL,
     intercept_row = FALSE,
     intercept_col = FALSE,
     lambda_beta = NULL,
     lambda_gamma = NULL,
-    # val_prop = 0.2,
     hpar = get_imr_default_hparams(),
     error_function = error_metric$rmse,
     thresh = 1e-6,
     maxit = 300,
     verbose = 0,
     seed = NULL,
-    ls_initial = FALSE
-)
-{
+    ls_initial = FALSE) {
   #-------------------
-  Y = inp.dat$Y
-  y_train = inp.dat$y_train
-  y_valid = inp.dat$y_valid
-  X = inp.dat$Xq
-  Z = inp.dat$Zq
-  rm(inp.dat)
-  # check input, perform train/test split if needed, and set seed
-  # if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
-  #   stop("You must either provide Y or (y_train,y_valid), or both")
-  # if(is.null(y_train)| is.null(y_valid)){
-    stopifnot(is.Incomplete(Y))
-  #   message("Performing train/valid split")
-  #   obs_mask <- as.matrix(Y != 0)
-  #   valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  #   y_train <- as(Y * (1-valid_mask), "Incomplete")
-  #   y_valid <- as(Y * (valid_mask), "Incomplete")
-  #   rm(obs_mask)
-  #   #rm(valid_mask)
-  # }else{
-    stopifnot(is.Incomplete(y_train))
-    stopifnot(is.Incomplete(y_valid))
-  # }
-  if((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
+  stopifnot(is.Incomplete(inp.dat$Y))
+  stopifnot(is.Incomplete(inp.dat$y_train))
+  stopifnot(is.Incomplete(inp.dat$y_valid))
+  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags
-  beta_flag <- !(is.null(X))
-  gamma_flag <- !(is.null(Z))
+  beta_flag <- !(is.null(inp.dat$Xq))
+  gamma_flag <- !(is.null(inp.dat$Zq))
   # if neither beta or gamma are provided then send to cv_M
-  if(! (beta_flag | gamma_flag) )
+  if (!(beta_flag | gamma_flag)) {
     return(IMR::imr.cv_M(
-      y_train = y_train,
-      y_valid = y_valid,
-      Y_full = Y,
+      y_train = inp.dat$y_train,
+      y_valid = inp.dat$y_valid,
+      Y_full = inp.dat$Y,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       hpar = hpar,
@@ -65,25 +38,25 @@ nlrr.cv <- function(
       ls_initial = ls_initial,
       seed = seed
     ))
-    # stop("Covariates must be provided.")
+  }
 
   # obtain upperbounds to the lambda hyperparameters
-  if(beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)){
+  if (beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)) {
     hpar$beta$lambda_max <- get_lambda_lasso_max(
-      y_train = y_train,
-      X = X,
-      y_valid = y_valid,
+      y_train = inp.dat$y_train,
+      X = inp.dat$Xq,
+      y_valid = inp.dat$y_valid,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 100,
       verbose = verbose
     )
   }
-  if(gamma_flag & is.null(hpar$gamma$lambda_max) & is.null(lambda_gamma)){
+  if (gamma_flag & is.null(hpar$gamma$lambda_max) & is.null(lambda_gamma)) {
     hpar$gamma$lambda_max <- get_lambda_lasso_max(
-      y_train = y_train,
-      Z = Z,
-      y_valid = y_valid,
+      y_train = inp.dat$y_train,
+      Z = inp.dat$Zq,
+      y_valid = inp.dat$y_valid,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 100,
@@ -91,81 +64,93 @@ nlrr.cv <- function(
     )
   }
 
-  if(beta_flag & is.null(lambda_beta)){
+  if (beta_flag & is.null(lambda_beta)) {
     lambda_beta_grid <- seq(
       from = hpar$beta$lambda_max,
-      to  = 0,
+      to = 0,
       length.out = hpar$beta$n.lambda
     )
-  }else
-    lambda_beta_grid <- c(if(is.null(lambda_beta)) 0 else lambda_beta)
+  } else {
+    lambda_beta_grid <- c(if (is.null(lambda_beta)) 0 else lambda_beta)
+  }
 
-  if(gamma_flag & is.null(lambda_gamma)){
+  if (gamma_flag & is.null(lambda_gamma)) {
     lambda_gamma_grid <- seq(
       from = hpar$gamma$lambda_max,
       to = 0,
       length.out = hpar$gamma$n.lambda
     )
-  }else
-    lambda_gamma_grid <- c(if(is.null(lambda_gamma)) 0 else lambda_gamma)
+  } else {
+    lambda_gamma_grid <- c(if (is.null(lambda_gamma)) 0 else lambda_gamma)
+  }
 
   #---------------------------
   # parallel setup
-  inner_trace = verbose > 2
-  grid <- list(lambda_beta  = lambda_beta_grid,
-               lambda_gamma = lambda_gamma_grid)
+  grid <- list(
+    lambda_beta = lambda_beta_grid,
+    lambda_gamma = lambda_gamma_grid
+  )
 
-  nllr.fit.step <- function(lambda_beta, lambda_gamma, ...){
-    if(! is.null(seed)) set.seed(seed)
+  nllr.fit.step <- function(lambda_beta, lambda_gamma, ...) {
+    if (!is.null(seed)) set.seed(seed)
     fit <- IMR::imr.fit_no_low_rank(
-    Y = y_train,
-    X = X,
-    Z = Z,
-    lambda_beta = lambda_beta,
-    lambda_gamma = lambda_gamma,
-    intercept_row = intercept_row,
-    intercept_col = intercept_col,
-    thresh = thresh,
-    maxit = maxit,
-    trace = FALSE)
-    estim = 0
-    if(!is.null(fit$beta))
-      estim <- partial_crossprod(X, fit$beta, y_valid@i, y_valid@p)
-    if(!is.null(fit$gamma))
-      estim <- estim + partial_crossprod(fit$gamma, Z, y_valid@i, y_valid@p, TRUE)
-    if(!is.null(fit$beta0))
-      estim <- estim + partial_crossprod(matrix(fit$beta0,ncol=1),
-                                         matrix(1,1,ncol(y_train)),
-                                         y_valid@i, y_valid@p)
-      # add_to_rows_inplace_cpp(y_valid@x, y_valid@i, old_fit$beta0)
-    if(!is.null(fit$gamma0))
-      estim <- estim + partial_crossprod(matrix(1,nrow(y_train),1),
-                                         matrix(fit$gamma0, nrow=1),
-                                         y_valid@i, y_valid@p)
-      # add_to_cols_inplace_cpp(y_valid@x, y_valid@p, old_fit$gamma0)
+      Y = inp.dat$y_train,
+      X = inp.dat$Xq,
+      Z = inp.dat$Zq,
+      lambda_beta = lambda_beta,
+      lambda_gamma = lambda_gamma,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      thresh = thresh,
+      maxit = maxit,
+      trace = FALSE
+    )
+    estim <- 0
+    if (!is.null(fit$beta)) {
+      estim <- partial_crossprod(inp.dat$Xq, fit$beta, inp.dat$y_valid@i, inp.dat$y_valid@p)
+    }
+    if (!is.null(fit$gamma)) {
+      estim <- estim + partial_crossprod(fit$gamma, inp.dat$Zq, inp.dat$y_valid@i, inp.dat$y_valid@p, TRUE)
+    }
+    if (!is.null(fit$beta0)) {
+      estim <- estim + partial_crossprod(
+        matrix(fit$beta0, ncol = 1),
+        matrix(1, 1, ncol(inp.dat$y_train)),
+        inp.dat$y_valid@i, inp.dat$y_valid@p
+      )
+    }
+    # add_to_rows_inplace_cpp(y_valid@x, y_valid@i, old_fit$beta0)
+    if (!is.null(fit$gamma0)) {
+      estim <- estim + partial_crossprod(
+        matrix(1, nrow(inp.dat$y_train), 1),
+        matrix(fit$gamma0, nrow = 1),
+        inp.dat$y_valid@i, inp.dat$y_valid@p
+      )
+    }
+    # add_to_cols_inplace_cpp(y_valid@x, y_valid@p, old_fit$gamma0)
 
-    fit$error <- error_function(estim, y_valid@x)
+    fit$error <- error_function(estim, inp.dat$y_valid@x)
     fit$lambda_beta <- lambda_beta
     fit$lambda_gamma <- lambda_gamma
     fit
   }
 
   results <- parallel_grid(grid, nllr.fit.step,
-                           "list",
-                           .packages = "IMR",
-                           .progress = TRUE,
-                           .seed    = seed,
-                           y_train = y_train,
-                           y_valid = y_valid,
-                           X = X,
-                           Z = Z,
-                           intercept_row = intercept_row,
-                           intercept_col = intercept_col,
-                           thresh = thresh,
-                           maxit = maxit,
-                           trace = inner_trace,
-                           seed = seed,
-                           error_function = error_function
+    "list",
+    .packages = "IMR",
+    .progress = TRUE,
+    .seed = seed,
+    # y_train = inp.dat$y_train,
+    # y_valid = inp.dat$y_valid,
+    # X = inp.dat$Xq,
+    # Z = inp.dat$Zq,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
+    thresh = thresh,
+    maxit = maxit,
+    trace = verbose >= 2,
+    seed = seed,
+    error_function = error_function
   )
 
 
@@ -193,55 +178,57 @@ nlrr.cv <- function(
       best_fit$lambda_gamma,
       sum(best_fit$gamma == 0) / length(best_fit$gamma),
       best_fit$error
-
     ))
     best_fit$init_hparams <- hpar
   }
   rm(results)
 
- nfit <- IMR::imr.fit_no_low_rank(
-    Y = Y,
-    X = X,
-    Z = Z,
-    lambda_beta  = best_fit$lambda_beta,
+  nfit <- IMR::imr.fit_no_low_rank(
+    Y = inp.dat$Y,
+    X = inp.dat$Xq,
+    Z = inp.dat$Zq,
+    lambda_beta = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
-    intercept_row = T,#intercept_row,
-    intercept_col = T,#intercept_col,
+    intercept_row =  intercept_row,
+    intercept_col =  intercept_col,
     thresh = thresh,
     maxit = maxit,
-    trace = FALSE)
+    warm_start = best_fit,
+    trace = FALSE
+  )
 
-
-  y_train <- as(nfit$resid * (1-valid_mask), "Incomplete")
-  y_valid <- as(nfit$resid * (valid_mask), "Incomplete")
-  mfit <- IMR::imr.cv_M(y_train, y_valid, Y_full = nfit$resid, hpar=hpar,
-                        error_function = error_function,trace = verbose > 0,
-                        ls_initial = FALSE)
+  inp.dat$y_train <- IMR::as.Incomplete(nfit$resid * inp.dat$train_mask)
+  inp.dat$y_valid <- IMR::as.Incomplete(nfit$resid * inp.dat$valid_mask)
+  # inp.dat$y_train <- as(nfit$resid * (1 - inp.dat$valid_mask), "Incomplete")
+  # inp.dat$y_valid <- as(nfit$resid * (inp.dat$valid_mask), "Incomplete")
+  mfit <- IMR::imr.cv_M(inp.dat$y_train, inp.dat$y_valid,
+    Y_full = nfit$resid, hpar = hpar,
+    error_function = error_function, trace = verbose > 0,
+    ls_initial = FALSE
+  )
 
   nfit$u <- mfit$fit$u
   nfit$v <- mfit$fit$v
   nfit$d <- mfit$fit$d
-
+  #best_fit$fit <- nfit
   best_fit$fit <- IMR::imr.fit(
-    Y = Y,
-    X = X,
-    Z = Z,
+    Y = inp.dat$Y,
+    X = inp.dat$Xq,
+    Z = inp.dat$Zq,
     r = mfit$rank_M,
     lambda_M = mfit$lambda_M,
     lambda_beta = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
-    intercept_row = T,
-    intercept_col = T,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
     thresh = thresh,
     maxit = maxit,
     trace = verbose > 1,
     ls_initial = F,
     warm_start = nfit,
-
-    )
+  )
   mfit$rank_M -> best_fit$rank_M
   mfit$lambda_M -> best_fit$lambda_M
 
   return(best_fit)
 }
-

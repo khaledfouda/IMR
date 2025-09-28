@@ -5,7 +5,7 @@ as.Incomplete <- function(x, ...) {
   stopifnot(inherits(x, c("matrix", "Matrix")))
   x <- as(x, "CsparseMatrix")
   na <- is.na(x@x)
-  if(any(na)){
+  if (any(na)) {
     x@x[na] <- 0
     x <- Matrix::drop0(x)
   }

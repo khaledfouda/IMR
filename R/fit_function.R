@@ -67,10 +67,11 @@ imr.fit <- function(
   } else {
     if (ls_initial) {
       mfit <- IMR::imr.fit_no_low_rank(Y, X, Z,
-                                       lambda_beta = lambda_beta,
-                                       lambda_gamma = lambda_gamma,
-                                       intercept_row = intercept_row,
-                                       intercept_col = intercept_col)
+        lambda_beta = lambda_beta,
+        lambda_gamma = lambda_gamma,
+        intercept_row = intercept_row,
+        intercept_col = intercept_col
+      )
       if (beta_flag) {
         beta <- mfit$beta
         xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -181,14 +182,14 @@ imr.fit <- function(
 
     Dsq <- trim_eig(B_mat$d, eig.tol)
     numEig <- length(Dsq)
-    V <- B_mat$u[,seq_len(numEig), drop=FALSE]
-    U <- U[,seq_len(numEig), drop=FALSE] %*% B_mat$v[seq_len(numEig),seq_len(numEig), drop=FALSE]
+    V <- B_mat$u[, seq_len(numEig), drop = FALSE]
+    U <- U[, seq_len(numEig), drop = FALSE] %*% B_mat$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
     # V <- B_mat$u
     # Dsq <- B_mat$d
     # U <- U %*% B_mat$v
 
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq,numEig,numEig), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq, numEig, numEig), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -201,10 +202,10 @@ imr.fit <- function(
     # Dsq <- A_mat$d[A_mat$d > 0]
     Dsq <- trim_eig(A_mat$d, eig.tol)
     numEig <- length(Dsq)
-    U <- A_mat$u[,seq_len(numEig), drop=FALSE]
-    V <- V[,seq_len(numEig), drop=FALSE] %*% A_mat$v[seq_len(numEig),seq_len(numEig), drop=FALSE]
+    U <- A_mat$u[, seq_len(numEig), drop = FALSE]
+    V <- V[, seq_len(numEig), drop = FALSE] %*% A_mat$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq,numEig,numEig), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, V %*% diag(Dsq, numEig, numEig), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -227,14 +228,14 @@ imr.fit <- function(
   r_eff <- min(max(1, sum(Dsq > 0)), r)
 
   list(
-    u            = U[, seq_len(r_eff), drop = FALSE],
-    d            = Dsq[seq_len(r_eff)],
-    v            = V[, seq_len(r_eff), drop = FALSE],
-    beta         = beta,
-    gamma        = gamma,
-    beta0        = beta0,
-    gamma0        = gamma0,
-    n_iter       = iter
+    u = U[, seq_len(r_eff), drop = FALSE],
+    d = Dsq[seq_len(r_eff)],
+    v = V[, seq_len(r_eff), drop = FALSE],
+    beta = beta,
+    gamma = gamma,
+    beta0 = beta0,
+    gamma0 = gamma0,
+    n_iter = iter
   )
 }
 
@@ -250,6 +251,7 @@ imr.fit_no_low_rank <- function(
     intercept_col = FALSE,
     maxit = 300,
     thresh = 1e-5,
+    warm_start = NULL,
     trace = FALSE) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
@@ -270,6 +272,23 @@ imr.fit_no_low_rank <- function(
   beta <- gamma <- beta0 <- gamma0 <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
+  if(! is.null(warm_start)){
+    if (beta_flag) {
+      beta <- warm_start$beta
+      xb_obs <- partial_crossprod(X, beta, irow, pcol)
+    }
+    if (gamma_flag) {
+      gamma <- warm_start$gamma
+      zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
+    }
+    if (intercept_row) {
+      beta0 <- warm_start$beta0
+    }
+
+    if (intercept_col) {
+      gamma0 <- warm_start$gamma0
+    }
+  }else{
 
   if (beta_flag) {
     beta <- matrix(0, ncol(X), nc)
@@ -286,7 +305,13 @@ imr.fit_no_low_rank <- function(
     gamma0 <- rep(0, nc)
   }
 
-
+  }
+  if (!is.null(warm_start)) {
+    if (beta_flag) Y@x <- Y@x - xb_obs
+    if (gamma_flag) Y@x <- Y@x - zg_obs
+    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, beta0, -1)
+    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, gamma0, -1)
+  }
   #  Main loop ---------------------------------------------------------------
   ratio <- Inf
   iter <- 0
@@ -337,12 +362,12 @@ imr.fit_no_low_rank <- function(
       Y@x <- Y@x + old_val - xb_obs
     }
     # 4.7 Convergence check ----------------------------------------------------
-    ratio <- mean((Y@x-old_err)^2)
+    ratio <- mean((Y@x - old_err)^2)
 
     if (trace) {
-      obj <- (0.5 * sum(Y@x^2)  +
-                ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
-                ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
+      obj <- (0.5 * sum(Y@x^2) +
+        ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
+        ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
       cat(iter, " obj=", round(obj, 5), " ratio=", ratio, "\n")
     }
@@ -355,52 +380,46 @@ imr.fit_no_low_rank <- function(
   #  return -----------------------------------------
 
   list(
-    resid        = Y,
-    beta         = beta,
-    gamma        = gamma,
-    beta0        = beta0,
-    gamma0        = gamma0,
-    n_iter       = iter
+    resid = Y,
+    beta = beta,
+    gamma = gamma,
+    beta0 = beta0,
+    gamma0 = gamma0,
+    n_iter = iter
   )
 }
 
 
 #--------------------------------------
-#'@export
-error_metric = list(
+#' @export
+error_metric <- list(
 
-#--- error functions:
-unexplained_variance = function(predicted, true, adjusted = FALSE, k = NA) {
-   # SSE / SST
-   if(! adjusted){
-      return(sum((true - predicted) ^ 2) / sum((true - mean(true)) ^ 2))
-   }else{
-      n = length(true)
+  #--- error functions:
+  unexplained_variance = function(predicted, true, adjusted = FALSE, k = NA) {
+    # SSE / SST
+    if (!adjusted) {
+      return(sum((true - predicted)^2) / sum((true - mean(true))^2))
+    } else {
+      n <- length(true)
       stopifnot(is.numeric(k))
-      return(((sum((true - predicted) ^ 2) /
-           sum((true - mean(true)) ^ 2)) *
-            (n - 1) / (n - k - 1)))
-   }
-},
-
-mape = function(predicted, true) {
-   mean(abs((true - predicted) / true), na.rm = TRUE) * 100
-},
-mae = function(predicted, true) {
-   mean(abs(true - predicted), na.rm = TRUE)
-},
-
-rmse_normalized = function(predicted, true) {
-   sqrt(mean((true - predicted) ^ 2, na.rm = TRUE)) / sd(true, na.rm = TRUE)
-},
-
-rmse = function(predicted, true) {
-   sqrt(mean((true - predicted) ^ 2, na.rm = TRUE))
-},
-
-spearman_R2 = function(predicted, true) {
-   cor(true, predicted, method = "spearman")
-}
-
-
+      return(((sum((true - predicted)^2) /
+        sum((true - mean(true))^2)) *
+        (n - 1) / (n - k - 1)))
+    }
+  },
+  mape = function(predicted, true) {
+    mean(abs((true - predicted) / true), na.rm = TRUE) * 100
+  },
+  mae = function(predicted, true) {
+    mean(abs(true - predicted), na.rm = TRUE)
+  },
+  rmse_normalized = function(predicted, true) {
+    sqrt(mean((true - predicted)^2, na.rm = TRUE)) / sd(true, na.rm = TRUE)
+  },
+  rmse = function(predicted, true) {
+    sqrt(mean((true - predicted)^2, na.rm = TRUE))
+  },
+  spearman_R2 = function(predicted, true) {
+    cor(true, predicted, method = "spearman")
+  }
 )

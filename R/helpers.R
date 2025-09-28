@@ -18,56 +18,66 @@ inv <- function(X, is_square = nrow(X) == ncol(X)) {
 }
 #------------------------------
 #' @export
-initialize_parallel_workers <- function(num_cores = 4L){
-  if(! is.numeric(num_cores) | num_cores < 1)
+initialize_parallel_workers <- function(num_cores = 4L) {
+  if (!is.numeric(num_cores) | num_cores < 1) {
     stop("num_cores must be numeric and strictly positive")
+  }
   future::plan(future::sequential)
-  if(round(num_cores) > 1)
+  if (round(num_cores) > 1) {
     future::plan(future::multisession, workers = round(num_cores))
+  }
 }
 #-------------------------------------
 #' @export
-reconstruct <- function(fit, dat, partial=FALSE, trace=TRUE){
-  out <- list(beta=NA, gamma=NA, M = NA, xbeta=NA, gammaz=NA, estimates=0)
-  check_mat <- function(mat, is_matrix=TRUE){
-    if(any(is.na(mat))) return(FALSE)
-    if(is_matrix & is.matrix(mat)) return(TRUE)
-    if(is_matrix) return(FALSE)
-    if(is.vector(mat)) return(TRUE)
+reconstruct <- function(fit, dat, partial = FALSE, trace = TRUE) {
+  out <- list(beta = NA, gamma = NA, M = NA, xbeta = NA, gammaz = NA, estimates = 0)
+  check_mat <- function(mat, is_matrix = TRUE) {
+    if (any(is.na(mat))) {
+      return(FALSE)
+    }
+    if (is_matrix & is.matrix(mat)) {
+      return(TRUE)
+    }
+    if (is_matrix) {
+      return(FALSE)
+    }
+    if (is.vector(mat)) {
+      return(TRUE)
+    }
     return(FALSE)
   }
   #-----
-  if(check_mat(fit$u) & check_mat(fit$d,FALSE) & check_mat(fit$v)){
-    if(trace) message("Constructing M ...")
+  if (check_mat(fit$u) & check_mat(fit$d, FALSE) & check_mat(fit$v)) {
+    if (trace) message("Constructing M ...")
     out$M <- fit$u %*% (fit$d * t(fit$v))
     out$estimates <- out$M
   }
-  if(check_mat(fit$beta) & check_mat(dat$X) & check_mat(dat$Xr)){
-    if(trace) message("Constructing XBeta ...")
+  if (check_mat(fit$beta) & check_mat(dat$X) & check_mat(dat$Xr)) {
+    if (trace) message("Constructing XBeta ...")
     out$beta <- solve(dat$Xr) %*% fit$beta
     out$xbeta <- dat$X %*% out$beta
     out$estimates <- out$estimates + out$xbeta
   }
-  if(check_mat(fit$gamma) & check_mat(dat$Z) & check_mat(dat$Zr)){
-    if(trace) message("Constructing GammaZ ...")
+  if (check_mat(fit$gamma) & check_mat(dat$Z) & check_mat(dat$Zr)) {
+    if (trace) message("Constructing GammaZ ...")
     out$gamma <- fit$gamma %*% solve(t(dat$Zr))
     out$gammaz <- out$gamma %*% t(dat$Z)
     out$estimates <- out$estimates + out$gammaz
   }
-  if(check_mat(fit$beta0, FALSE)){
-    if(trace) message("Constructing row intercepts ...")
-    out$estimates <- out$estimates + fit$beta0 %*% matrix(1,1,ncol(out$estimates))
+  if (check_mat(fit$beta0, FALSE)) {
+    if (trace) message("Constructing row intercepts ...")
+    out$estimates <- out$estimates + fit$beta0 %*% matrix(1, 1, ncol(out$estimates))
   }
-  if(check_mat(fit$gamma0, FALSE)){
-    if(trace) message("Constructing column intercepts ...")
-    out$estimates <- out$estimates + matrix(1,nrow(out$estimates),1) %*% t(fit$gamma0)
+  if (check_mat(fit$gamma0, FALSE)) {
+    if (trace) message("Constructing column intercepts ...")
+    out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% t(fit$gamma0)
   }
-  if(trace) message("done.")
+  if (trace) message("done.")
   return(out)
 }
 
 #-----------------------------
-trim_eig <- function(d, tol=1e-10) d[d>0 & !is.nan(d) & !is.na(d)]
+trim_eig <- function(d, tol = 1e-10) d[d > 0 & !is.nan(d) & !is.na(d)]
 
 #' @export
 mask_train_test_split <-
@@ -82,22 +92,23 @@ mask_train_test_split <-
     #  1 -> test(valid)(obs_mask=1) |
     #  0 -> missing  (obs_mask=0)
     #-----------------------------------------------------------------
-    if(!is.null(seed)) set.seed(seed)
+    if (!is.null(seed)) set.seed(seed)
     n_rows <- dim(obs_mask)[1]
     n_cols <- dim(obs_mask)[2]
     # Create a data frame of all matrix indices
     # we only consider non-missing data (ie, with mask_ij=1)
     indices <- expand.grid(row = 1:n_rows, col = 1:n_cols)[obs_mask == 1, ]
     # Shuffle indices (both rows and columns are shuffled. later, we will reshuffle the columns)
-    indices <-  indices[sample(1:nrow(indices)),]
+    indices <- indices[sample(1:nrow(indices)), ]
     row.names(indices) <- NULL
 
-    test.idx = sample(1:nrow(indices),
-                      size = nrow(indices) * testp,
-                      replace = FALSE)
-    test.indices = indices[test.idx, ]
+    test.idx <- sample(1:nrow(indices),
+      size = nrow(indices) * testp,
+      replace = FALSE
+    )
+    test.indices <- indices[test.idx, ]
 
-    new_mask = matrix(0, nrow = n_rows, ncol = n_cols)
+    new_mask <- matrix(0, nrow = n_rows, ncol = n_cols)
     new_mask[as.matrix(test.indices[, c("row", "col")])] <- 1
 
     return(new_mask)
@@ -148,41 +159,37 @@ verify_warm_start <- function(M, J, min_eigv = 1e-6) {
     NULL
   }
 }
-error_metric = list(
+error_metric <- list(
   #--- error functions:
   unexplained_variance = function(predicted, true, adjusted = FALSE, k = NA) {
     # SSE / SST
-    if(! adjusted){
-      return(sum((true - predicted) ^ 2) / sum((true - mean(true)) ^ 2))
-    }else{
-      n = length(true)
+    if (!adjusted) {
+      return(sum((true - predicted)^2) / sum((true - mean(true))^2))
+    } else {
+      n <- length(true)
       stopifnot(is.numeric(k))
-      return(((sum((true - predicted) ^ 2) /
-                 sum((true - mean(true)) ^ 2)) *
-                (n - 1) / (n - k - 1)))
+      return(((sum((true - predicted)^2) /
+        sum((true - mean(true))^2)) *
+        (n - 1) / (n - k - 1)))
     }
   },
-
   mape = function(predicted, true) {
     mean(abs((as.double(true) - as.double(predicted)) / true), na.rm = TRUE) * 100
   },
   mae = function(predicted, true) {
     mean(abs(as.double(true) - as.double(predicted)), na.rm = TRUE)
   },
-
   rmse_normalized = function(predicted, true) {
-    sqrt(mean((as.double(true) - as.double(predicted)) ^ 2, na.rm = TRUE)) /
+    sqrt(mean((as.double(true) - as.double(predicted))^2, na.rm = TRUE)) /
       sd(as.double(true), na.rm = TRUE)
   },
-
   rmse = function(predicted, true) {
-    sqrt(mean((as.double(true) - as.double(predicted)) ^ 2, na.rm = TRUE))
+    sqrt(mean((as.double(true) - as.double(predicted))^2, na.rm = TRUE))
   },
   rel.rmse = function(predicted, true) {
-    sqrt(sum((true - predicted) ^ 2, na.rm = TRUE)) /
-      sqrt(sum(true^ 2, na.rm = TRUE))
+    sqrt(sum((true - predicted)^2, na.rm = TRUE)) /
+      sqrt(sum(true^2, na.rm = TRUE))
   },
-
   spearman_R2 = function(predicted, true) {
     cor(true, predicted, method = "spearman")
   }

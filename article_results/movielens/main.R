@@ -9,6 +9,7 @@ input_tag = "_c_0_"
 query <- readRDS(paste0("article_results/movielens/data/Movie_Q",input_tag,".Rdata"))
 source("other_models/Ma25.R")
 source("other_models/SoftImpute_cv.R")
+source("article_results/movielens/preprocess.R")
 #========================================================
 # prepare test set and X-QR
 idx   <- cbind(query[, 1], query[, 2])
@@ -81,7 +82,7 @@ dat$Zr = qr.R(Zqr)
 hpar <- IMR::get_imr_default_hparams()
 hpar$beta$lambda_max <- 1
 hpar$gamma$lambda_max <- 1
-hpar$M$n.lambda <- 40
+hpar$M$n.lambda <- 60
 hpar$beta$n.lambda <- 20
 hpar$gamma$n.lambda <- 20
 
@@ -91,14 +92,18 @@ IMR:::initialize_parallel_workers(9)
 # fit all model variations: [imr+x, imr+xz, imr+intercept, ma, si]
 #----------------------
 # 1. intercept only >
-mod.dat <- IMR::prepare_data(dat$Y, dat$X, NULL, seed = 2025)
+mod.dat <- dat
+dat <- mod.dat <- IMR::prepare_data(Y, X, Z, 0.2, seed = 2025)
+
+
+
 bench::bench_time(fit.imr1 <- IMR:::imr.cv(
-  mod.dat,
+  mod.dat$model,
   intercept_row = T,
   intercept_col = T,
   hpar = hpar,
   verbose = 1,
-  fast.cv = FALSE,
+  fast.cv = T,
   separate_tuning = TRUE,
   seed = 2025
 )) -> time.imr
@@ -128,14 +133,13 @@ saveRDS(fit.imr2, paste0("article_results/movielens/data/saved_models/",
 
 # 3. row+col covariates >
 bench::bench_time(fit.imr3 <- IMR::imr.cv(
-  Y = Y,
-  X = dat$Xq,
-  Z = dat$Zq,
+  mod.dat$model,
   intercept_row = T,
   intercept_col = T,
   hpar = hpar,
   verbose = 1,
-  seed = 2025
+  seed = 2025,
+  separate_tuning = FALSE,
 )) -> time.imr
 
 fit.imr3$time <- round(lubridate::time_length(time.imr[2],  "minute"),2)
@@ -155,17 +159,38 @@ saveRDS(fit.si, "article_results/movielens/data/saved_models/SI_fit.rds")
 M = fit_MA25_movielens("", 2025)
 #--------------------------------------------------------------
 
-fit.imr <- fit.imr1
-out <- IMR:::reconstruct(fit.imr$fit, dat)
+mod.dat <- IMR::prepare_data(Y, X, NULL, 0.2, seed = 2025)
+
+devtools::load_all()
+bench::bench_time(fit.imr1 <- IMR:::imr.cv(
+  mod.dat$model,
+  intercept_row = T,
+  intercept_col = T,
+  hpar = hpar,
+  verbose = 1,
+  fast.cv = F,
+  separate_tuning = TRUE,
+  seed = 2025
+))
+
+dat <- mod.dat
+
+fit <- fit.imr
+fit$u <- fit.imr$fit$u
+fit$v <- fit.imr$fit$v
+fit$d <- fit.imr$fit$d
+
+
+fit.imr <- fit.imr1; out <- IMR:::reconstruct(fit.imr$fit, dat)
 prepare_output_movielens(
   "IMR",
   time       = fit.imr$time,
-  X           = dat$X,
-  Z           = dat$Z,
+  X           = NULL,#dat$X,
+  #Z           = dat$Z,
   estim.test  = out$estimates[idx],
-  estim.train = out$estimates[dat$obs_mask==1],
+  estim.train = out$estimates[as.matrix(dat$Y!=0)],
   obs.test    = truths,
-  obs.train   = dat$Y[dat$obs_mask==1],
+  obs.train   = dat$Y[dat$Y!=0],
   beta.estim  = out$beta,
   gamma.estim = out$gamma,
   M.estim     = out$M,
@@ -178,6 +203,15 @@ results.imr$cov_summaries_cols %>%
   as.data.frame() %>%
   arrange(desc(Mean))
 
+
+IMR::as.Incomplete(out$estimates * obs_mask)@x[1:15]
+IMR::as.Incomplete(out1$estimates * obs_mask)@x[1:15]
+
+
+out$M[1:5,1:5]
+fit.imr1$fit$beta[,1:10]
+
+fit.imr11$rank_M
 
 # fit MA
 bench::bench_time(softImpute::softImpute(dat$Y,

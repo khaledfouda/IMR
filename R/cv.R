@@ -1,38 +1,39 @@
 #' @export
 imr.cv_M <- function(
-  y_train,
-  y_valid,
-  X = NULL,
-  Z = NULL,
-  Y_full = NULL,
-  lambda_beta = 0,
-  lambda_gamma = 0,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
-  hpar = get_imr_default_hparams(),
-  error_function = error_metric$rmse,
-  thresh = 1e-6,
-  maxit = 300,
-  trace = TRUE,
-  old_fit = NULL,
-  ls_initial = TRUE,
-  seed = NULL
-){
+    y_train,
+    y_valid,
+    X = NULL,
+    Z = NULL,
+    Y_full = NULL,
+    lambda_beta = 0,
+    lambda_gamma = 0,
+    intercept_row = FALSE,
+    intercept_col = FALSE,
+    hpar = get_imr_default_hparams(),
+    error_function = error_metric$rmse,
+    thresh = 1e-6,
+    maxit = 300,
+    trace = TRUE,
+    old_fit = NULL,
+    ls_initial = TRUE,
+    seed = NULL) {
   # set seed and check input matrix type
-  if( (!is.null(seed)) & is.numeric(seed)) set.seed(seed)
+  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   stopifnot(is.Incomplete(y_train))
   stopifnot(is.Incomplete(y_valid))
-  if(!is.null(Y_full)) stopifnot(is.Incomplete(Y_full))
+  if (!is.null(Y_full)) stopifnot(is.Incomplete(Y_full))
 
   # lambda lambda_m sequence
-  if(is.null(hpar$M$lambda_max)){
-    hpar$M$lambda_max <- get_lambda_M_max(y_train, X, Z, T, T,
-                                           lambda_beta, lambda_gamma) *
+  if (is.null(hpar$M$lambda_max)) {
+    hpar$M$lambda_max <- get_lambda_M_max(
+      y_train, X, Z, T, T,
+      lambda_beta, lambda_gamma
+    ) *
       hpar$M$lambda_factor
   }
   lambda_seq <- seq(
     from = hpar$M$lambda_max,
-    to  = 0,
+    to = 0,
     length.out = hpar$M$n.lambda
   )
 
@@ -49,7 +50,7 @@ imr.cv_M <- function(
   no_improve_count <- 0
   loop_size <- 0
 
-  for(i in seq_along(lambda_seq)){
+  for (i in seq_along(lambda_seq)) {
     loop_size <- loop_size + 1
     # fit
 
@@ -75,15 +76,19 @@ imr.cv_M <- function(
     )
 
     # compute validation error
-    y_valid@x <- partial_crossprod(old_fit$u, old_fit$d * t(old_fit$v),virow,vpcol)
-    if(beta_flag)
+    y_valid@x <- partial_crossprod(old_fit$u, old_fit$d * t(old_fit$v), virow, vpcol)
+    if (beta_flag) {
       y_valid@x <- y_valid@x + partial_crossprod(X, old_fit$beta, virow, vpcol)
-    if(gamma_flag)
+    }
+    if (gamma_flag) {
       y_valid@x <- y_valid@x + partial_crossprod(old_fit$gamma, Z, virow, vpcol, TRUE)
-    if(intercept_row)
+    }
+    if (intercept_row) {
       add_to_rows_inplace_cpp(y_valid@x, y_valid@i, old_fit$beta0)
-    if(intercept_col)
+    }
+    if (intercept_col) {
       add_to_cols_inplace_cpp(y_valid@x, y_valid@p, old_fit$gamma0)
+    }
 
     verror <- error_function(y_valid@x, reference)
 
@@ -141,7 +146,7 @@ imr.cv_M <- function(
     # end of loop
   }
   # (optional) retrain on the full data
-  if(!is.null(Y_full)){
+  if (!is.null(Y_full)) {
     best_fit$fit <- imr.fit(
       Y = Y_full,
       X = X,
@@ -168,7 +173,7 @@ imr.cv_M <- function(
   # record final hyper-parameters and return
   best_fit$lambda_beta <- lambda_beta
   best_fit$lambda_gamma <- lambda_gamma
-  best_fit$loop_size  <- loop_size
+  best_fit$loop_size <- loop_size
   return(best_fit)
 }
 
@@ -176,16 +181,10 @@ imr.cv_M <- function(
 #' @export
 imr.cv <- function(
     inp.dat,
-    # Y = NULL,
-    # y_train = NULL,
-    # y_valid = NULL,
-    # X = NULL,
-    # Z = NULL,
     intercept_row = FALSE,
     intercept_col = FALSE,
     lambda_beta = NULL,
     lambda_gamma = NULL,
-    # val_prop = 0.2,
     hpar = get_imr_default_hparams(),
     error_function = error_metric$rmse,
     thresh = 1e-6,
@@ -194,10 +193,8 @@ imr.cv <- function(
     ls_initial = FALSE,
     seed = NULL,
     fast.cv = FALSE,
-    separate_tuning = FALSE
-    )
-{
-  if(fast.cv)
+    separate_tuning = FALSE) {
+  if (fast.cv) {
     return(
       IMR:::nlrr.cv(
         inp.dat = inp.dat,
@@ -213,42 +210,31 @@ imr.cv <- function(
         seed = seed,
         ls_initial = ls_initial
       )
-      )
+    )
+  }
 
   #-------------------
-  Y = inp.dat$Y
-  y_train = inp.dat$y_train
-  y_valid = inp.dat$y_valid
-  X = inp.dat$Xq
-  Z = inp.dat$Zq
-  rm(inp.dat)
-  # check input, perform train/test split if needed, and set seed
-  # if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
-  #   stop("You must either provide Y or (y_train,y_valid), or both")
-  # if(is.null(y_train)| is.null(y_valid)){
-    stopifnot(is.Incomplete(Y))
-  #   message("Performing train/valid split")
-  #   obs_mask <- as.matrix(Y != 0)
-  #   valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  #   y_train <- as(Y * (1-valid_mask), "Incomplete")
-  #   y_valid <- as(Y * (valid_mask), "Incomplete")
-  #   rm(obs_mask)
-  #   rm(valid_mask)
-  # }else{
-    stopifnot(is.Incomplete(y_train))
-    stopifnot(is.Incomplete(y_valid))
-  # }
-  if((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
+  #Y <- inp.dat$Y
+  #y_train <- inp.dat$y_train
+  #y_valid <- inp.dat$y_valid
+  #X <- inp.dat$Xq
+  #Z <- inp.dat$Zq
+  #rm(inp.dat)
+  stopifnot(is.Incomplete(inp.dat$Y))
+  stopifnot(is.Incomplete(inp.dat$y_train))
+  stopifnot(is.Incomplete(inp.dat$y_valid))
+
+  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags
-  beta_flag <- !(is.null(X))
-  gamma_flag <- !(is.null(Z))
+  beta_flag <- !(is.null(inp.dat$Xq))
+  gamma_flag <- !(is.null(inp.dat$Zq))
   # if neither beta or gamma are provided then send to cv_M
-  if(! (beta_flag | gamma_flag) )
+  if (!(beta_flag | gamma_flag)) {
     return(IMR::imr.cv_M(
-      y_train = y_train,
-      y_valid = y_valid,
-      Y_full = Y,
+      y_train = inp.dat$y_train,
+      y_valid = inp.dat$y_valid,
+      Y_full = inp.dat$Y,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       hpar = hpar,
@@ -259,24 +245,25 @@ imr.cv <- function(
       ls_initial = ls_initial,
       seed = seed
     ))
+  }
 
   # obtain upperbounds to the lambda hyperparameters
-  if(beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)){
+  if (beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)) {
     hpar$beta$lambda_max <- get_lambda_lasso_max(
-      y_train = y_train,
-      X = X,
-      y_valid = y_valid,
+      y_train = inp.dat$y_train,
+      X = inp.dat$Xq,
+      y_valid = inp.dat$y_valid,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 100,
       verbose = verbose
     )
   }
-  if(gamma_flag & is.null(hpar$gamma$lambda_max) & is.null(lambda_gamma)){
+  if (gamma_flag & is.null(hpar$gamma$lambda_max) & is.null(lambda_gamma)) {
     hpar$gamma$lambda_max <- get_lambda_lasso_max(
-      y_train = y_train,
-      Z = Z,
-      y_valid = y_valid,
+      y_train = inp.dat$y_train,
+      Z = inp.dat$Zq,
+      y_valid = inp.dat$y_valid,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 100,
@@ -284,52 +271,56 @@ imr.cv <- function(
     )
   }
 
-  if(beta_flag & is.null(lambda_beta)){
+  if (beta_flag & is.null(lambda_beta)) {
     lambda_beta_grid <- seq(
       from = hpar$beta$lambda_max,
-      to  = 0,
+      to = 0,
       length.out = hpar$beta$n.lambda
     )
-  }else
-    lambda_beta_grid <- c(if(is.null(lambda_beta)) 0 else lambda_beta)
+  } else {
+    lambda_beta_grid <- c(if (is.null(lambda_beta)) 0 else lambda_beta)
+  }
 
-  if(gamma_flag & is.null(lambda_gamma)){
+  if (gamma_flag & is.null(lambda_gamma)) {
     lambda_gamma_grid <- seq(
       from = hpar$gamma$lambda_max,
       to = 0,
       length.out = hpar$gamma$n.lambda
     )
-  }else
-    lambda_gamma_grid <- c(if(is.null(lambda_gamma)) 0 else lambda_gamma)
+  } else {
+    lambda_gamma_grid <- c(if (is.null(lambda_gamma)) 0 else lambda_gamma)
+  }
 
   #---------------------------
   # parallel setup
-  inner_trace = verbose > 2
-  if(separate_tuning & gamma_flag & beta_flag){
+  inner_trace <- verbose > 2
+  if (separate_tuning & gamma_flag & beta_flag) {
     message("Fitting lambda_beta and lambda_gamma separately...")
     # if separate then tune beta first followed by gamma. Meanwhile,
     # keep lambda_gamma at 10% of its maximum.
-    grid <- list( lambda_gamma  = hpar$gamma$lambda_max * 0.1,
-                  lambda_beta = lambda_beta_grid)
+    grid <- list(
+      lambda_gamma = hpar$gamma$lambda_max * 0.1,
+      lambda_beta = lambda_beta_grid
+    )
     results <- parallel_grid(grid, IMR::imr.cv_M,
-                            "list",
-                            .packages = "IMR",
-                            .progress = TRUE,
-                            .seed    = seed,
-                            y_train = y_train,
-                            y_valid = y_valid,
-                            X = X,
-                            Z = Z,
-                            Y_full = NULL,
-                            intercept_row = intercept_row,
-                            intercept_col = intercept_col,
-                            hpar = hpar,
-                            error_function = error_function,
-                            thresh = thresh,
-                            maxit = maxit,
-                            trace = verbose >= 1,
-                            ls_initial = ls_initial,
-                            seed = seed
+      "list",
+      .packages = "IMR",
+      .progress = TRUE,
+      .seed = seed,
+      y_train = inp.dat$y_train,
+      y_valid = inp.dat$y_valid,
+      X = inp.dat$Xq,
+      # Z = inp.dat$Zq,
+      Y_full = NULL,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      hpar = hpar,
+      error_function = error_function,
+      thresh = thresh,
+      maxit = maxit,
+      trace = verbose >= 1,
+      ls_initial = ls_initial,
+      seed = seed
     )
 
 
@@ -337,30 +328,33 @@ imr.cv <- function(
     errors <- vapply(results, `[[`, numeric(1), "error")
     best_idx <- which.min(errors)
     best_fit <- results[[best_idx]]
+    best_fit$fit$gamma <- matrix(0, nrow(inp.dat$Y), ncol(inp.dat$Zq))
     #----
     # we now tune lambda gamma
-    grid <- list( lambda_gamma  = lambda_gamma_grid,
-                  lambda_beta = best_fit$lambda_beta)
+    grid <- list(
+      lambda_gamma = lambda_gamma_grid,
+      lambda_beta = best_fit$lambda_beta
+    )
     results <- parallel_grid(grid, IMR::imr.cv_M,
-                             "list",
-                             .packages = "IMR",
-                             .progress = TRUE,
-                             .seed    = seed,
-                             y_train = y_train,
-                             y_valid = y_valid,
-                             X = X,
-                             Z = Z,
-                             Y_full = Y,
-                             intercept_row = intercept_row,
-                             intercept_col = intercept_col,
-                             hpar = hpar,
-                             error_function = error_function,
-                             thresh = thresh,
-                             maxit = maxit,
-                             trace = verbose >= 1,
-                             ls_initial = ls_initial,
-                             old_fit = best_fit$fit,
-                             seed = seed
+      "list",
+      .packages = "IMR",
+      .progress = TRUE,
+      .seed = seed,
+      y_train = inp.dat$y_train,
+      y_valid = inp.dat$y_valid,
+      X = inp.dat$Xq,
+      Z = inp.dat$Zq,
+      Y_full = inp.dat$Y,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      hpar = hpar,
+      error_function = error_function,
+      thresh = thresh,
+      maxit = maxit,
+      trace = verbose >= 1,
+      ls_initial = ls_initial,
+      old_fit = best_fit$fit,
+      seed = seed
     )
 
 
@@ -368,32 +362,32 @@ imr.cv <- function(
     errors <- vapply(results, `[[`, numeric(1), "error")
     best_idx <- which.min(errors)
     best_fit <- results[[best_idx]]
-
-  }else{
-
-    grid <- list(lambda_beta  = lambda_beta_grid,
-                 lambda_gamma = lambda_gamma_grid)
+  } else {
+    grid <- list(
+      lambda_beta = lambda_beta_grid,
+      lambda_gamma = lambda_gamma_grid
+    )
 
     results <- parallel_grid(grid, IMR::imr.cv_M,
-                             "list",
-                             .packages = "IMR",
-                             .progress = TRUE,
-                             .seed    = seed,
-                             y_train = y_train,
-                             y_valid = y_valid,
-                             X = X,
-                             Z = Z,
-                             Y_full = Y,
-                             intercept_row = intercept_row,
-                             intercept_col = intercept_col,
-                             hpar = hpar,
-                             error_function = error_function,
-                             thresh = thresh,
-                             maxit = maxit,
-                             trace = verbose >= 1,
-                             ls_initial = ls_initial,
-                             seed = seed
-                             )
+      "list",
+      .packages = "IMR",
+      .progress = TRUE,
+      .seed = seed,
+      y_train = inp.dat$y_train,
+      y_valid = inp.dat$y_valid,
+      X = inp.dat$Xq,
+      Z = inp.dat$Zq,
+      Y_full = inp.dat$Y,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      hpar = hpar,
+      error_function = error_function,
+      thresh = thresh,
+      maxit = maxit,
+      trace = verbose >= 1,
+      ls_initial = ls_initial,
+      seed = seed
+    )
 
 
     # Select the best fit
@@ -433,8 +427,3 @@ imr.cv <- function(
   rm(results)
   return(best_fit)
 }
-
-
-
-
-

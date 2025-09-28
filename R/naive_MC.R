@@ -1,9 +1,9 @@
 #' @export
 naive_MC <- function(mat) {
   # Input assumes that empty cells are filled with NA so they don't affect the average
-  #mat[mat == 0] <- NA
+  # mat[mat == 0] <- NA
   # Calculate row and column means, excluding NAs
-  if(! IMR::is.Incomplete(mat)) mat <- IMR::as.Incomplete(mat)
+  if (!IMR::is.Incomplete(mat)) mat <- IMR::as.Incomplete(mat)
   # have this instead and accept sparse matrix.
   row_means <- IMR:::row_means_cpp(mat, ncol(mat))
   col_means <- IMR:::col_means_cpp(mat, nrow(mat))
@@ -31,9 +31,9 @@ naive_MC <- function(mat) {
   # avg_means <- (expanded_row_means + expanded_col_means) / 2
   # mat[na_positions] <- avg_means[na_positions]
 
-   na_positions <- mat == 0
-  ij <- Matrix::which(na_positions, arr.ind=TRUE)
-  mat[ij] <- (row_means[ij[,1]] + col_means[ij[, 2]]) / 2
+  na_positions <- mat == 0
+  ij <- Matrix::which(na_positions, arr.ind = TRUE)
+  mat[ij] <- (row_means[ij[, 1]] + col_means[ij[, 2]]) / 2
   mat <- Matrix::drop0(mat)
 
   return(mat)

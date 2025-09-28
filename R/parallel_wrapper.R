@@ -28,7 +28,7 @@ parallel_grid <- function(grid,
   # Turn each row into a named list of arguments for f()
   tasks <- lapply(seq_len(n_tasks), function(i) as.list(combos[i, , drop = FALSE]))
   param_names <- names(grid)
-  #id_cols <- paste0(id_prefix, param_names)
+  # id_cols <- paste0(id_prefix, param_names)
 
   # Worker wrapper: evaluate f(args, ...) and progress
   worker <- function(args) {
@@ -69,8 +69,10 @@ parallel_grid <- function(grid,
   are_df <- vapply(res, is.data.frame, logical(1))
   if (!all(are_df)) {
     bad <- which(!are_df)[1]
-    stop(sprintf("combine = 'rbind' requires data.frame results; element %d is a %s.",
-                 bad, class(res[[bad]])[1]))
+    stop(sprintf(
+      "combine = 'rbind' requires data.frame results; element %d is a %s.",
+      bad, class(res[[bad]])[1]
+    ))
   }
 
   res_with_ids <- Map(function(df, args) {
