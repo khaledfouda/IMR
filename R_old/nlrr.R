@@ -1,49 +1,42 @@
 #-----------------------------------------------------------
 #' @export
 nlrr.cv <- function(
-    inp.dat,
-    # Y = NULL,
-    # y_train = NULL,
-    # y_valid = NULL,
-    # X = NULL,
-    # Z = NULL,
+    Y = NULL,
+    y_train = NULL,
+    y_valid = NULL,
+    X = NULL,
+    Z = NULL,
     intercept_row = FALSE,
     intercept_col = FALSE,
     lambda_beta = NULL,
     lambda_gamma = NULL,
-    # val_prop = 0.2,
+    val_prop = 0.2,
     hpar = get_imr_default_hparams(),
     error_function = error_metric$rmse,
     thresh = 1e-6,
     maxit = 300,
     verbose = 0,
-    seed = NULL,
-    ls_initial = FALSE
+    max_cores = 8,
+    seed = NULL
 )
 {
   #-------------------
-  Y = inp.dat$Y
-  y_train = inp.dat$y_train
-  y_valid = inp.dat$y_valid
-  X = inp.dat$Xq
-  Z = inp.dat$Zq
-  rm(inp.dat)
   # check input, perform train/test split if needed, and set seed
-  # if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
-  #   stop("You must either provide Y or (y_train,y_valid), or both")
-  # if(is.null(y_train)| is.null(y_valid)){
+  if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
+    stop("You must either provide Y or (y_train,y_valid), or both")
+  if(is.null(y_train)| is.null(y_valid)){
     stopifnot(is.Incomplete(Y))
-  #   message("Performing train/valid split")
-  #   obs_mask <- as.matrix(Y != 0)
-  #   valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  #   y_train <- as(Y * (1-valid_mask), "Incomplete")
-  #   y_valid <- as(Y * (valid_mask), "Incomplete")
-  #   rm(obs_mask)
-  #   #rm(valid_mask)
-  # }else{
+    message("Performing train/valid split")
+    obs_mask <- as.matrix(Y != 0)
+    valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
+    y_train <- as(Y * (1-valid_mask), "Incomplete")
+    y_valid <- as(Y * (valid_mask), "Incomplete")
+    rm(obs_mask)
+    #rm(valid_mask)
+  }else{
     stopifnot(is.Incomplete(y_train))
     stopifnot(is.Incomplete(y_valid))
-  # }
+  }
   if((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags
@@ -51,21 +44,7 @@ nlrr.cv <- function(
   gamma_flag <- !(is.null(Z))
   # if neither beta or gamma are provided then send to cv_M
   if(! (beta_flag | gamma_flag) )
-    return(IMR::imr.cv_M(
-      y_train = y_train,
-      y_valid = y_valid,
-      Y_full = Y,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
-      hpar = hpar,
-      error_function = error_function,
-      thresh = thresh,
-      trace = verbose > 0,
-      maxit = maxit,
-      ls_initial = ls_initial,
-      seed = seed
-    ))
-    # stop("Covariates must be provided.")
+    stop("Covariates must be provided.")
 
   # obtain upperbounds to the lambda hyperparameters
   if(beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)){
@@ -205,8 +184,8 @@ nlrr.cv <- function(
     Z = Z,
     lambda_beta  = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
-    intercept_row = T,#intercept_row,
-    intercept_col = T,#intercept_col,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
     thresh = thresh,
     maxit = maxit,
     trace = FALSE)
@@ -215,7 +194,7 @@ nlrr.cv <- function(
   y_train <- as(nfit$resid * (1-valid_mask), "Incomplete")
   y_valid <- as(nfit$resid * (valid_mask), "Incomplete")
   mfit <- IMR::imr.cv_M(y_train, y_valid, Y_full = nfit$resid, hpar=hpar,
-                        error_function = error_function,trace = verbose > 0,
+                        error_function = error_function,trace = inner_trace,
                         ls_initial = FALSE)
 
   nfit$u <- mfit$fit$u
@@ -230,11 +209,11 @@ nlrr.cv <- function(
     lambda_M = mfit$lambda_M,
     lambda_beta = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
-    intercept_row = T,
-    intercept_col = T,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
     thresh = thresh,
     maxit = maxit,
-    trace = verbose > 1,
+    trace = inner_trace,
     ls_initial = F,
     warm_start = nfit,
 

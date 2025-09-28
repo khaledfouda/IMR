@@ -81,7 +81,7 @@ dat$Zr = qr.R(Zqr)
 hpar <- IMR::get_imr_default_hparams()
 hpar$beta$lambda_max <- 1
 hpar$gamma$lambda_max <- 1
-hpar$M$n.lambda <- 60
+hpar$M$n.lambda <- 40
 hpar$beta$n.lambda <- 20
 hpar$gamma$n.lambda <- 20
 
@@ -91,14 +91,15 @@ IMR:::initialize_parallel_workers(9)
 # fit all model variations: [imr+x, imr+xz, imr+intercept, ma, si]
 #----------------------
 # 1. intercept only >
-bench::bench_time(fit.imr1 <- IMR::imr.cv(
-  Y = Y,
-  #X = dat$Xq,
-  #Z = dat$Zq,
+mod.dat <- IMR::prepare_data(dat$Y, dat$X, NULL, seed = 2025)
+bench::bench_time(fit.imr1 <- IMR:::imr.cv(
+  mod.dat,
   intercept_row = T,
   intercept_col = T,
   hpar = hpar,
   verbose = 1,
+  fast.cv = FALSE,
+  separate_tuning = TRUE,
   seed = 2025
 )) -> time.imr
 
@@ -108,10 +109,10 @@ saveRDS(fit.imr1, paste0("article_results/movielens/data/saved_models/",
                         "IMR_fit_intercept.rds"))
 
 # 2. row covariates >
-bench::bench_time(fit.imr2 <- IMR::imr.cv(
+bench::bench_time(fit.imr2 <- IMR:::nlrr.cv(
   Y = Y,
   X = dat$Xq,
-  #Z = dat$Zq,
+  Z = dat$Zq,
   intercept_row = T,
   intercept_col = T,
   hpar = hpar,
@@ -154,7 +155,7 @@ saveRDS(fit.si, "article_results/movielens/data/saved_models/SI_fit.rds")
 M = fit_MA25_movielens("", 2025)
 #--------------------------------------------------------------
 
-
+fit.imr <- fit.imr1
 out <- IMR:::reconstruct(fit.imr$fit, dat)
 prepare_output_movielens(
   "IMR",
@@ -196,7 +197,7 @@ fit.ma$beta <- fit.ma$B[,-1]
 
 prepare_output_movielens(
   "Ma",
-  time       = M$,
+  time       = NULL,
   X           = X,
   estim.test  = fit.ma$estimates[idx],
   estim.train = fit.ma$estimates[dat$obs_mask==1],

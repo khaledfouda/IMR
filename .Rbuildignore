@@ -3,4 +3,5 @@
 ^man/.*\.Rd$
 ^notes/.*$
 ^other\_models/.*$
+^R\_old/.*$
 ^dev$

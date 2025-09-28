@@ -175,69 +175,42 @@ imr.cv_M <- function(
 #-----------------------------------------------------------
 #' @export
 imr.cv <- function(
-    inp.dat,
-    # Y = NULL,
-    # y_train = NULL,
-    # y_valid = NULL,
-    # X = NULL,
-    # Z = NULL,
+    Y = NULL,
+    y_train = NULL,
+    y_valid = NULL,
+    X = NULL,
+    Z = NULL,
     intercept_row = FALSE,
     intercept_col = FALSE,
     lambda_beta = NULL,
     lambda_gamma = NULL,
-    # val_prop = 0.2,
+    val_prop = 0.2,
     hpar = get_imr_default_hparams(),
     error_function = error_metric$rmse,
     thresh = 1e-6,
     maxit = 300,
     verbose = 0,
     ls_initial = FALSE,
-    seed = NULL,
-    fast.cv = FALSE,
-    separate_tuning = FALSE
+    seed = NULL
     )
 {
-  if(fast.cv)
-    return(
-      IMR:::nlrr.cv(
-        inp.dat = inp.dat,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        hpar = hpar,
-        error_function = error_function,
-        thresh = thresh,
-        maxit = maxit,
-        verbose = verbose,
-        seed = seed,
-        ls_initial = ls_initial
-      )
-      )
-
   #-------------------
-  Y = inp.dat$Y
-  y_train = inp.dat$y_train
-  y_valid = inp.dat$y_valid
-  X = inp.dat$Xq
-  Z = inp.dat$Zq
-  rm(inp.dat)
   # check input, perform train/test split if needed, and set seed
-  # if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
-  #   stop("You must either provide Y or (y_train,y_valid), or both")
-  # if(is.null(y_train)| is.null(y_valid)){
+  if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
+    stop("You must either provide Y or (y_train,y_valid), or both")
+  if(is.null(y_train)| is.null(y_valid)){
     stopifnot(is.Incomplete(Y))
-  #   message("Performing train/valid split")
-  #   obs_mask <- as.matrix(Y != 0)
-  #   valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  #   y_train <- as(Y * (1-valid_mask), "Incomplete")
-  #   y_valid <- as(Y * (valid_mask), "Incomplete")
-  #   rm(obs_mask)
-  #   rm(valid_mask)
-  # }else{
+    message("Performing train/valid split")
+    obs_mask <- as.matrix(Y != 0)
+    valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
+    y_train <- as(Y * (1-valid_mask), "Incomplete")
+    y_valid <- as(Y * (valid_mask), "Incomplete")
+    rm(obs_mask)
+    rm(valid_mask)
+  }else{
     stopifnot(is.Incomplete(y_train))
     stopifnot(is.Incomplete(y_valid))
-  # }
+  }
   if((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags
@@ -305,102 +278,35 @@ imr.cv <- function(
   #---------------------------
   # parallel setup
   inner_trace = verbose > 2
-  if(separate_tuning & gamma_flag & beta_flag){
-    message("Fitting lambda_beta and lambda_gamma separately...")
-    # if separate then tune beta first followed by gamma. Meanwhile,
-    # keep lambda_gamma at 10% of its maximum.
-    grid <- list( lambda_gamma  = hpar$gamma$lambda_max * 0.1,
-                  lambda_beta = lambda_beta_grid)
-    results <- parallel_grid(grid, IMR::imr.cv_M,
-                            "list",
-                            .packages = "IMR",
-                            .progress = TRUE,
-                            .seed    = seed,
-                            y_train = y_train,
-                            y_valid = y_valid,
-                            X = X,
-                            Z = Z,
-                            Y_full = NULL,
-                            intercept_row = intercept_row,
-                            intercept_col = intercept_col,
-                            hpar = hpar,
-                            error_function = error_function,
-                            thresh = thresh,
-                            maxit = maxit,
-                            trace = verbose >= 1,
-                            ls_initial = ls_initial,
-                            seed = seed
-    )
+  grid <- list(lambda_beta  = lambda_beta_grid,
+               lambda_gamma = lambda_gamma_grid)
+
+  results <- parallel_grid(grid, IMR::imr.cv_M,
+                           "list",
+                           .packages = "IMR",
+                           .progress = TRUE,
+                           .seed    = seed,
+                           y_train = y_train,
+                           y_valid = y_valid,
+                           X = X,
+                           Z = Z,
+                           Y_full = Y,
+                           intercept_row = intercept_row,
+                           intercept_col = intercept_col,
+                           hpar = hpar,
+                           error_function = error_function,
+                           thresh = thresh,
+                           maxit = maxit,
+                           trace = verbose >= 1,
+                           ls_initial = ls_initial,
+                           seed = seed
+                           )
 
 
-    # Select the best fit
-    errors <- vapply(results, `[[`, numeric(1), "error")
-    best_idx <- which.min(errors)
-    best_fit <- results[[best_idx]]
-    #----
-    # we now tune lambda gamma
-    grid <- list( lambda_gamma  = lambda_gamma_grid,
-                  lambda_beta = best_fit$lambda_beta)
-    results <- parallel_grid(grid, IMR::imr.cv_M,
-                             "list",
-                             .packages = "IMR",
-                             .progress = TRUE,
-                             .seed    = seed,
-                             y_train = y_train,
-                             y_valid = y_valid,
-                             X = X,
-                             Z = Z,
-                             Y_full = Y,
-                             intercept_row = intercept_row,
-                             intercept_col = intercept_col,
-                             hpar = hpar,
-                             error_function = error_function,
-                             thresh = thresh,
-                             maxit = maxit,
-                             trace = verbose >= 1,
-                             ls_initial = ls_initial,
-                             old_fit = best_fit$fit,
-                             seed = seed
-    )
-
-
-    # Select the best fit
-    errors <- vapply(results, `[[`, numeric(1), "error")
-    best_idx <- which.min(errors)
-    best_fit <- results[[best_idx]]
-
-  }else{
-
-    grid <- list(lambda_beta  = lambda_beta_grid,
-                 lambda_gamma = lambda_gamma_grid)
-
-    results <- parallel_grid(grid, IMR::imr.cv_M,
-                             "list",
-                             .packages = "IMR",
-                             .progress = TRUE,
-                             .seed    = seed,
-                             y_train = y_train,
-                             y_valid = y_valid,
-                             X = X,
-                             Z = Z,
-                             Y_full = Y,
-                             intercept_row = intercept_row,
-                             intercept_col = intercept_col,
-                             hpar = hpar,
-                             error_function = error_function,
-                             thresh = thresh,
-                             maxit = maxit,
-                             trace = verbose >= 1,
-                             ls_initial = ls_initial,
-                             seed = seed
-                             )
-
-
-    # Select the best fit
-    errors <- vapply(results, `[[`, numeric(1), "error")
-    best_idx <- which.min(errors)
-    best_fit <- results[[best_idx]]
-  }
+  # Select the best fit
+  errors <- vapply(results, `[[`, numeric(1), "error")
+  best_idx <- which.min(errors)
+  best_fit <- results[[best_idx]]
   #--------------------
   # message >>
   if (verbose >= 1) {
