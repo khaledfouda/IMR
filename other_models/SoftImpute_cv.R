@@ -4,6 +4,7 @@ simpute.cv <- function(y_full,
                        # mask_valid,
                        n.lambda = 20,
                        lambda0_fun = softImpute::lambda0,
+                       lambda_max = NULL,
                        trace = FALSE,
                        print.best = TRUE,
                        tol = 5,
@@ -36,7 +37,7 @@ simpute.cv <- function(y_full,
     stopifnot(is.Incomplete(y_valid))
   }
 
-  lam0 <- lambda0_fun(y_full)
+  lam0 <- if(is.null(lambda_max)) lambda0_fun(y_full) else lambda_max
 
   y_train <- as.matrix(y_train)
   y_train[y_train == 0] = NA

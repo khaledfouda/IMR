@@ -30,17 +30,18 @@ MA25.fit <- function(Y,
   # Fitting with the estimated rank
   M$fitting(with_rs = rhat)
 
-  M$time <- round(as.numeric(difftime(Sys.time(), start_time,units = "mins")),2)
+  out <- list(fit = M,
+              time = round(as.numeric(difftime(Sys.time(), start_time,units = "mins")),2))
 
   if(save_to_file){
     if(is.null(file_location)){
       message("file location must be provided")
     }else{
       message(paste("Saving file at :", file_location))
-      saveRDS(M, file_location)
+      saveRDS(out, file_location)
     }
   }
-  return(M)
+  return(out)
 }
 # rank estimation for MC problem
 #-------------------------------------------------------------
