@@ -201,126 +201,99 @@ for(i in 1:5){
     rank.M = fits[[i]]$rank_M
   )
 }
-
+res[[5]]$rank_beta = 5
+res[[6]] <- list(model = "Glocal-K",
+                 time        = 52.36,
+                 error.test  = 0.8516,
+                 corr.test   = 0.6278,
+                 error.train = 0.7018,
+                 rank_M      = 63,
+                 rank_beta =NA,
+                 rank_gamma = NA,
+                 sparsity_beta = NA,
+                 sparsity_gamma =NA)
 # 1- results table:
-res.df <- data.frame()
-do.call(rbind, lapply(res, function(x) x[1:12])) %>%
+do.call(rbind, lapply(res, function(x) if(length(x)==14) x[c(1:2,5:12)] else x)) %>%
   as.data.frame() %>%
   mutate(across(c(time, error.test, corr.test, error.train, sparsity_beta,
-                  sparsity_gamma), as.numeric)) %>%
+                  sparsity_gamma, rank_M, rank_beta, rank_gamma), as.numeric)) %>%
   mutate(across(where(is.numeric), ~ round(.x,3))) %>%
-  dplyr::select(-time_per_fit, -total_num_fits) %>%
-  arrange(error.test)
+  mutate(rank_total = rank_M + ifelse(is.na(rank_beta), 0, rank_beta) +
+           ifelse(is.na(rank_gamma), 0, rank_gamma)) %>%
+  # dplyr::select(-time_per_fit, -total_num_fits) %>%
+  arrange(error.test) ->
+  res.df
 
 
+best_min_cols <- c("time", "error.test", "error.train", "rank_M" )
+best_max_cols <- c("corr.test")
 
-#==============================================================================
-IMR::initialize_parallel_workers(9)
-mod.dat <- IMR::prepare_data(Y, X, NULL, 0.2, seed = 2025)
+best_idx_min <- lapply(best_min_cols, function(v)
+  which.min(replace(res.df[[v]], is.na(res.df[[v]]), Inf))
+) |> rlang::set_names(best_min_cols)
 
-devtools::load_all()
-bench::bench_time(fit.imr1 <- IMR:::imr.cv(
-  mod.dat$model,
-  intercept_row = T,
-  intercept_col = T,
-  hpar = hpar,
-  verbose = 1,
-  fast.cv = F,
-  separate_tuning = TRUE,
-  seed = 2025
-))
-r
+best_idx_max <- lapply(best_max_cols, function(v)
+  which.max(replace(res.df[[v]], is.na(res.df[[v]]) | is.nan(res.df[[v]]), -Inf))
+) |> rlang::set_names(best_max_cols)
+fmt_num <- function(x, digits) ifelse(is.na(x) | is.nan(x), "—", sprintf(paste0("%.", digits, "f"), x))
 
+disp <- res.df %>%
+  mutate(
+    time          = fmt_num(time, 2),
+    error.test    = fmt_num(error.test, 3),
+    corr.test     = fmt_num(corr.test, 3),
+    error.train   = fmt_num(error.train, 3),
+    sparsity_beta = fmt_num(sparsity_beta, 3),
+    sparsity_gamma= fmt_num(sparsity_gamma, 3),
+    rank_M        = ifelse(is.na(rank_M), "—", as.character(rank_M)),
+    rank_beta     = ifelse(is.na(rank_beta), "—", as.character(rank_beta)),
+    rank_gamma    = ifelse(is.na(rank_gamma), "—", as.character(rank_gamma)),
+    rank_total    = as.character(rank_total)
+  ) %>% dplyr::select( - rank_total)
+for (v in names(best_idx_min)) {
+  idx <- best_idx_min[[v]]
+  disp[[v]] <- kableExtra::cell_spec(disp[[v]], "latex", bold = seq_len(nrow(disp)) == idx)
+}
+for (v in names(best_idx_max)) {
+  idx <- best_idx_max[[v]]
+  disp[[v]] <- kableExtra::cell_spec(disp[[v]], "latex", bold = seq_len(nrow(disp)) == idx)
+}
 
-dat <- mod.dat
-
-fit <- fit.imr
-fit$u <- fit.imr$fit$u
-fit$v <- fit.imr$fit$v
-fit$d <- fit.imr$fit$d
-
-outsi <- IMR::reconstruct(fit.si3$fit, dat)
-prepare_output_movielens(
-  "SoftImpute",
-  time = fit.si$time,
-  X = dat$X,
-  estim.test = outsi$estimates[test.idx],
-  estim.train = as.Incomplete(out$estimates * obs_mask)@x,
-  obs.test = test.truths,
-  obs.train = dat$Y[dat$Y!=0],
-  M.estim = out$M,
-  rank.M = fit.si$rank_M
+require(kableExtra)
+col_names <- c(
+  "Model", "Time (min)",
+  "RMSE", "correlation", "RMSE",
+  "$M$", "$\\beta$", "$\\Gamma$",
+  "$\\beta$", "$\\Gamma$"
 )
 
-fit.imr <- fit.imr1; out <- IMR:::reconstruct(fit.imr$fit, dat)
-prepare_output_movielens(
-  "IMR",
-  time       = fit.imr$time,
-  X           = dat$X,
-  Z           = dat$Z,
-  estim.test  = out$estimates[test.idx],
-  estim.train = out$estimates[as.matrix(dat$Y!=0)],
-  obs.test    = test.truths,
-  obs.train   = dat$Y[dat$Y!=0],
-  beta.estim  = out$beta,
-  gamma.estim = out$gamma,
-  M.estim     = out$M,
-  rank.M      = fit.imr$rank_M,
-  total_num_fits = fit.imr$total_num_fits,
-  time_per_fit   = fit.imr$time_per_fit
-) -> results.imr; results.imr
+kbl(disp,
+    format   = "latex",
+    booktabs = TRUE,
+    linesep  = "",
+    escape   = FALSE,
+    col.names = col_names,
+    caption  = paste0("Performance comparison on the MovieLens 1M dataset. ",
+    "Best values per column are bolded and IMR models are shaded.")
+) |>
+  add_header_above(c(" " = 2, "Test"=2, "Train"=1, " "=5)) |>
+  add_header_above(c(" " = 2, "Performance" = 3, "Rank estimation" = 3, "Sparsity" = 2)) |>
+  kable_styling(latex_options = c("hold_position", "scale_down"), font_size = 8) |>
+  row_spec(which(grepl("^IMR", disp$model)), bold = FALSE, background = "#f7f7f7") |>
+  column_spec(1, width = "3.2cm")# |>
+  # footnote(
+  #   general = "Sparsity is the fraction of zeros (higher is sparser). Dashes denote unavailable metrics.",
+  #   threeparttable = TRUE
+  # )
+############################################################################
+#================== part 4 > insights ? =====================================
+#############################################################################
+fit <- out[[2]]
+G <- fit$beta[1,]
+which.max(G)
+which.min(G)
 
-results.imr$cov_summaries_cols %>%
-  as.data.frame() %>%
-  arrange(desc(Mean))
-
-
-IMR::as.Incomplete(out$estimates * obs_mask)@x[1:15]
-IMR::as.Incomplete(out1$estimates * obs_mask)@x[1:15]
-
-
-out$M[1:5,1:5]
-fit.imr1$fit$beta[,1:10]
-
-fit.imr11$rank_M
-
-# fit MA
-bench::bench_time(softImpute::softImpute(dat$Y,
-                                         rank.max = lambdas$r[s],
-                                         lambda = lambdas$M[s])) -> sit
-
-
-M <- readRDS(paste0("article_results/movielens/data/saved_models/Ma_fit.rds"))
-
-rhat <- M$rank_est$est['h'] # get the estimated rank
-
-
-M <- M$fit
-M$fit[[1]]$rmse # training error
-fit.ma <- M$fit[[1]]
-fit.ma$M <- fit.ma$L %*% t(fit.ma$R)
-fit.ma$xbeta <- cbind(1, X) %*% t(fit.ma$B)
-fit.ma$estimates <- fit.ma$M + fit.ma$xbeta
-fit.ma$beta <- fit.ma$B[,-1]
-fit.ma$estimates[1:5,1:5]
-fit.ma$beta[1:5,]
-out[[5]]$beta[,1:5] %>% t()
-out[[5]]$estimates[1:5,1:5]
-
-prepare_output_movielens(
-  "Ma",
-  time       = NULL,
-  X           = X,
-  estim.test  = fit.ma$estimates[test.idx],
-  estim.train = fit.ma$estimates[dat$obs_mask==1],
-  obs.test    = test.truths,
-  obs.train   = dat$Y[dat$obs_mask==1],
-  beta.estim  = fit.ma$B,
-  M.estim     = fit.ma$M,
-  rank.M      = rhat
-) -> results.ma
-results.ma; results.ma
-
+#==============================================================================
 
 
 
