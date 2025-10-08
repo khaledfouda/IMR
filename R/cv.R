@@ -185,6 +185,7 @@ imr.cv <- function(
     intercept_col = FALSE,
     lambda_beta = NULL,
     lambda_gamma = NULL,
+    lambda_gamma_default = NULL,
     hpar = get_imr_default_hparams(),
     error_function = error_metric$rmse,
     thresh = 1e-6,
@@ -299,7 +300,8 @@ imr.cv <- function(
     # if separate then tune beta first followed by gamma. Meanwhile,
     # keep lambda_gamma at 10% of its maximum.
     grid <- list(
-      lambda_gamma = hpar$gamma$lambda_max * 0.1,
+      lambda_gamma =
+        if(is.null(lambda_gamma_default)) hpar$gamma$lambda_max * 0.1 else lambda_gamma_default ,
       lambda_beta = lambda_beta_grid
     )
     results <- parallel_grid(grid, IMR::imr.cv_M,

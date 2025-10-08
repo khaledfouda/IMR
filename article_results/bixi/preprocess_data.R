@@ -273,18 +273,18 @@ prepare_bixi_data <- function(miss_p = 0.8,
 
   # Build covariate matrix X ----------------------
   X <- train_df %>%
-    select(row, starts_with("x_")) %>%
+    dplyr::select(row, starts_with("x_")) %>%
     group_by(row) %>%
     slice(1) %>%
     ungroup() %>%
-    select(-row)
+    dplyr::select(-row)
 
   Z <- train_df %>%
-    select(column, starts_with("z_")) %>%
+    dplyr::select(column, starts_with("z_")) %>%
     group_by(column) %>%
     slice(1) %>%
     ungroup() %>%
-    select(-column)
+    dplyr::select(-column)
 
   # Build response matrix Y -----------------------
   Y <- reshape2::dcast(
@@ -292,7 +292,7 @@ prepare_bixi_data <- function(miss_p = 0.8,
     row ~ column,
     value.var = "y"
   ) %>%
-    select(-row) %>%
+    dplyr::select(-row) %>%
     as.matrix()
   # Print the missing value percentages
   require(glue)
@@ -323,9 +323,9 @@ prepare_bixi_data <- function(miss_p = 0.8,
 
   # Identify test entries via merge --------------
   mixed <- train_df %>%
-    select(row, column, y) %>%
+    dplyr::select(row, column, y) %>%
     merge(
-      select(test_df, row, column, y),
+      dplyr::select(test_df, row, column, y),
       by = c("row", "column"),
       all.x = TRUE
     ) %>%
@@ -343,7 +343,7 @@ prepare_bixi_data <- function(miss_p = 0.8,
     row ~ column,
     value.var = "missing"
   ) %>%
-    select(-row) %>%
+    dplyr::select(-row) %>%
     { colnames(.) <- NULL; . } %>%
     as.matrix() * 1
   # print(sum(1 - test_mask) / length(test_mask))
@@ -370,20 +370,20 @@ prepare_bixi_data <- function(miss_p = 0.8,
 
   # Prepare test matrix ---------------------------
   test_mat <- train_df %>%
-    select(row, column, y) %>%
+    dplyr::select(row, column, y) %>%
     merge(
-      select(test_df, row, column, y),
+      dplyr::select(test_df, row, column, y),
       by = c("row", "column"),
       all.x = TRUE
     ) %>%
     as.data.frame() %>%
     arrange(row, column) %>%
-    select(row, column, y.y) %>%
+    dplyr::select(row, column, y.y) %>%
     reshape2::dcast(
       row ~ column,
       value.var = "y.y"
     ) %>%
-    select(-row) %>%
+    dplyr::select(-row) %>%
     as.matrix() %>%
     IMR::as.Incomplete()
 

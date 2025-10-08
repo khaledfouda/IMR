@@ -29,14 +29,14 @@ BKTR_Bixi_Wrapper <- function(
   bktr_fit$fit$imputed_y_estimates |>
     as.data.frame() |>
     merge(test, by = c("location", "time")) |>
-    select(location, time, y_est, y) ->
+    dplyr::select(location, time, y_est, y) ->
     test.estimates
 
   # obtain train estimates
   bktr_fit$fit$imputed_y_estimates |>
     as.data.frame() |>
     merge(filter(train, ! is.na(y)), by = c("location", "time")) |>
-    select(location, time, y_est, y) ->
+    dplyr::select(location, time, y_est, y) ->
     train.estimates
 
   results <- list(
