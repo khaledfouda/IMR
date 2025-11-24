@@ -64,10 +64,10 @@ imr.cv_M <- function(
       lambda_gamma = lambda_gamma,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
-      lambda_a = hpar$laplacian$lambda_a,
-      lambda_b = hpar$laplacian$lambda_b,
-      L_a = hpar$laplacian$L_a,
-      L_b = hpar$laplacian$L_b,
+      Ur = hpar$laplacian_row$U,
+      dr = hpar$laplacian_row$d,
+      Uc = hpar$laplacian_col$U,
+      dc = hpar$laplacian_col$d,
       warm_start = old_fit,
       trace = F,
       thresh = thresh,
@@ -147,7 +147,7 @@ imr.cv_M <- function(
   }
   # (optional) retrain on the full data
   if (!is.null(Y_full)) {
-    best_fit$fit <- imr.fit(
+    best_fit$fit <- IMR::imr.fit(
       Y = Y_full,
       X = X,
       Z = Z,
@@ -157,10 +157,10 @@ imr.cv_M <- function(
       lambda_gamma = lambda_gamma,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
-      lambda_a = hpar$laplacian$lambda_a,
-      lambda_b = hpar$laplacian$lambda_b,
-      L_a = hpar$laplacian$L_a,
-      L_b = hpar$laplacian$L_b,
+      Ur = hpar$laplacian_row$U,
+      dr = hpar$laplacian_row$d,
+      Uc = hpar$laplacian_col$U,
+      dc = hpar$laplacian_col$d,
       warm_start = old_fit,
       trace = FALSE,
       thresh = thresh,

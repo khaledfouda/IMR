@@ -9,10 +9,10 @@ imr.fit <- function(
     lambda_gamma = 0,
     intercept_row = FALSE,
     intercept_col = FALSE,
-    L_a = NULL,
-    lambda_a = 0,
-    L_b = NULL,
-    lambda_b = 0,
+    Ur = NULL,
+    dr = NULL,
+    Uc = NULL,
+    dc = NULL,
     maxit = 300,
     thresh = 1e-5,
     trace = FALSE,
@@ -33,6 +33,8 @@ imr.fit <- function(
   # Laplacian flags (L_* expected as eigendecompositions) -------------------
   beta_flag <- !(is.null(X))
   gamma_flag <- !(is.null(Z))
+  laplace_r_flag <- !(is.null(Ur) | is.null(dr))
+  laplace_c_flag <- !(is.null(Uc) | is.null(dc))
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- NULL
 
@@ -87,7 +89,7 @@ imr.fit <- function(
         gamma0 <- mfit$gamma0
       }
 
-      init <- opt_svd(naive_MC(as.matrix(mfit$resid)), r, nr, nc, FALSE, FALSE)
+      init <- opt_svd(naive_MC(mfit$resid), r, nr, nc, FALSE, FALSE)
     } else {
       if (beta_flag) {
         beta <- matrix(0, ncol(X), nc)
@@ -123,6 +125,8 @@ imr.fit <- function(
     if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, beta0, -1)
     if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, gamma0, -1)
   }
+  B_mat <- matrix(NA, ncol(Y), r)
+  A_mat <- matrix(NA, nrow(Y), r)
 
   #  Main loop ---------------------------------------------------------------
   ratio <- Inf
@@ -176,17 +180,28 @@ imr.fit <- function(
     }
 
     #  Update (V, Dsq, U) from the "B" side --------------------------------
+    # B_mat = BD
+    if(laplace_c_flag){
+      partial = crossprod(Y, U) + sweep(V, 2L, Dsq, `*`) # V %*% Dsq
+      partial = crossprod(Uc, sweep(partial, 2L, Dsq, `*`))
+      # partial = crossprod(Uc, partial %*% diag(Dsq))
+      coef = 1 / outer(dc + lambda_M, Dsq, `+`)
+      B_mat = Uc %*% (partial * coef)
+      # for(j in seq_len(r)){
+      #   B_mat[,j] <- Uc %*% diag(1/(dc+Dsq[j]+lambda_M)) %*% partial[,j]
+      # }
+    }else{
+      B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M) # output: DB
+    }
+      BD_decomp <- svd_small_nc_cpp(B_mat)
 
-    B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M)
-    B_mat <- svd_small_nc_cpp(B_mat)
-
-    Dsq <- trim_eig(B_mat$d, eig.tol)
+    Dsq <- trim_eig(BD_decomp$d, eig.tol)
     numEig <- length(Dsq)
-    V <- B_mat$u[, seq_len(numEig), drop = FALSE]
-    U <- U[, seq_len(numEig), drop = FALSE] %*% B_mat$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
-    # V <- B_mat$u
-    # Dsq <- B_mat$d
-    # U <- U %*% B_mat$v
+    V <- BD_decomp$u[, seq_len(numEig), drop = FALSE]
+    U <- U[, seq_len(numEig), drop = FALSE] %*% BD_decomp$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
+    # V <- BD_decomp$u
+    # Dsq <- BD_decomp$d
+    # U <- U %*% BD_decomp$v
 
     old_val <- M_obs
     M_obs <- partial_crossprod(U, V %*% diag(Dsq, numEig, numEig), irow, pcol, TRUE)
@@ -195,15 +210,28 @@ imr.fit <- function(
 
 
     # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
-
-    A_mat <- update_A_cpp(Y, V, U, Dsq, lambda_M)
-    A_mat <- svd_small_nc_cpp(A_mat)
+    # A_mat <- AD
+    if(laplace_r_flag){
+      partial = Y %*% V + sweep(U, 2L, Dsq, `*`)  #U %*% diag(Dsq)
+      partial = crossprod(Ur, sweep(partial, 2L, Dsq, `*`))
+      # partial = crossprod(Ur, partial %*% diag(Dsq))
+      coef = 1 / outer(dr + lambda_M, Dsq, `+`)
+      A_mat = Ur %*% (partial * coef)
+      # for(j in seq_len(r)){
+      #   A_mat[,j] <- Ur %*% diag(1/(dr+Dsq[j]+lambda_M)) %*% partial[,j]
+      # }
+    }else{
+      # output here is
+      A_mat <- update_A_cpp(Y, V, U, Dsq, lambda_M)
+    }
+    AD_decomp <- svd_small_nc_cpp(A_mat)
 
     # Dsq <- A_mat$d[A_mat$d > 0]
-    Dsq <- trim_eig(A_mat$d, eig.tol)
+    Dsq <- trim_eig(AD_decomp$d, eig.tol)
     numEig <- length(Dsq)
-    U <- A_mat$u[, seq_len(numEig), drop = FALSE]
-    V <- V[, seq_len(numEig), drop = FALSE] %*% A_mat$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
+    U <- AD_decomp$u[, seq_len(numEig), drop = FALSE]
+    V <- V[, seq_len(numEig), drop = FALSE] %*% AD_decomp$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
+
     old_val <- M_obs
     M_obs <- partial_crossprod(U, V %*% diag(Dsq, numEig, numEig), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
@@ -391,35 +419,4 @@ imr.fit_no_low_rank <- function(
 
 
 #--------------------------------------
-#' @export
-error_metric <- list(
 
-  #--- error functions:
-  unexplained_variance = function(predicted, true, adjusted = FALSE, k = NA) {
-    # SSE / SST
-    if (!adjusted) {
-      return(sum((true - predicted)^2) / sum((true - mean(true))^2))
-    } else {
-      n <- length(true)
-      stopifnot(is.numeric(k))
-      return(((sum((true - predicted)^2) /
-        sum((true - mean(true))^2)) *
-        (n - 1) / (n - k - 1)))
-    }
-  },
-  mape = function(predicted, true) {
-    mean(abs((true - predicted) / true), na.rm = TRUE) * 100
-  },
-  mae = function(predicted, true) {
-    mean(abs(true - predicted), na.rm = TRUE)
-  },
-  rmse_normalized = function(predicted, true) {
-    sqrt(mean((true - predicted)^2, na.rm = TRUE)) / sd(true, na.rm = TRUE)
-  },
-  rmse = function(predicted, true) {
-    sqrt(mean((true - predicted)^2, na.rm = TRUE))
-  },
-  spearman_R2 = function(predicted, true) {
-    cor(true, predicted, method = "spearman")
-  }
-)

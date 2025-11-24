@@ -2,13 +2,14 @@ library(devtools)
 clean_dll(); Rcpp::compileAttributes(); document(); load_all()
 # devtools::uninstall(); devtools::install()
 require(tidyverse)
-source("./notes/generate_simu_dat.R")
+source("./article_results/simulation/generate_simu_dat.R")
 
 
 dat <-
-generate_simulated_data(1000, 1000, 5, 10, 10, 0.7,sparsity_beta = 0, sparsity_gamma = 0,
+generate_simulated_data(400, 500, 3, 5, 5, 0.7,sparsity_beta = .50, sparsity_gamma = .50,
                         prepare_for_fitting = T,mv_coeffs = T,seed = 2025)
 
+dim(dat$Y)
 
 
 #
