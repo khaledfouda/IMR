@@ -36,6 +36,60 @@ fit2 <- IMR::imr.cv_M(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$X$Q,
                       dat$fit_data$Z$Q, dat$fit_data$Y_full, 0, 0, T, T,ls_initial = T)
 quick_camc_simu_res(dat, fit2$fit)
 #===========================================================
+inp.dat <- list(
+  Y = dat$fit_data$Y_full,
+  Xq = dat$fit_data$X$Q,
+  Zq = dat$fit_data$Z$Q,
+  y_train = dat$fit_data$train,
+  y_valid = dat$fit_data$valid
+)
+fit3 <-  IMR::imr.cv(inp.dat,intercept_row = F,
+                     hpar = hpar,
+                     seed = 2025, separate_tuning = T,
+                     intercept_col = F, verbose=2)
+quick_camc_simu_res(dat, fit3$fit)
+#==============================================================================
+IMR::get_lambda_lasso_max(
+  y_train = inp.dat$y_train,
+  X = inp.dat$Xq,
+  y_valid = inp.dat$y_valid,
+  intercept_row = T,
+  intercept_col = T,
+  maxit = 100,
+  verbose = 1
+)
+
+
+
+res <- data.frame()
+for(miss in c(.6, .7, .8, .9, .95, .55, .65, .75, .85, .99)) {
+
+  fit.imr <- readRDS(paste0(
+    "./article_results/bixi/data/imr_", round(100 * miss),
+    "_similarity_fit.rds"
+  ))
+  res<- rbind(res, data.frame(
+    rand = fit.imr$rand,
+    lambdar = fit.imr$lambda_r,
+    lambdac = fit.imr$lambda_c,
+    miss = miss
+  ))
+  }
+res
+
+u = U[, seq_len(r_eff), drop = FALSE],
+d = Dsq[seq_len(r_eff)],
+v = V[, seq_len(r_eff), drop = FALSE],
+beta = beta,
+gamma = gamma,
+beta0 = beta0,
+gamma0 = gamma0,
+n_iter = iter
+
+
+
+
+
 
 ## ---------------------------------------------------------
 ## 1. Original (loop + diag) implementation

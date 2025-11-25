@@ -250,7 +250,7 @@ imr.cv <- function(
 
   # obtain upperbounds to the lambda hyperparameters
   if (beta_flag & is.null(hpar$beta$lambda_max) & is.null(lambda_beta)) {
-    hpar$beta$lambda_max <- get_lambda_lasso_max(
+    hpar$beta$lambda_max <- IMR::get_lambda_lasso_max(
       y_train = inp.dat$y_train,
       X = inp.dat$Xq,
       y_valid = inp.dat$y_valid,
@@ -325,7 +325,6 @@ imr.cv <- function(
       seed = seed
     )
 
-
     # Select the best fit
     errors <- vapply(results, `[[`, numeric(1), "error")
     best_idx <- which.min(errors)
@@ -365,6 +364,7 @@ imr.cv <- function(
     best_idx <- which.min(errors)
     best_fit <- results[[best_idx]]
   } else {
+    message("Fitting lambda_beta and lambda_gamma simultaneously ...")
     grid <- list(
       lambda_beta = lambda_beta_grid,
       lambda_gamma = lambda_gamma_grid

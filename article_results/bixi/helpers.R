@@ -60,6 +60,37 @@ BKTR_Bixi_Wrapper <- function(
 }
 
 
+generate_similarity_bixi <- function(miss      = 0.8,
+                                     timestamp = format(Sys.Date(), "%d%b")){
+  require(BKTR)
+  bkdat <- BixiData$new()
+
+  file_prefix <- paste0(
+    "./article_results/bixi/data/splits/",
+    round(100*miss),
+    "percent_",
+    timestamp,
+    "_"
+  )
+  train.df <- readRDS(paste0(file_prefix, "train.rds"))
+
+  train.df %<>% rename(location=column, time = row)
+  #train.df <- setkey(as.data.table(train.df), location, time)
+
+  bkdat$temporal_positions_df %<>%
+    filter(time %in% train.df$time)
+  bkdat$spatial_positions_df %<>%
+    filter(location %in% train.df$location)
+
+  spatial_kernel = BKTR::KernelMatern$new(smoothness_factor = 3)
+  temporal_kernel = BKTR::KernelSE$new()
+  spatial_kernel$set_positions(bkdat$spatial_positions_df)
+  temporal_kernel$set_positions(bkdat$temporal_positions_df)
+  spatial_kernel$kernel_gen()  %>% as.matrix() -> spatial_kernel
+  temporal_kernel$kernel_gen() %>% as.matrix() -> temporal_kernel
+  list(spatial=spatial_kernel, temporal=temporal_kernel)
+}
+
 
 prepare_output_bixi <- function(
     time,
@@ -72,7 +103,7 @@ prepare_output_bixi <- function(
     total_num_fits = NA,
     beta.estim  = NA,
     M.estim     = NA,
-    test_error  = IMR::error_metric$rmse
+    test_error  = IMR:::error_metric$rmse
 ) {
   # Core metrics
   results <- list(
@@ -114,4 +145,19 @@ prepare_output_bixi <- function(
   results
 }
 
+
+output_wrapper_bixi <- function(fit, dat, odat){
+  out <- IMR:::reconstruct(fit$fit, dat)
+  prepare_output_bixi(
+    NULL,
+    X           = dat$X,
+    estim.test  = out$estimates[as.matrix(odat$splits$test != 0)],
+    estim.train = out$estimates[as.matrix(odat$Y.inc != 0)],
+    obs.test    = odat$splits$test@x,
+    obs.train   = odat$Y.inc@x,
+    beta.estim  = out$beta,
+    M.estim     = out$M,
+    time_per_fit = fit$time_per_fit,
+    total_num_fits = fit$total_num_fits)
+}
 

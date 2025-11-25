@@ -46,12 +46,13 @@ get_imr_default_hparams <- function(similarity_row = NULL,
 decompose_symmetric_matrix <- function(x, tol = 1e-4, lambda=1, basic = TRUE) {
   stopifnot(isSymmetric(x))
   if (basic) {
-    xsvd <- base::svd(x)
+    xsvd <- base::eigen(x, symmetric=TRUE)
+    return(list(U=xsvd$vectors, d = xsvd$values*lambda))
   } else {
-    xsvd <- IMR::opt_svd(x, tol = tol)
+    xsvd <- IMR::opt_svd(x, tol=tol)
   }
-  if (!all.equal(xsvd$u, xsvd$v, tolerance = tol)) {
-    if (all.equal(xsvd$u, -xsvd$v, tolerance = tol)) {
+  if (all.equal(xsvd$u, xsvd$v, tolerance = 1e-3) != TRUE) {
+    if (all.equal(xsvd$u, -xsvd$v, tolerance = 1e-3) == TRUE) {
       xsvd$d <- -xsvd$d
     } else {
       stop("U != V and U != -V")

@@ -1,14 +1,58 @@
+#' Fit Incomplete Matrix Regression (IMR) Model
+#'
+#' \code{imr.fit} fits the model to the given data and hyper-parameters until
+#' convergence is achieved.
+#'
+#' @param Y An incomplete matrix (class \code{Incomplete}; see \code{\link{as.incomplete}}).
+#'   The target matrix to be completed (n by m).
+#' @param X Optional matrix of row covariates (n by p). Default is \code{NULL}.
+#' @param Z Optional matrix of column covariates (m by q). Default is \code{NULL}.
+#' @param intercept_row Logical. Include row-level intercepts? Default is \code{FALSE}.
+#' @param intercept_col Logical. Include column-level intercepts? Default is \code{FALSE}.
+#' @param r Integer. The rank (number of latent factors/columns in A and B).
+#'   Default is 2.
+#' @param lambda_M Numeric scalar. Controls the nuclear penalty. Default is 0.
+#' @param lambda_beta Numeric scalar. Controls the Lasso penalty on the row
+#'   covariates. Default is 0.
+#' @param lambda_gamma Numeric scalar. Controls the Lasso penalty on the column
+#'   covariates. Default is 0.
+#' @param Ur,dr Optional matrix (Ur) and vector (dr) containing the eigenvectors
+#'   and eigenvalues of the row-level similarity matrix \eqn{S_r}.
+#' @param Vc,dc Optional matrix (Vc) and vector (dc) containing the eigenvectors
+#'   and eigenvalues of the column-level similarity matrix \eqn{S_c}.
+#' @param maxit Integer. Maximum number of iterations. Default is 300.
+#' @param thresh Numeric scalar. Convergence threshold based on the Frobenius
+#'   difference between updates. Default is 1e-5.
+#' @param trace Logical. If \code{TRUE}, prints the objective function value at
+#'   each step. Default is \code{FALSE}.
+#' @param warm_start Optional list. A previous result object from \code{imr.fit}
+#'   to use as initial values. Default is \code{NULL}.
+#' @param ls_initial Logical. Used only if \code{warm_start} is \code{NULL}.
+#'   If \code{TRUE} (default), uses least-squares initialization. If \code{FALSE},
+#'   uses random initialization.
+#'
+#' @return A list containing the learned parameters:
+#' \describe{
+#'   \item{u, d, v}{The SVD decomposition components of the matrix, such that
+#'     \deqn{M = u \cdot \textrm{diag}(d) \cdot v^T}}
+#'   \item{beta}{Matrix of row covariate coefficients. \code{NULL} if \code{X} is \code{NULL}.}
+#'   \item{gamma}{Matrix of column covariate coefficients. \code{NULL} if \code{Z} is \code{NULL}.}
+#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{intercept_row} is \code{FALSE}.}
+#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{intercept_col} is \code{FALSE}.}
+#'   \item{n_iter}{Integer. The number of iterations performed.}
+#' }
+#'
 #' @export
 imr.fit <- function(
     Y,
     X = NULL,
     Z = NULL,
+    intercept_row = FALSE,
+    intercept_col = FALSE,
     r = 2,
     lambda_M = 0,
     lambda_beta = 0,
     lambda_gamma = 0,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
     Ur = NULL,
     dr = NULL,
     Uc = NULL,
@@ -268,6 +312,21 @@ imr.fit <- function(
 }
 
 #----------------------------------
+#' Fit Incomplete Matrix Regression (IMR) Model without the low-rank \eqn{M}
+#'
+#' \code{imr.fit_no_low_rank} is similar to \code{imr.fit} except that it does not fit the low-rank matrix structure.
+#'
+#' @inheritParams imr.fit
+#'
+#' @return A list containing the learned parameters:
+#' \describe{
+#'   \item{resid}{An incomplete matrix of the last iteration's residuals (i.e., the model's training errors)}
+#'   \item{beta}{Matrix of row covariate coefficients. \code{NULL} if \code{X} is \code{NULL}.}
+#'   \item{gamma}{Matrix of column covariate coefficients. \code{NULL} if \code{Z} is \code{NULL}.}
+#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{intercept_row} is \code{FALSE}.}
+#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{intercept_col} is \code{FALSE}.}
+#'   \item{n_iter}{Integer. The number of iterations performed.}
+#' }
 #' @export
 imr.fit_no_low_rank <- function(
     Y,
