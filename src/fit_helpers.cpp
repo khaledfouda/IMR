@@ -162,12 +162,10 @@ arma::mat update_A_cpp(SEXP yS4,              // dgCMatrix (n x m)
                             const double lambda_M) {
   S4 y(yS4);
   arma::sp_mat Y = as_spmat_dgc(y);               // n x m
-  const arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
   arma::mat A = Y * V + U.each_row() % Dsq.t();
 
-  for (arma::uword j = 0; j < J; ++j) {
+  for (arma::uword j = 0; j < U.n_cols; ++j) {
     const double d   = Dsq(j);
-    const double dst = d / (d + lambda_M);
     A.col(j) = (1.0 / (1.0 + lambda_M / d)) * A.col(j) ;
   }
 
@@ -185,10 +183,9 @@ arma::mat update_A_sim_cpp(SEXP yS4,              // dgCMatrix (n x m)
   // y: sparse matrix
   S4 y(yS4);
   arma::sp_mat Y = as_spmat_dgc(y);     // n x m
-  arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
   arma::mat A = Ur.t() * ( Y * V + U.each_row() % Dsq.t());  // n x J
 
-  for (arma::uword j = 0; j < J; ++j) {
+  for (arma::uword j = 0; j < U.n_cols; ++j) {
     const double d = Dsq(j);
     arma::vec a = d / (dr + d + lambda_M);
     A.col(j) = Ur * (a % A.col(j));
@@ -206,11 +203,10 @@ arma::mat update_B_cpp(SEXP yS4,              // dgCMatrix (n x m)
                             const double lambda_M) {
   S4 y(yS4);
   arma::sp_mat Y = as_spmat_dgc(y);     // n x m
-  arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
   // B = t(Y) %*% U  (m x J) + VDsq
   arma::mat B = arma::trans(Y) * U + V.each_row() % Dsq.t();
 
-  for (arma::uword j = 0; j < J; ++j) {
+  for (arma::uword j = 0; j < U.n_cols; ++j) {
     const double d   = Dsq(j);
     B.col(j) = (1.0 / (1.0 + lambda_M / d)) * B.col(j);
   }
@@ -229,7 +225,7 @@ arma::mat update_B_sim_cpp(SEXP yS4,              // dgCMatrix (n x m)
   // y: sparse matrix
   S4 y(yS4);
   arma::sp_mat Y = as_spmat_dgc(y);     // n x m
-  arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
+  arma::uword  J = U.n_cols;
   // B <- crossprod(Uc,(crossprod(Y, U) + V %*% Dsq))
   arma::mat B = Uc.t() * ( arma::trans(Y) * U + V.each_row() % Dsq.t());  // m x J
 

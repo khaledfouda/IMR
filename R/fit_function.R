@@ -161,7 +161,7 @@ imr.fit <- function(
 
 
   #  Update residuals (first iteration only)  -----------------------------
-  M_obs <- partial_crossprod(U, V %*% diag(Dsq), irow, pcol, TRUE)
+  M_obs <- partial_crossprod(U, t(t(V) *diag(Dsq)), irow, pcol, TRUE)
   Y@x <- Y@x - M_obs
   if (!is.null(warm_start)) {
     if (beta_flag) Y@x <- Y@x - xb_obs
@@ -169,8 +169,6 @@ imr.fit <- function(
     if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, beta0, -1)
     if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, gamma0, -1)
   }
-  B_mat <- matrix(NA, ncol(Y), r)
-  A_mat <- matrix(NA, nrow(Y), r)
 
   #  Main loop ---------------------------------------------------------------
   ratio <- Inf
@@ -226,33 +224,18 @@ imr.fit <- function(
     #  Update (V, Dsq, U) from the "B" side --------------------------------
     # B_mat = BD
     if(laplace_c_flag){
-      partial <- crossprod(Y, U) + t(t(V)*Dsq)
-      partial <- t(t(partial)*Dsq)
-      B_mat <- (Uc %*% partial) * outer(dc + lambda_M, Dsq, `+`)
-#
-#       partial = crossprod(Y, U) + sweep(V, 2L, Dsq, `*`) # V %*% Dsq
-#       partial = crossprod(Uc, sweep(partial, 2L, Dsq, `*`))
-#       # partial = crossprod(Uc, partial %*% diag(Dsq))
-#       coef = 1 / outer(dc + lambda_M, Dsq, `+`)
-#       B_mat = Uc %*% (partial * coef)
-      # for(j in seq_len(r)){
-      #   B_mat[,j] <- Uc %*% diag(1/(dc+Dsq[j]+lambda_M)) %*% partial[,j]
-      # }
-    }else{
-      B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M) # output:BD
-    }
-      BD_decomp <- svd_small_nc_cpp(B_mat)
+      BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
+    }else
+      BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
 
-    Dsq <- trim_eig(BD_decomp$d, eig.tol)
-    numEig <- length(Dsq)
-    V <- BD_decomp$u[, seq_len(numEig), drop = FALSE]
-    U <- U[, seq_len(numEig), drop = FALSE] %*% BD_decomp$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
-    # V <- BD_decomp$u
-    # Dsq <- BD_decomp$d
-    # U <- U %*% BD_decomp$v
+    BD <- IMR:::svd_small_nc_cpp(BD)
+    V <- BD$u
+    Dsq <- tidyr::replace_na(BD$d, 0)
+    U <- U %*% BD$v
 
+    # update Y
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq, numEig, numEig), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, t(t(V)*Dsq), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -260,28 +243,18 @@ imr.fit <- function(
     # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
     # A_mat <- AD
     if(laplace_r_flag){
-      partial = Y %*% V + sweep(U, 2L, Dsq, `*`)  #U %*% diag(Dsq)
-      partial = crossprod(Ur, sweep(partial, 2L, Dsq, `*`))
-      # partial = crossprod(Ur, partial %*% diag(Dsq))
-      coef = 1 / outer(dr + lambda_M, Dsq, `+`)
-      A_mat = Ur %*% (partial * coef)
-      # for(j in seq_len(r)){
-      #   A_mat[,j] <- Ur %*% diag(1/(dr+Dsq[j]+lambda_M)) %*% partial[,j]
-      # }
-    }else{
-      # output here is
-      A_mat <- update_A_cpp(Y, V, U, Dsq, lambda_M)
-    }
-    AD_decomp <- svd_small_nc_cpp(A_mat)
+      AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
+    }else
+      AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
 
-    # Dsq <- A_mat$d[A_mat$d > 0]
-    Dsq <- trim_eig(AD_decomp$d, eig.tol)
-    numEig <- length(Dsq)
-    U <- AD_decomp$u[, seq_len(numEig), drop = FALSE]
-    V <- V[, seq_len(numEig), drop = FALSE] %*% AD_decomp$v[seq_len(numEig), seq_len(numEig), drop = FALSE]
+    AD <- IMR:::svd_small_nc_cpp(AD)
+    U <- AD$u
+    Dsq <- tidyr::replace_na(AD$d, 0)
+    V <- V %*% AD$v
 
+    # update Y
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, V %*% diag(Dsq, numEig, numEig), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, t(t(V)*Dsq), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 

@@ -108,7 +108,8 @@ generate_simulated_data <- function(
 
   if(structured_error_A){
     distance.mat = fields::rdist(as.matrix(1:n))
-    matern.kernel =   fields::Matern(distance.mat, range = 20, smoothness = 2.5)
+    matern.kernel =   fields::Matern(distance.mat, smoothness = 5/2)
+    #U = t(MASS::mvrnorm(r, runif(n, -1,1), matern.kernel))
     U = t(MASS::mvrnorm(r, rep(1,n), matern.kernel))
     similarity_rows = matern.kernel
 
@@ -117,7 +118,8 @@ generate_simulated_data <- function(
 
   if(structured_error_B){
     distance.mat = fields::rdist(as.matrix(1:m))
-    matern.kernel =   fields::Matern(distance.mat, range = 20, smoothness = 2.5)
+    matern.kernel =   fields::Matern(distance.mat, smoothness = 5/2)
+    #V = t(MASS::mvrnorm(r, runif(m, -1, 1), matern.kernel))
     V = t(MASS::mvrnorm(r, rep(1,m), matern.kernel))
     similarity_cols = matern.kernel
 

@@ -54,6 +54,7 @@ sim_grid_search <- function(dat,
                             hpar = IMR::get_imr_default_hparams(),
                             grid = seq(0, 1, length=5),
                             seed=2025){
+  set.seed(seed)
   inp.dat <- list(
     Y = dat$fit_data$Y_full,
     y_train = dat$fit_data$train,
@@ -61,10 +62,32 @@ sim_grid_search <- function(dat,
     Xq = dat$fit_data$X$Q,
     Zq = dat$fit_data$Z$Q
   )
-  res <- data.frame()
-  for(i in seq_along(grid)){
+  fitsi <- simpute.cv(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$Y_full,
+                      trace=F,
+                      tol = hpar$M$early.stopping, seed = seed,
+                      n.lambda = hpar$M$n.lambda,
+                      test_error = IMR:::error_metric$rmse
+                      #, n.lambda=80, rank.init = 2,
+                      #rank.step = 1,
+                      #lambda0_fun = IMR::get_lambda_M_max
+  )
+  res <- sim1_res(dat, fitsi$fit, "SoftImpute") %>%
+    dplyr::mutate(lambdar=NA, valerr = fitsi$error)
 
-  hpar$laplacian_col <- IMR::decompose_symmetric_matrix(dat$similarity_cols,1e-6,grid[i])
+
+  fit.imrS <- IMR::imr.cv(inp.dat,intercept_row = F,
+                          hpar = hpar, seed = seed, ls_initial = FALSE,
+                          intercept_col = F, verbose=0)
+  res %<>%
+    rbind(
+      sim1_res(dat, fit.imrS$fit, "IMR") %>%
+        dplyr::mutate(lambdar = NA,valerr = fit.imrS$error)
+    )
+
+  for(i in seq_along(grid)){
+    hpar$M$lambda_max = 0
+  hpar$laplacian_row <- IMR::decompose_symmetric_matrix(solve(dat$similarity_rows),grid[i])
+  #hpar$laplacian_row <- IMR::decompose_symmetric_matrix(solve(dat$similarity_cols),grid[i])
   fit.imrS <- IMR::imr.cv(inp.dat,intercept_row = F,
                           hpar = hpar, seed = seed, ls_initial = FALSE,
                           intercept_col = F, verbose=0)
@@ -80,7 +103,52 @@ sim_grid_search <- function(dat,
 }
 
 
+dat <-
+  generate_simulated_data(600, 700, 5, 0, 0, 0.8,
+                          sparsity_beta = .5, sparsity_gamma = 0.0,
+                          structured_error_A = T,
+                          structured_error_B = F,
+                          prepare_for_fitting = T,mv_coeffs = T,seed = seed)
+hpar <- IMR::get_imr_default_hparams()
+sim_grid_search(dat, hpar, seq(0,10, length=30)) -> ressim
 
+
+df_long <- ressim |>
+  filter(model == "IMR-Similarity") |>        # focus on the IMR-Similarity rows
+  select(lambdar, M, test, valerr) |>         # keep only what we need
+  pivot_longer(
+    cols = c(M, test, valerr),
+    names_to = "metric",
+    values_to = "error"
+  )
+soft <- ressim |>
+  filter(model == "SoftImpute") |>
+  select(M, test, valerr)
+imrr <- ressim |>
+  filter(model == "IMR") |>
+  select(M, test, valerr)
+
+ggplot(df_long, aes(x = lambdar, y = error, color = metric)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(
+    data = imrr |>
+      pivot_longer(cols = everything(), names_to = "metric", values_to = "error"),
+    aes(yintercept = error, color = metric),
+    linetype = "dashed"
+  ) +
+  facet_wrap(~metric, scales="free") +
+  labs(
+    x = expression(lambda[r]),
+    y = "Error",
+    color = "Metric",
+    title = "Effect of lambda[r] on M, test, and validation error"
+  ) +
+  theme_minimal()
+
+plot(ressim$lambdar, ressim$test)
+
+#==================================
 one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
 
   inp.dat <- list(
@@ -94,7 +162,7 @@ one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
                       hpar = hpar, seed = seed, ls_initial = FALSE,
                       intercept_col = F, verbose=0)
 
- hpar$laplacian_row <- IMR::decompose_symmetric_matrix(dat$similarity_rows,1e-6,1)
+ hpar$laplacian_row <- IMR::decompose_symmetric_matrix(dat$similarity_rows,1)
   fit.imrS <- IMR::imr.cv(inp.dat,intercept_row = F,
                           hpar = hpar, seed = seed, ls_initial = FALSE,
                           intercept_col = F, verbose=0)
@@ -122,7 +190,7 @@ one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
 
 
 future::plan(future::sequential)
-future::plan(future::multisession, workers = 2)
+future::plan(future::multisession, workers = 6)
 
 
 # hpar$M$lambda_factor <- 1
@@ -144,7 +212,7 @@ hpar$M$early.stopping <- 3
   dat <-
     generate_simulated_data(n, n, 10, 20, 0, 0.8,
                             sparsity_beta = .5, sparsity_gamma = 0.0,
-                            structured_error = T, n_groups = n*.8, rho_col = 0,
+                            structured_error_A = T,
                             prepare_for_fitting = T,mv_coeffs = T,seed = seed)
   start <- Sys.time()
   results5 %<>% rbind(
@@ -162,7 +230,7 @@ hpar$M$early.stopping <- 3
 
 }
 
-  sim_grid_search(dat, hpar, seq(0,.1, length=10))
+
 
 saveRDS(results5,paste0("./article_results/saved/sim_Nov25_results_",n,".rds"))
 

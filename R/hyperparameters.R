@@ -2,18 +2,18 @@
 #' @export
 get_imr_default_hparams <- function(similarity_row = NULL,
                                     similarity_col = NULL,
-                                    lambda_row = 0.1,
-                                    lambda_col = 0.1,
+                                    lambda_row = 0,
+                                    lambda_col = 0,
                                     tol = 1e-4) {
   laplacian_row <- if (is.null(similarity_row)) {
     list(U = NULL, d = NULL)
   } else {
-    IMR::decompose_symmetric_matrix(similarity_row, tol, lambda_row)
+    IMR::decompose_symmetric_matrix(similarity_row, lambda_row)
   }
   laplacian_col <- if (is.null(similarity_col)) {
     list(U = NULL, d = NULL)
   } else {
-    IMR::decompose_symmetric_matrix(similarity_col, tol, lambda_col)
+    IMR::decompose_symmetric_matrix(similarity_col,  lambda_col)
   }
 
   list(
@@ -43,22 +43,12 @@ get_imr_default_hparams <- function(similarity_row = NULL,
 }
 #-----------------------------------------------------
 #' @export
-decompose_symmetric_matrix <- function(x, tol = 1e-4, lambda=1, basic = TRUE) {
+decompose_symmetric_matrix <- function(x, lambda=1) {
   stopifnot(isSymmetric(x))
-  if (basic) {
-    xsvd <- base::eigen(x, symmetric=TRUE)
-    return(list(U=tcrossprod(xsvd$vectors), d = xsvd$values*lambda))
-  } else {
-    xsvd <- IMR::opt_svd(x, tol=tol)
-  }
-  if (all.equal(xsvd$u, xsvd$v, tolerance = 1e-3) != TRUE) {
-    if (all.equal(xsvd$u, -xsvd$v, tolerance = 1e-3) == TRUE) {
-      xsvd$d <- -xsvd$d
-    } else {
-      stop("U != V and U != -V")
-    }
-  }
-  return(list(U = tcrossprod(xsvd$u), d = xsvd$d*lambda))
+  if(lambda==0)
+    return(list(U=NULL, d=NULL))
+  xsvd <- base::eigen(x*lambda, symmetric=TRUE)
+  return(list(U=xsvd$vectors, d = xsvd$values))
 }
 #-----------------------------------------------------
 #' @export

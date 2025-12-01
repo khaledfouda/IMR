@@ -90,4 +90,33 @@ all.equal(AD, AD4)
 AD5 <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
 all.equal(AD5, AD4)
 all.equal(AD, AD5)
+#================================================
+# test the svd function
+M <- matrix(rnorm(1000*10), 1000, 10)
+microbenchmark::microbenchmark(
+  svd1 = IMR:::svd_small_nc_cpp(M),
+  svd2 = base::svd(M),
+  svd3 = IMR::opt_svd(M, 4),
+  times = 1000
+
+)
+svd1 = IMR:::svd_small_nc_cpp(M)
+svd2 = base::svd(M)
+svd3 = IMR::opt_svd(M, 4)
+undo <- function(x) x$u %*% t(x$v * x$d)
+all.equal( undo(svd1), undo(svd2))
+all.equal(svd1$d, svd2$d)
+all.equal(svd1$u, svd2$u)
+norm(crossprod(svd1$v) - diag(ncol(svd1$v)), "F")
+#===================================================================
+
+
+
+
+
+
+
+
+
+
 
