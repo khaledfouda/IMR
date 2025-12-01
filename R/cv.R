@@ -176,6 +176,162 @@ imr.cv_M <- function(
   best_fit$loop_size <- loop_size
   return(best_fit)
 }
+#----------------------------------------------------------
+imr.cv_laplace <- function(
+    data,
+    lambda_beta = 0,
+    lambda_gamma = 0,
+    intercept_row = FALSE,
+    intercept_col = FALSE,
+    hpar = get_imr_default_hparams(),
+    error_function = error_metric$rmse,
+    thresh = 1e-6,
+    maxit = 300,
+    trace = TRUE,
+    old_fit = NULL,
+    ls_initial = TRUE,
+    seed = NULL) {
+  stopifnot(is.Incomplete(data$Y))
+  stopifnot(is.Incomplete(data$y_train))
+  stopifnot(is.Incomplete(data$y_valid))
+  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
+  #---------------------------------------------------
+
+  rank_fit_function <- function(r, data, hpar, lambda_beta, lambda_gamma,
+                                intercept_row, intercept_col,
+                                trace, thresh, maxit,
+                                ls_initial, fit=NULL) {
+    fit <- IMR::imr.fit(
+      Y = data$y_train,
+      X = data$Xq,
+      Z = data$Zq,
+      r = r,
+      lambda_M = 0,
+      lambda_beta = lambda_beta,
+      lambda_gamma = lambda_gamma,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      Ur = hpar$laplacian_row$U,
+      dr = hpar$laplacian_row$d,
+      Uc = hpar$laplacian_col$U,
+      dc = hpar$laplacian_col$d,
+      warm_start = fit,
+      trace = F,
+      thresh = thresh,
+      maxit = maxit,
+      ls_initial = ls_initial
+    )
+
+    vestim <- IMR:::reconstruct_partial(fit, data, data$y_valid)
+    verror <- error_function(data$y_valid@x, vestim@x)
+    # verbose
+    if (trace) message(sprintf("rank=%d | err=%.5f ", r,verror))
+    return(list(fit, verror))
+  }
+
+  laplace_fit_function <- function(lambda, row, data, hpar, lambda_beta,
+                                   lambda_gamma, intercept_row,
+                                   intercept_col, trace, thresh,
+                                   maxit, ls_initial, fit=NULL){
+    if(row){
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row, lambda)
+    }else
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col, lambda)
+
+    results <- IMR::adaptive_tuner(rank_fit_function,
+                                   step_sizes = hpar$rank$step_sizes,
+                                   start_value = hpar$rank$rank.min,
+                                   end_value   = hpar$rank$rank.max,
+                                   inc_streak_to_stop = 1,
+                                   data=data,
+                                   hpar=hpar,
+                                   lambda_beta=lambda_beta,
+                                   lambda_gamma=lambda_gamma,
+                                   intercept_row = intercept_row,
+                                   intercept_col = intercept_col,
+                                   trace = trace,
+                                   thresh = thresh,
+                                   maxit = maxit,
+                                   ls_initial = ls_initial
+                                   )
+    if(trace) message(sprintf("Best rank = %d | error = %.5f",
+                              results$best_parameter,
+                              results$best_error))
+    return(list(results$best_fit, results$best_error))
+  }
+
+
+  #--- we fit the function above twice, once for laplace rows and once for columns
+  #---
+  if(is.null(hpar$laplacian_col$U)) stop("Laplace matrices must be initialized")
+  results_rows <- IMR::adaptive_tuner(laplace_fit_function,
+                                      row = TRUE,
+                                      data = data,
+                                      hpar = hpar,
+                                      lambda_beta = lambda_beta,
+                                      lambda_gamma = lambda_gamma,
+                                      intercept_row = intercept_row,
+                                      intercept_col = intercept_col,
+                                      trace = trace,
+                                      thresh = thresh,
+                                      maxit = maxit,
+                                      ls_initial = ls_initial
+                                      )
+  if(trace) message(sprintf("Best lambda r = %.3f | error = %.5f",
+                            results_rows$best_parameter,
+                            results_rows$best_error))
+  hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row, results_rows$best_parameter)
+  #----
+  # we now repeat on the columns
+  results_cols <- IMR::adaptive_tuner(laplace_fit_function,
+                                      row = FALSE,
+                                      data = data,
+                                      hpar = hpar,
+                                      lambda_beta = lambda_beta,
+                                      lambda_gamma = lambda_gamma,
+                                      intercept_row = intercept_row,
+                                      intercept_col = intercept_col,
+                                      trace = trace,
+                                      thresh = thresh,
+                                      maxit = maxit,
+                                      ls_initial = ls_initial
+                                      )
+  if(trace) message(sprintf("Best lambda c = %.3f | error = %.5f",
+                            results_cols$best_parameter,
+                            results_cols$best_error))
+
+
+  results <- list(rows = results_rows, cols = results_cols)
+  # (optional) retrain on the full data
+  if (!is.null(data$Y)) {
+    results$fit <- IMR::imr.fit(
+      Y = data$Y,
+      X = data$Xq,
+      Z = data$Zq,
+      r = length(results_cols$best_fit$d),
+      lambda_M = 0,
+      lambda_beta = lambda_beta,
+      lambda_gamma = lambda_gamma,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      Ur = hpar$laplacian_row$U,
+      dr = hpar$laplacian_row$d,
+      Uc = hpar$laplacian_col$U,
+      dc = hpar$laplacian_col$d,
+      warm_start = results_cols$best_fit,
+      trace = FALSE,
+      thresh = thresh,
+      maxit = maxit,
+      ls_initial = ls_initial
+    )
+    loop_size <- loop_size + 1
+  }
+
+  # record final hyper-parameters and return
+  results$lambda_beta <- lambda_beta
+  results$lambda_gamma <- lambda_gamma
+  return(results)
+}
 
 #-----------------------------------------------------------
 #' @export
@@ -215,12 +371,12 @@ imr.cv <- function(
   }
 
   #-------------------
-  #Y <- inp.dat$Y
-  #y_train <- inp.dat$y_train
-  #y_valid <- inp.dat$y_valid
-  #X <- inp.dat$Xq
-  #Z <- inp.dat$Zq
-  #rm(inp.dat)
+  # Y <- inp.dat$Y
+  # y_train <- inp.dat$y_train
+  # y_valid <- inp.dat$y_valid
+  # X <- inp.dat$Xq
+  # Z <- inp.dat$Zq
+  # rm(inp.dat)
   stopifnot(is.Incomplete(inp.dat$Y))
   stopifnot(is.Incomplete(inp.dat$y_train))
   stopifnot(is.Incomplete(inp.dat$y_valid))
@@ -301,7 +457,7 @@ imr.cv <- function(
     # keep lambda_gamma at 10% of its maximum.
     grid <- list(
       lambda_gamma =
-        if(is.null(lambda_gamma_default)) hpar$gamma$lambda_max * 0.1 else lambda_gamma_default ,
+        if (is.null(lambda_gamma_default)) hpar$gamma$lambda_max * 0.1 else lambda_gamma_default,
       lambda_beta = lambda_beta_grid
     )
     results <- parallel_grid(grid, IMR::imr.cv_M,

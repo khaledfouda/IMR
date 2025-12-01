@@ -189,8 +189,8 @@ nlrr.cv <- function(
     Z = inp.dat$Zq,
     lambda_beta = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
-    intercept_row =  intercept_row,
-    intercept_col =  intercept_col,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
     thresh = thresh,
     maxit = maxit,
     warm_start = best_fit,
@@ -210,7 +210,7 @@ nlrr.cv <- function(
   nfit$u <- mfit$fit$u
   nfit$v <- mfit$fit$v
   nfit$d <- mfit$fit$d
-  #best_fit$fit <- nfit
+  # best_fit$fit <- nfit
   best_fit$fit <- IMR::imr.fit(
     Y = inp.dat$Y,
     X = inp.dat$Xq,

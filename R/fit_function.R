@@ -161,7 +161,7 @@ imr.fit <- function(
 
 
   #  Update residuals (first iteration only)  -----------------------------
-  M_obs <- partial_crossprod(U, t(t(V) *diag(Dsq)), irow, pcol, TRUE)
+  M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
   Y@x <- Y@x - M_obs
   if (!is.null(warm_start)) {
     if (beta_flag) Y@x <- Y@x - xb_obs
@@ -223,10 +223,11 @@ imr.fit <- function(
 
     #  Update (V, Dsq, U) from the "B" side --------------------------------
     # B_mat = BD
-    if(laplace_c_flag){
+    if (laplace_c_flag) {
       BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
-    }else
+    } else {
       BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
+    }
 
     BD <- IMR:::svd_small_nc_cpp(BD)
     V <- BD$u
@@ -235,17 +236,18 @@ imr.fit <- function(
 
     # update Y
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, t(t(V)*Dsq), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
 
     # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
     # A_mat <- AD
-    if(laplace_r_flag){
+    if (laplace_r_flag) {
       AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
-    }else
+    } else {
       AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
+    }
 
     AD <- IMR:::svd_small_nc_cpp(AD)
     U <- AD$u
@@ -254,7 +256,7 @@ imr.fit <- function(
 
     # update Y
     old_val <- M_obs
-    M_obs <- partial_crossprod(U, t(t(V)*Dsq), irow, pcol, TRUE)
+    M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
 
@@ -336,7 +338,7 @@ imr.fit_no_low_rank <- function(
   beta <- gamma <- beta0 <- gamma0 <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
-  if(! is.null(warm_start)){
+  if (!is.null(warm_start)) {
     if (beta_flag) {
       beta <- warm_start$beta
       xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -352,23 +354,21 @@ imr.fit_no_low_rank <- function(
     if (intercept_col) {
       gamma0 <- warm_start$gamma0
     }
-  }else{
-
-  if (beta_flag) {
-    beta <- matrix(0, ncol(X), nc)
-    xb_obs <- rep(0, nz)
-  }
-  if (gamma_flag) {
-    gamma <- matrix(0, nr, ncol(Z))
-    zg_obs <- rep(0, nz)
-  }
-  if (intercept_row) {
-    beta0 <- rep(0, nr)
-  }
-  if (intercept_col) {
-    gamma0 <- rep(0, nc)
-  }
-
+  } else {
+    if (beta_flag) {
+      beta <- matrix(0, ncol(X), nc)
+      xb_obs <- rep(0, nz)
+    }
+    if (gamma_flag) {
+      gamma <- matrix(0, nr, ncol(Z))
+      zg_obs <- rep(0, nz)
+    }
+    if (intercept_row) {
+      beta0 <- rep(0, nr)
+    }
+    if (intercept_col) {
+      gamma0 <- rep(0, nc)
+    }
   }
   if (!is.null(warm_start)) {
     if (beta_flag) Y@x <- Y@x - xb_obs
@@ -455,4 +455,3 @@ imr.fit_no_low_rank <- function(
 
 
 #--------------------------------------
-

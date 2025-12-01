@@ -13,7 +13,7 @@ get_imr_default_hparams <- function(similarity_row = NULL,
   laplacian_col <- if (is.null(similarity_col)) {
     list(U = NULL, d = NULL)
   } else {
-    IMR::decompose_symmetric_matrix(similarity_col,  lambda_col)
+    IMR::decompose_symmetric_matrix(similarity_col, lambda_col)
   }
 
   list(
@@ -38,17 +38,28 @@ get_imr_default_hparams <- function(similarity_row = NULL,
       init.tol   = 3
     ),
     laplacian_row = laplacian_row,
-    laplacian_col = laplacian_col
+    laplacian_col = laplacian_col,
+    rank = list(
+      step_sizes = c(2, 1),
+      rank.min = 2,
+      rank.max = 30
+    ),
+    laplace = list(
+      step_sizes = c(5, 2, 1, 0.1, 0.01),
+      start_value = 0,
+      end_value = 30
+    )
   )
 }
 #-----------------------------------------------------
 #' @export
-decompose_symmetric_matrix <- function(x, lambda=1) {
+decompose_symmetric_matrix <- function(x, lambda = 1) {
   stopifnot(isSymmetric(x))
-  if(lambda==0)
-    return(list(U=NULL, d=NULL))
-  xsvd <- base::eigen(x*lambda, symmetric=TRUE)
-  return(list(U=xsvd$vectors, d = xsvd$values))
+  #if (lambda == 0) {
+  #  return(list(U = NULL, d = NULL))
+  #}
+  xsvd <- base::eigen(x , symmetric = TRUE)
+  return(list(U = xsvd$vectors, d = xsvd$values * lambda))
 }
 #-----------------------------------------------------
 #' @export
@@ -243,4 +254,80 @@ get_lambda_lasso_max <- function(
   }
 
   lambda_sup
+}
+#-----------------------------------------------------------------------
+#' @export
+adaptive_tuner <- function(
+    eval_fun,
+    step_sizes = c(1, 0.1, 0.01),
+    start_value = 0,
+    end_value = 20, # if start < end then it's ascending.
+    inc_streak_to_stop = 2,
+    ... # all the other parameters being passed to eval_fun
+    ) {
+  results <- data.frame()
+  best_overall <- list(parameter = NA, error = Inf, fit = NULL)
+  current_start <- start_value
+
+  for (k in seq_along(step_sizes)) {
+    step_size <- step_sizes[k]
+    parameter <- current_start
+    prev_error <- Inf
+    inc_streak <- 0
+
+    step_history <- data.frame(
+      parameter = numeric(),
+      error     = numeric(),
+      step_size = numeric()
+    )
+
+    while (parameter <= end_value) {
+      out <- eval_fun(parameter, fit=fit, ...)
+      fit <- out[[1]]
+      error <- out[[2]]
+
+      step_history <- rbind(
+        step_history,
+        data.frame(
+          parameter = parameter,
+          error     = error,
+          step_size = step_size
+        )
+      )
+
+      if (error < best_overall$error) {
+        best_overall$parameter <- parameter
+        best_overall$error <- error
+        best_overall$fit   <- fit
+      }
+
+      if (error > prev_error) {
+        inc_streak <- inc_streak + 1
+      } else {
+        inc_streak <- 0
+      }
+
+      if (inc_streak >= inc_streak_to_stop) {
+        break
+      }
+
+      prev_error <- error
+      parameter <- parameter + step_size
+    }
+
+    results <- rbind(results, step_history)
+    ord <- order(step_history$error)
+    best_idx <- ord[1]
+    second_idx <- if (length(ord) > 1) ord[2] else best_idx
+
+    current_start <- step_history$parameter[second_idx]
+    end_value <- step_history$parameter[best_idx] + step_size
+  }
+
+  list(
+    best_parameter = best_overall$parameter,
+    best_error     = best_overall$error,
+    best_fit       = best_overall$fit,
+    history        = results
+  )
 }

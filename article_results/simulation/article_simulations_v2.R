@@ -87,7 +87,7 @@ sim_grid_search <- function(dat,
   for(i in seq_along(grid)){
     hpar$M$lambda_max = 0
   hpar$laplacian_row <- IMR::decompose_symmetric_matrix(solve(dat$similarity_rows),grid[i])
-  #hpar$laplacian_row <- IMR::decompose_symmetric_matrix(solve(dat$similarity_cols),grid[i])
+  hpar$laplacian_col <- IMR::decompose_symmetric_matrix(solve(dat$similarity_cols),grid[i])
   fit.imrS <- IMR::imr.cv(inp.dat,intercept_row = F,
                           hpar = hpar, seed = seed, ls_initial = FALSE,
                           intercept_col = F, verbose=0)
@@ -102,15 +102,22 @@ sim_grid_search <- function(dat,
   return(res)
 }
 
+future::plan(future::sequential)
+future::plan(future::multisession, workers = 7)
+
+
 
 dat <-
-  generate_simulated_data(600, 700, 5, 0, 0, 0.8,
+  generate_simulated_data(600, 700, 5, 5, 0, 0.8,
                           sparsity_beta = .5, sparsity_gamma = 0.0,
                           structured_error_A = T,
-                          structured_error_B = F,
+                          structured_error_B = T,
                           prepare_for_fitting = T,mv_coeffs = T,seed = seed)
 hpar <- IMR::get_imr_default_hparams()
-sim_grid_search(dat, hpar, seq(0,10, length=30)) -> ressim
+
+inp.dat <- IMR::prepare_data(dat$Y, dat$X, dat$Z)
+names(inp.dat$model)
+sim_grid_search(dat, hpar, seq(0,5, length=20)) -> ressim
 
 
 df_long <- ressim |>

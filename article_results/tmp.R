@@ -109,11 +109,40 @@ all.equal(svd1$d, svd2$d)
 all.equal(svd1$u, svd2$u)
 norm(crossprod(svd1$v) - diag(ncol(svd1$v)), "F")
 #===================================================================
+#== this parts test the cv function with laplace
+dat <-
+  generate_simulated_data(600, 700, 5, 5, 3, 0.8,
+                          sparsity_beta = .5, sparsity_gamma = 0.0,
+                          structured_error_A = T,
+                          structured_error_B = T,
+                          prepare_for_fitting = T,mv_coeffs = T,seed = seed)
+inp.dat <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)
+data <- inp.dat$model
+lambda_beta = 0.2
+lambda_gamma = 0.1
+intercept_row = T
+intercept_col = FALSE
+hpar = get_imr_default_hparams(data$similarity_rows, data$similarity_cols, 0, 0)
+error_function = error_metric$rmse
+thresh = 1e-6
+maxit = 300
+trace = TRUE
+old_fit = NULL
+ls_initial = FALSE
 
 
 
+library(ggplot2)
 
-
+ggplot(results_rows$history, aes(x = parameter, y = error, color = factor(step_size))) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = expression(lambda[r]),
+    y = "Validation error",
+    color = "Step size"
+  ) +
+  theme_minimal()
 
 
 
