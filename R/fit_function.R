@@ -226,16 +226,20 @@ imr.fit <- function(
     #  Update (V, Dsq, U) from the "B" side --------------------------------
     # B_mat = BD
     if(laplace_c_flag){
-      partial = crossprod(Y, U) + sweep(V, 2L, Dsq, `*`) # V %*% Dsq
-      partial = crossprod(Uc, sweep(partial, 2L, Dsq, `*`))
-      # partial = crossprod(Uc, partial %*% diag(Dsq))
-      coef = 1 / outer(dc + lambda_M, Dsq, `+`)
-      B_mat = Uc %*% (partial * coef)
+      partial <- crossprod(Y, U) + t(t(V)*Dsq)
+      partial <- t(t(partial)*Dsq)
+      B_mat <- (Uc %*% partial) * outer(dc + lambda_M, Dsq, `+`)
+#
+#       partial = crossprod(Y, U) + sweep(V, 2L, Dsq, `*`) # V %*% Dsq
+#       partial = crossprod(Uc, sweep(partial, 2L, Dsq, `*`))
+#       # partial = crossprod(Uc, partial %*% diag(Dsq))
+#       coef = 1 / outer(dc + lambda_M, Dsq, `+`)
+#       B_mat = Uc %*% (partial * coef)
       # for(j in seq_len(r)){
       #   B_mat[,j] <- Uc %*% diag(1/(dc+Dsq[j]+lambda_M)) %*% partial[,j]
       # }
     }else{
-      B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M) # output: DB
+      B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M) # output:BD
     }
       BD_decomp <- svd_small_nc_cpp(B_mat)
 

@@ -3,12 +3,13 @@ load_all()
 
 require(tidyverse)
 library(magrittr)
-source("./notes/generate_simu_dat.R")
+source("./article_results/simulation/generate_simu_dat.R")
 source("./other_models/SoftImpute_cv.R")
 source("./other_models/MCCI.R")
 source("./other_models/Naive.R")
 
-sim1_res <- function(dat, fit, name="", ortho=TRUE, error_metric=IMR:::error_metric$rmse){
+sim1_res <- function(dat, fit, name="", ortho=TRUE,
+                     error_metric=IMR:::error_metric$rmse){
   # prepare data : we need values for: M, beta, theta
   # expect fit$ to contain (u, d, and v) or (M)
 
@@ -47,6 +48,37 @@ sim1_res <- function(dat, fit, name="", ortho=TRUE, error_metric=IMR:::error_met
   out$rank <- qr(estimates)$rank
   return(out)
 }
+
+
+sim_grid_search <- function(dat,
+                            hpar = IMR::get_imr_default_hparams(),
+                            grid = seq(0, 1, length=5),
+                            seed=2025){
+  inp.dat <- list(
+    Y = dat$fit_data$Y_full,
+    y_train = dat$fit_data$train,
+    y_valid = dat$fit_data$valid,
+    Xq = dat$fit_data$X$Q,
+    Zq = dat$fit_data$Z$Q
+  )
+  res <- data.frame()
+  for(i in seq_along(grid)){
+
+  hpar$laplacian_col <- IMR::decompose_symmetric_matrix(dat$similarity_cols,1e-6,grid[i])
+  fit.imrS <- IMR::imr.cv(inp.dat,intercept_row = F,
+                          hpar = hpar, seed = seed, ls_initial = FALSE,
+                          intercept_col = F, verbose=0)
+
+  res %<>%
+    rbind(
+    sim1_res(dat, fit.imrS$fit, "IMR-Similarity") %>%
+    dplyr::mutate(lambdar = grid[i],valerr = fit.imrS$error)
+   )
+  print(res)
+  }
+  return(res)
+}
+
 
 
 one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
@@ -90,7 +122,7 @@ one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
 
 
 future::plan(future::sequential)
-future::plan(future::multisession, workers = 9)
+future::plan(future::multisession, workers = 2)
 
 
 # hpar$M$lambda_factor <- 1
@@ -102,7 +134,7 @@ future::plan(future::multisession, workers = 9)
 # hpar$gamma$n.lambda <- 10
 
 results5 <- data.frame()
-for(n in c(200, 400,600,800,100)){
+for(n in c(200, 400,600,800,1000)){
 
 for(i in 1:30){
   seed = 2025 + i
@@ -112,7 +144,7 @@ hpar$M$early.stopping <- 3
   dat <-
     generate_simulated_data(n, n, 10, 20, 0, 0.8,
                             sparsity_beta = .5, sparsity_gamma = 0.0,
-                            structured_error = T, n_groups = n*.2, rho_col = 0,
+                            structured_error = T, n_groups = n*.8, rho_col = 0,
                             prepare_for_fitting = T,mv_coeffs = T,seed = seed)
   start <- Sys.time()
   results5 %<>% rbind(
@@ -130,6 +162,8 @@ hpar$M$early.stopping <- 3
 
 }
 
+  sim_grid_search(dat, hpar, seq(0,.1, length=10))
+
 saveRDS(results5,paste0("./article_results/saved/sim_Nov25_results_",n,".rds"))
 
 }
@@ -142,46 +176,24 @@ compute.mean.sd <- function(x){
   s <- sd(x)
   if(is.na(s)) "" else paste0(round(mean(x),3)," (", round(s,3) ,")")
 }
+#results5 <- readRDS("./notes/saved/results51000.rds")
 
-results3 <- readRDS("./notes/saved/results2800.rds")
-results2 <- readRDS("./notes/saved/results2600.rds")
-results4 <- readRDS("./notes/saved/results4400.rds")
-results5 <- readRDS("./notes/saved/results51000.rds")
-
-results3 %>%
+results5 %>%
   dplyr::select(-gamma) %>%
-  dplyr::group_by(model) %>%
-  summarize_all(compute.mean.sd ) %>%
-  mutate(n = 800) %>%
+  filter(n != 200) %>%
+  filter(n!= 100) %>%
+  mutate(n = as.numeric(n)) %>%
+  arrange(n, model) %>%
+  dplyr::group_by(n, model) %>%
+  summarize_all(compute.mean.sd)  %>%
   pivot_longer(c("beta", "M", "theta", "test", "rank"),
-               names_to = c("metric")) %>%
-  rbind(
-       results2 %>%
-         dplyr::select(-gamma) %>%
-         dplyr::group_by(model) %>%
-         summarize_all(compute.mean.sd ) %>%
-         mutate(n = 600) %>%
-         pivot_longer(c("beta", "M", "theta", "test", "rank"), names_to = c("metric"))
-       ) %>%
-  rbind(
-    results4 %>%
-      dplyr::select(-gamma) %>%
-      dplyr::group_by(model) %>%
-      summarize_all(compute.mean.sd ) %>%
-      mutate(n = 400) %>%
-      pivot_longer(c("beta", "M", "theta", "test", "rank"), names_to = c("metric"))
-  ) %>%
-  rbind(
-    results5 %>%
-      dplyr::select(-gamma) %>%
-      dplyr::group_by(model) %>%
-      summarize_all(compute.mean.sd ) %>%
-      mutate(n = 1000) %>%
-      pivot_longer(c("beta", "M", "theta", "test", "rank"), names_to = c("metric"))
-  )-> sim1.tab
+               names_to = c("metric")) ->
+  sim1.tab
+
+
 
 # saveRDS(tab, "./notes/saved/tab_sim1.rds")
-sim1.tab <- readRDS("./notes/saved/tab_sim1.rds")
+#sim1.tab <- readRDS("./notes/saved/tab_sim1.rds")
 require(kableExtra)
 
 
@@ -196,7 +208,7 @@ metric_labels <- c(
 
 # (Optional) method display order (put yours here to match the paper)
 method_order <- c(
-  "IMR", "SoftImpute", "MCCI",  "Naive"
+  "IMR-Similarity", "IMR","SoftImpute",  "Naive"
 )
 
 wide <- sim1.tab %>%
@@ -214,7 +226,7 @@ panel_index  <- stats::setNames(panel_counts$rows,
 # Build table
 kbl(
   wide %>% select(-n),
-  format    = "latex",
+  format    = "html",
   booktabs  = TRUE,
   escape    = FALSE,  # keep LaTeX math in headers
  # col.names = c("Method", setdiff(names(wide), c("n", "method"))),

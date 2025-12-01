@@ -154,38 +154,50 @@ double frob_ratio_cpp(const arma::mat& Uold,  const arma::vec& Dsqold, const arm
 
 // The following two functions compute the least-squares updates for A and B
 
-// A_mat = (y %*% V + U * diag(Dsq)) %*% diag(D_star)
-// with D_star_j = Dsq_j / (Dsq_j + lambda_M)
 // [[Rcpp::export]]
 arma::mat update_A_cpp(SEXP yS4,              // dgCMatrix (n x m)
-                            const arma::mat& V,    // m x J
                             const arma::mat& U,    // n x J
+                            const arma::mat& V,    // m x J
                             const arma::vec& Dsq,  // length J
                             const double lambda_M) {
   S4 y(yS4);
   arma::sp_mat Y = as_spmat_dgc(y);               // n x m
-  const arma::uword n = Y.n_rows;
-  const arma::uword m = Y.n_cols;
+  const arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
+  arma::mat A = Y * V + U.each_row() % Dsq.t();
 
-  if (V.n_rows != m) Rcpp::stop("camc_update_A_cpp: V has wrong nrow");
-  if (U.n_rows != n) Rcpp::stop("camc_update_A_cpp: U has wrong nrow");
-  if (U.n_cols != V.n_cols || U.n_cols != Dsq.n_elem)
-    Rcpp::stop("camc_update_A_cpp: J mismatch among U, V, Dsq");
-
-  const arma::uword J = U.n_cols;
-
-  // A = Y %*% V  (n x J)
-  arma::mat A = Y * V;
-
-  //  for each j, A[,j] = D_star_j * ( A[,j] + Dsq_j * U[,j] )
   for (arma::uword j = 0; j < J; ++j) {
     const double d   = Dsq(j);
     const double dst = d / (d + lambda_M);
-    A.col(j) = dst * (A.col(j) + d * U.col(j));
+    A.col(j) = (1.0 / (1.0 + lambda_M / d)) * A.col(j) ;
   }
 
   return A; // n x J
 }
+
+// [[Rcpp::export]]
+arma::mat update_A_sim_cpp(SEXP yS4,              // dgCMatrix (n x m)
+                           const arma::mat& U,    // n x J
+                           const arma::mat& V,    // m x J
+                           const arma::vec& Dsq,  // length J
+                           const double lambda_M,
+                           const arma::mat& Ur,   // n x n
+                           const arma::vec& dr) { // length n
+  // y: sparse matrix
+  S4 y(yS4);
+  arma::sp_mat Y = as_spmat_dgc(y);     // n x m
+  arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
+  arma::mat A = Ur.t() * ( Y * V + U.each_row() % Dsq.t());  // n x J
+
+  for (arma::uword j = 0; j < J; ++j) {
+    const double d = Dsq(j);
+    arma::vec a = d / (dr + d + lambda_M);
+    A.col(j) = Ur * (a % A.col(j));
+  }
+
+  return A; // n x J
+}
+
+
 // [[Rcpp::export]]
 arma::mat update_B_cpp(SEXP yS4,              // dgCMatrix (n x m)
                             const arma::mat& U,    // n x J
@@ -194,22 +206,41 @@ arma::mat update_B_cpp(SEXP yS4,              // dgCMatrix (n x m)
                             const double lambda_M) {
   S4 y(yS4);
   arma::sp_mat Y = as_spmat_dgc(y);     // n x m
-  arma::uword n = Y.n_rows, m = Y.n_cols;
+  arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
+  // B = t(Y) %*% U  (m x J) + VDsq
+  arma::mat B = arma::trans(Y) * U + V.each_row() % Dsq.t();
 
-  if (U.n_rows != n) stop("U has wrong nrow");
-  if (V.n_rows != m) stop("V has wrong nrow");
-  if (U.n_cols != V.n_cols || U.n_cols != Dsq.n_elem) stop("J mismatch");
-
-  const arma::uword J = U.n_cols;
-
-  // B = t(Y) %*% U  (m x J)
-  arma::mat B = arma::trans(Y) * U;
-
-  //  B[,j] = D_star_j * ( B[,j] + Dsq_j * V[,j] )
   for (arma::uword j = 0; j < J; ++j) {
     const double d   = Dsq(j);
-    const double dst = d / (d + lambda_M);
-    B.col(j) = dst * (B.col(j) + d * V.col(j));
+    B.col(j) = (1.0 / (1.0 + lambda_M / d)) * B.col(j);
   }
   return B; // m x J
 }
+
+
+// [[Rcpp::export]]
+arma::mat update_B_sim_cpp(SEXP yS4,              // dgCMatrix (n x m)
+                        const arma::mat& U,    // n x J
+                        const arma::mat& V,    // m x J
+                        const arma::vec& Dsq,  // length J
+                        const double lambda_M,
+                        const arma::mat& Uc,   // m x m
+                        const arma::vec& dc) { // length m
+  // y: sparse matrix
+  S4 y(yS4);
+  arma::sp_mat Y = as_spmat_dgc(y);     // n x m
+  arma::uword n = Y.n_rows, m = Y.n_cols, J = U.n_cols;
+  // B <- crossprod(Uc,(crossprod(Y, U) + V %*% Dsq))
+  arma::mat B = Uc.t() * ( arma::trans(Y) * U + V.each_row() % Dsq.t());  // m x J
+
+  for (arma::uword j = 0; j < J; ++j) {
+    const double d = Dsq(j);
+    arma::vec a = d / (dc + d + lambda_M);
+    B.col(j) = Uc * (a % B.col(j));
+  }
+
+  return B; // m x J
+}
+
+
+

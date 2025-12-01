@@ -90,17 +90,34 @@ BEGIN_RCPP
 END_RCPP
 }
 // update_A_cpp
-arma::mat update_A_cpp(SEXP yS4, const arma::mat& V, const arma::mat& U, const arma::vec& Dsq, const double lambda_M);
-RcppExport SEXP _IMR_update_A_cpp(SEXP yS4SEXP, SEXP VSEXP, SEXP USEXP, SEXP DsqSEXP, SEXP lambda_MSEXP) {
+arma::mat update_A_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const double lambda_M);
+RcppExport SEXP _IMR_update_A_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP lambda_MSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
     Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
-    rcpp_result_gen = Rcpp::wrap(update_A_cpp(yS4, V, U, Dsq, lambda_M));
+    rcpp_result_gen = Rcpp::wrap(update_A_cpp(yS4, U, V, Dsq, lambda_M));
+    return rcpp_result_gen;
+END_RCPP
+}
+// update_A_sim_cpp
+arma::mat update_A_sim_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const double lambda_M, const arma::mat& Ur, const arma::vec& dr);
+RcppExport SEXP _IMR_update_A_sim_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP lambda_MSEXP, SEXP UrSEXP, SEXP drSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
+    Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Ur(UrSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type dr(drSEXP);
+    rcpp_result_gen = Rcpp::wrap(update_A_sim_cpp(yS4, U, V, Dsq, lambda_M, Ur, dr));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -116,6 +133,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
     Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
     rcpp_result_gen = Rcpp::wrap(update_B_cpp(yS4, U, V, Dsq, lambda_M));
+    return rcpp_result_gen;
+END_RCPP
+}
+// update_B_sim_cpp
+arma::mat update_B_sim_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const double lambda_M, const arma::mat& Uc, const arma::vec& dc);
+RcppExport SEXP _IMR_update_B_sim_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP lambda_MSEXP, SEXP UcSEXP, SEXP dcSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type yS4(yS4SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
+    Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Uc(UcSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type dc(dcSEXP);
+    rcpp_result_gen = Rcpp::wrap(update_B_sim_cpp(yS4, U, V, Dsq, lambda_M, Uc, dc));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -165,7 +199,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 4},
     {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
+    {"_IMR_update_A_sim_cpp", (DL_FUNC) &_IMR_update_A_sim_cpp, 7},
     {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},
+    {"_IMR_update_B_sim_cpp", (DL_FUNC) &_IMR_update_B_sim_cpp, 7},
     {"_IMR_partial_crossprod", (DL_FUNC) &_IMR_partial_crossprod, 5},
     {"_IMR_svd_small_nc_cpp", (DL_FUNC) &_IMR_svd_small_nc_cpp, 1},
     {"_IMR_svd_small_nr_cpp", (DL_FUNC) &_IMR_svd_small_nr_cpp, 1},

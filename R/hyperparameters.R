@@ -47,7 +47,7 @@ decompose_symmetric_matrix <- function(x, tol = 1e-4, lambda=1, basic = TRUE) {
   stopifnot(isSymmetric(x))
   if (basic) {
     xsvd <- base::eigen(x, symmetric=TRUE)
-    return(list(U=xsvd$vectors, d = xsvd$values*lambda))
+    return(list(U=tcrossprod(xsvd$vectors), d = xsvd$values*lambda))
   } else {
     xsvd <- IMR::opt_svd(x, tol=tol)
   }
@@ -58,7 +58,7 @@ decompose_symmetric_matrix <- function(x, tol = 1e-4, lambda=1, basic = TRUE) {
       stop("U != V and U != -V")
     }
   }
-  return(list(U = xsvd$u, d = xsvd$d*lambda))
+  return(list(U = tcrossprod(xsvd$u), d = xsvd$d*lambda))
 }
 #-----------------------------------------------------
 #' @export

@@ -49,47 +49,57 @@ fit3 <-  IMR::imr.cv(inp.dat,intercept_row = F,
                      intercept_col = F, verbose=2)
 quick_camc_simu_res(dat, fit3$fit)
 #==============================================================================
-IMR::get_lambda_lasso_max(
-  y_train = inp.dat$y_train,
-  X = inp.dat$Xq,
-  y_valid = inp.dat$y_valid,
-  intercept_row = T,
-  intercept_col = T,
-  maxit = 100,
-  verbose = 1
-)
+unsvd <- function(a) tcrossprod(a$u %*% diag(a$d), a$v )
+unsvdInv  <- function(a) tcrossprod(a$u %*% diag(1/a$d), a$v )
+trimm <- function(a, tol=1e-6, i=FALSE) {
+  d <- if(i) 1/a$d else a$d
+   idx <- which(d > tol)
+   return(list(
+    u = a$u[, idx, drop = FALSE],
+    d = a$d[idx],
+    v = a$v[, idx, drop = FALSE]
+))
+}
+
+L <- generate_similarity_bixi(0.6, "25Sep")
+
+s1 <- base::svd(L$spatial)
+s2 <- IMR::opt_svd(L$spatial, tol=1e-4)
+
+all.equal(unsvd(s1), L$spatial)
+all.equal(unsvd(s1), unsvd(s2), tolerance = 1e-6)
+all.equal(solve(L$spatial), unsvdInv(s1), tolerance=1e-4)
+all.equal(solve(L$spatial), unsvdInv(s2), tolerance=1e-4)
+
+round(solve(L$spatial),4)[1:5,1:6]
+round(unsvdInv(s1),4)[1:5,1:6]
+round(unsvdInv(s2),4)[1:5,1:6]
+
+all.equal(unsvd(s1), unsvd(trimm(s1)), tolerance=1e-6)
+s1p <- s1; s1p$d <- 1/ s1p$d
+all.equal(solve(L$spatial), unsvdInv(trimm(s1,i=T)), tolerance=1e-4)
+
+trimm(s1,i=T)$d %>% length
+length(s1$d)
+
+1/s1$d
+
+s1$v * s1$d
+
+all.equal(s1$u, s1$v, tolerance=1e-5)
+b=10; a = s1; a$v = a$u
+a0 <- a; a0$d <- 1/a0$d
+A0 <- unsvd(a0)
+a1 <- a0; a1$d <- -1/a1$d
+A1 <-  unsvd(a1)
+a2 <- a1; a2$d <- -1/a2$d
+A2 <- unsvd(a2)
 
 
-
-res <- data.frame()
-for(miss in c(.6, .7, .8, .9, .95, .55, .65, .75, .85, .99)) {
-
-  fit.imr <- readRDS(paste0(
-    "./article_results/bixi/data/imr_", round(100 * miss),
-    "_similarity_fit.rds"
-  ))
-  res<- rbind(res, data.frame(
-    rand = fit.imr$rand,
-    lambdar = fit.imr$lambda_r,
-    lambdac = fit.imr$lambda_c,
-    miss = miss
-  ))
-  }
-res
-
-u = U[, seq_len(r_eff), drop = FALSE],
-d = Dsq[seq_len(r_eff)],
-v = V[, seq_len(r_eff), drop = FALSE],
-beta = beta,
-gamma = gamma,
-beta0 = beta0,
-gamma0 = gamma0,
-n_iter = iter
-
-
-
-
-
+solve(unsvd(a) + b * diag(1,nrow(a$u))) -> sol1
+A0 + A1 * b + A2 * b^2 -> sol2
+all.equal(sol1, sol2, tolerance=1e-5)
+sol2[1:5,1:5]
 
 ## ---------------------------------------------------------
 ## 1. Original (loop + diag) implementation

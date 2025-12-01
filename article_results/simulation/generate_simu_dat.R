@@ -21,9 +21,8 @@ generate_simulated_data <- function(
     cov_sparsity_mar = TRUE,
     mv_coeffs = TRUE,
     # the following are for similairty matrices
-    structured_error = FALSE,
-    rho_col = 0.5, # ar(1) correlation
-    n_groups = 5, # proportion of ones in the matrix
+    structured_error_A = FALSE,
+    structured_error_B = FALSE,
     seed = NULL) {
   require(utils)
   require(tidyverse)
@@ -105,19 +104,36 @@ generate_simulated_data <- function(
   # 5) Low-rank structure M orthogonal to col(X) -------------------------------
   # Projector onto col(X): P_X = X (X'X)^{-1} X'
   # Then P_perp = I - P_X, and M = P_perp U V with U ∈ R^{n×r}, V ∈ R^{r×m}
-  U <- matrix(runif(n * r, -1, 1), nrow = n, ncol = r)
-  V <- matrix(runif(m * r, -1, 1), nrow = m, ncol = r)
+  similarity_rows = similarity_cols = NULL
+
+  if(structured_error_A){
+    distance.mat = fields::rdist(as.matrix(1:n))
+    matern.kernel =   fields::Matern(distance.mat, range = 20, smoothness = 2.5)
+    U = t(MASS::mvrnorm(r, rep(1,n), matern.kernel))
+    similarity_rows = matern.kernel
+
+  }else
+    U <- matrix(runif(n * r, -1, 1), nrow = n, ncol = r)
+
+  if(structured_error_B){
+    distance.mat = fields::rdist(as.matrix(1:m))
+    matern.kernel =   fields::Matern(distance.mat, range = 20, smoothness = 2.5)
+    V = t(MASS::mvrnorm(r, rep(1,m), matern.kernel))
+    similarity_cols = matern.kernel
+
+  }else
+      V <- matrix(runif(m * r, -1, 1), nrow = m, ncol = r)
   # we now make sure that the column space of X and U are othogonal
   # and the row space of Z and V are orthogonal.
   if (p > 0) {
     qrx <- qr(X)
     qrx.Q <- qr.Q(qrx)
-    U <- (diag(1, n, n) - qrx.Q %*% t(qrx.Q)) %*% U
+    #U <- (diag(1, n, n) - qrx.Q %*% t(qrx.Q)) %*% U
   }
   if (q > 0) {
     qrz <- qr(Z)
     qrz.Q <- qr.Q(qrz)
-    V <- (diag(1, m, m) - qrz.Q %*% t(qrz.Q)) %*% V
+    #V <- (diag(1, m, m) - qrz.Q %*% t(qrz.Q)) %*% V
   }
   M <- U %*% t(V)
   # P_X   <- X %*% solve(crossprod(X)) %*% t(X)
@@ -180,18 +196,18 @@ generate_simulated_data <- function(
   # generate noise
   noise_sd <- 1
   E <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
-  similarity_rows = similarity_cols = NULL
-  if(structured_error){
-    # for rows, we use an indicator similarity matrix
-    groups <- sample(1:n_groups, n, replace=TRUE)
-    sim_rows <- rnorm(n_groups, 0, 0.8)[groups]
-    if(rho_col > 0){
-      similarity_cols <- get_ar1_cov(m, rho_col)
-      E <- tcrossprod(E, chol(similarity_cols))
-    }
-    E <- (1 - 0.8) * E + sim_rows
-    similarity_rows <- outer(groups, groups, "==")*1
-  }
+
+  # if(structured_error){
+  #   # for rows, we use an indicator similarity matrix
+  #   groups <- sample(1:n_groups, n, replace=TRUE)
+  #   sim_rows <- rnorm(n_groups, 0, 0.8)[groups]
+  #   if(rho_col > 0){
+  #     similarity_cols <- get_ar1_cov(m, rho_col)
+  #     E <- tcrossprod(E, chol(similarity_cols))
+  #   }
+  #   E <- (1 - 0.8) * E + sim_rows
+  #   similarity_rows <- outer(groups, groups, "==")*1
+  # }
 
 
   Y <- (THETA + E) * mask
