@@ -105,6 +105,7 @@ sim_grid_search <- function(dat,
 future::plan(future::sequential)
 future::plan(future::multisession, workers = 7)
 
+sim1_res(dat, out$fit, "IMR-Similarity")
 
 
 dat <-

@@ -42,12 +42,14 @@ get_imr_default_hparams <- function(similarity_row = NULL,
     rank = list(
       step_sizes = c(2, 1),
       rank.min = 2,
-      rank.max = 30
+      rank.max = 30,
+      n_streaks = 2
     ),
     laplace = list(
       step_sizes = c(5, 2, 1, 0.1, 0.01),
       start_value = 0,
-      end_value = 30
+      end_value = 30,
+      n_streaks = 2
     )
   )
 }
@@ -55,10 +57,10 @@ get_imr_default_hparams <- function(similarity_row = NULL,
 #' @export
 decompose_symmetric_matrix <- function(x, lambda = 1) {
   stopifnot(isSymmetric(x))
-  #if (lambda == 0) {
+  # if (lambda == 0) {
   #  return(list(U = NULL, d = NULL))
-  #}
-  xsvd <- base::eigen(x , symmetric = TRUE)
+  # }
+  xsvd <- base::eigen(x, symmetric = TRUE)
   return(list(U = xsvd$vectors, d = xsvd$values * lambda))
 }
 #-----------------------------------------------------
@@ -267,9 +269,17 @@ adaptive_tuner <- function(
     ) {
   results <- data.frame()
   best_overall <- list(parameter = NA, error = Inf, fit = NULL)
+  ascending = start_value < end_value
+  direction = if(ascending) 1 else -1
   current_start <- start_value
 
   for (k in seq_along(step_sizes)) {
+    if (ascending & current_start > end_value) {
+      stop("For ascending search, start_value must be <= end_value.")
+    }
+    if ( !ascending & current_start < end_value) {
+      stop("For descending search, start_value must be >= end_value.")
+    }
     step_size <- step_sizes[k]
     parameter <- current_start
     prev_error <- Inf
@@ -281,8 +291,9 @@ adaptive_tuner <- function(
       step_size = numeric()
     )
 
-    while (parameter <= end_value) {
-      out <- eval_fun(parameter, fit=fit, ...)
+    while (( ascending && parameter <= end_value) ||
+           (!ascending && parameter >= end_value)) {
+      out <- eval_fun(parameter, ...)
       fit <- out[[1]]
       error <- out[[2]]
 
@@ -298,10 +309,10 @@ adaptive_tuner <- function(
       if (error < best_overall$error) {
         best_overall$parameter <- parameter
         best_overall$error <- error
-        best_overall$fit   <- fit
+        best_overall$fit <- fit
       }
 
-      if (error > prev_error) {
+      if (error >= prev_error) {
         inc_streak <- inc_streak + 1
       } else {
         inc_streak <- 0
@@ -312,16 +323,25 @@ adaptive_tuner <- function(
       }
 
       prev_error <- error
-      parameter <- parameter + step_size
+      parameter <- parameter + direction * step_size
     }
 
     results <- rbind(results, step_history)
     ord <- order(step_history$error)
     best_idx <- ord[1]
-    second_idx <- if (length(ord) > 1) ord[2] else best_idx
+    best_param <- step_history$parameter[best_idx]
 
-    current_start <- step_history$parameter[second_idx]
-    end_value <- step_history$parameter[best_idx] + step_size
+    if(ascending){
+      current_start <- max(best_param - step_size, start_value)
+      end_value <- min(best_param + step_size, end_value)
+    }else{
+      current_start <- min(best_param + step_size, start_value)
+      end_value <- max(best_param - step_size, end_value)
+    }
+
+    # second_idx <- if (length(ord) > 1) ord[2] else best_idx
+    # current_start <- step_history$parameter[second_idx]
+    # end_value <- step_history$parameter[best_idx] + step_size
   }
 
   list(
@@ -331,3 +351,81 @@ adaptive_tuner <- function(
     history        = results
   )
 }
+
+#---
+#' #' @export
+#' adaptive_tuner_parallel <- function(
+#'   eval_fun,
+#'   step_sizes = c(1, 0.1, 0.01),
+#'   start_value = 0,
+#'   end_value = 20,
+#'   parallel_seed = TRUE,
+#'   parallel_packages = NULL,
+#'   parallel_progress = TRUE,
+#'   ...
+#' ){
+#'   results <- data.frame()
+#'   best_overall <- list(parameter = NA, error = Inf, fit = NULL)
+#'   current_start <- start_value
+#'
+#'   for(k in seq_along(step_sizes)){
+#'     if(current_start > end_value)
+#'       stop("start_value must be <= end_value (descending search not yet implemented).")
+#'     step_size <- step_sizes[k]
+#'     param_seq <- seq(current_start, end_value, step_size)
+#'     if(length(param_seq) == 0)
+#'       break
+#'
+#'     res_list <- parallel_grid_g(
+#'       grid = list(lambda = param_seq),
+#'       f = function(lambda, ...) eval_fun(lambda, ...),
+#'       combine = "list",
+#'       .seed = parallel_seed,
+#'       .packages = parallel_packages,
+#'       .progress = parallel_progress,
+#'       ...
+#'     )
+#'
+#'     errors <- vapply(
+#'       res_list,
+#'       function(x) {
+#'         err <- x[[2L]]
+#'         if (!is.finite(err)) Inf else err
+#'       },
+#'       numeric(1L)
+#'     )
+#'     fits <- lapply(res_list, `[[`, 1L)
+#'
+#'     step_history <- data.frame(
+#'       parameter        = param_seq,
+#'       error            = errors,
+#'       step_size        = step_size,
+#'       resolution_level = k
+#'     )
+#'
+#'     # accumulate history
+#'     results <- rbind(results, step_history)
+#'
+#'     # best for this resolution
+#'     best_idx_k <- which.min(errors)
+#'     best_param <- param_seq[best_idx_k]
+#'
+#'     # update global best
+#'     if (errors[best_idx_k] < best_overall$error) {
+#'       best_overall$parameter <- best_param
+#'       best_overall$error     <- errors[best_idx_k]
+#'       best_overall$fit       <- fits[[best_idx_k]]
+#'     }
+#'
+#'     # narrow the window around the best param (same idea as your sequential fn)
+#'     current_start <- max(best_param - step_size, start_value)
+#'     end_value     <- best_param + step_size
+#'   }
+#'
+#'   list(
+#'     best_parameter = best_overall$parameter,
+#'     best_error     = best_overall$error,
+#'     best_fit       = best_overall$fit,
+#'     history        = results
+#'   )
+#' }

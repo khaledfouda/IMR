@@ -15,14 +15,16 @@ prepare_data <- function(Y, X = NULL, Z = NULL,
   out$model$y_valid <- IMR::as.Incomplete(Y * out$model$valid_mask)
   rm(obs_mask)
 
-  if(!is.null(similarity_rows)){
+  if (!is.null(similarity_rows)) {
     out$model$similarity_rows <- similarity_rows
-  }else
+  } else {
     out$model$similarity_rows <- diag(1, nrow(Y), nrow(Y))
-  if(!is.null(similarity_cols)){
+  }
+  if (!is.null(similarity_cols)) {
     out$model$similarity_cols <- similarity_cols
-  }else
+  } else {
     out$model$similarity_cols <- diag(1, ncol(Y), ncol(Y))
+  }
 
   if (!is.null(X)) {
     stopifnot(is.matrix(X))
@@ -94,7 +96,7 @@ reconstruct <- function(fit, dat, trace = TRUE) {
 }
 #-----------------------------
 #' @export
-reconstruct_partial <- function(fit, dat, target, trace=FALSE){
+reconstruct_partial <- function(fit, dat, target, trace = FALSE) {
   stopifnot(is.Incomplete(target))
   if (trace) message("Constructing M ...")
   target@x <- IMR:::partial_crossprod(fit$u, fit$d * t(fit$v), target@i, target@p)
@@ -133,5 +135,3 @@ reconstruct_partial <- function(fit, dat, target, trace=FALSE){
   }
   return(target)
 }
-
-

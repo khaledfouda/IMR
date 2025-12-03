@@ -1,3 +1,4 @@
+# the following function works only for lambda_beta and lambda_gamma
 #' @export
 parallel_grid <- function(grid,
                           f,

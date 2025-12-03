@@ -160,29 +160,32 @@ opt_svd <-
            cthin = nr > 2 * nc,
            tol = NULL) {
     if (is.null(k)) {
-      if (rthin){
-        dec = IMR:::svd_small_nr_cpp(mat)
-      }else if (cthin){
-        dec = IMR:::svd_small_nc_cpp(mat)
-      }else
-        dec = base::svd(mat)
-    }else{
+      if (rthin) {
+        dec <- IMR:::svd_small_nr_cpp(mat)
+      } else if (cthin) {
+        dec <- IMR:::svd_small_nc_cpp(mat)
+      } else {
+        dec <- base::svd(mat)
+      }
+    } else {
       if (k == min(nr, nc)) {
-        dec = base::svd(mat)
-      }else if (rthin || cthin || k > 5) {
-        dec = RSpectra::svds(mat, k)
-      }else
-        dec = irlba::irlba(mat, k)
+        dec <- base::svd(mat)
+      } else if (rthin || cthin || k > 5) {
+        dec <- RSpectra::svds(mat, k)
+      } else {
+        dec <- irlba::irlba(mat, k)
+      }
     }
-    if(! is.null(tol)){
+    if (!is.null(tol)) {
       idx <- seq_len(sum(dec$d > tol))
       return(list(
         u = dec$u[, idx, drop = FALSE],
         d = dec$d[idx],
         v = dec$v[, idx, drop = FALSE]
       ))
-    }else
+    } else {
       return(dec)
+    }
   }
 
 
