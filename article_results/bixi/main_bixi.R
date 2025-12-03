@@ -38,7 +38,7 @@ models <- list(
   similarity = 1
 )
 
-for (miss in c( .55, .65, .75, .85, .99)) { #.6, .7, .8, .9, .95,
+for (miss in c( .55, .65, .75, .85, .99, .6, .7, .8, .9, .95)){
   # run BKTR
   if (models$BKTR) {
     bktr.fit <- fit_BKTR_to_Bixi(miss, "25Sep", 2025)
@@ -88,33 +88,39 @@ for (miss in c( .55, .65, .75, .85, .99)) { #.6, .7, .8, .9, .95,
     fit.imr$time <- round(lubridate::time_length(time.imr[2], "minute"), 2)
     saveRDS(fit.imr, paste0("./article_results/bixi/data/imr_", round(100 * miss), "_fit.rds"))
   }
+  symmetrize <- function(x) (x + t(x))/2
 
   # IMR + covariates + similarity
   if (models$similarity) {
     old_error <- 999
-    for (lambda_r in c(1e-6)) {
-      for(lambda_c in c(1e-6, 1e-5, 1e-4,1e-3)){
-      for (rand in 2035:2035) {
-        hpar$laplacian_col <- IMR::decompose_symmetric_matrix(kernels$spatial, 1e-6, lambda_c)
-        hpar$laplacian_row <- IMR::decompose_symmetric_matrix(kernels$temporal, 1e-6, lambda_r)
+    #dat <- IMR::prepare_data(odat$Y.inc, NULL, NULL, 0.2, 2025)
+    dat$model$similarity_rows <- solve(kernels$temporal) %>% symmetrize()
+    dat$model$similarity_cols <- solve(kernels$spatial) %>% symmetrize()
+    hpar <- get_imr_default_hparams(dat$model$similarity_rows, dat$model$similarity_cols, 0, 0)
+    hpar$M$n.lambda <- 20
+    hpar$M$rank.step <- 1
+    hpar$laplace$step_sizes <- c(5, 1, 0.1)
+    hpar$laplace$start_value <- 30
+    hpar$laplace$end_value <- 0
+    hpar$rank$step_sizes <- c(2, 1)
+    hpar$rank$n_streaks <- hpar$laplace$n_streaks <- 1
 
-        bench::bench_time(fit.imr <- IMR::imr.cv(dat$model,
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(dat$model$similarity_cols)
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(dat$model$similarity_rows)
+      for (rand in 2035:2035) {
+
+        bench::bench_time(fit.imr <- IMR::imr.cv_laplace(dat$model,
           intercept_row = T,
-          intercept_col = T,
+          intercept_col = T,lambda_beta = 0, lambda_gamma=0,
           hpar = hpar,
-          verbose = 0,
-          separate_tuning = T,
-          lambda_gamma_default = 999,
-          fast.cv = F,
+          trace = T,
           seed = rand
         )) -> time.imr
         fit.imr$time <- round(lubridate::time_length(time.imr[2], "minute"), 2)
-        fit.imr$lambda_r <- lambda_r
-        fit.imr$lambda_c <- lambda_c
         fit.imr$rand <- rand
 
         new_error <- output_wrapper_bixi(fit.imr, dat, odat)$error.test
-        print(paste(lambda_r, new_error))
+        print(paste(new_error))
         if (new_error < old_error) {
           old_error <- new_error
           saveRDS(fit.imr, paste0(
@@ -122,7 +128,7 @@ for (miss in c( .55, .65, .75, .85, .99)) { #.6, .7, .8, .9, .95,
             "_similarity_fit.rds"
           ))
         }
-      }}
+
     }
   }
 
@@ -398,10 +404,10 @@ results.df %>%
         labels = function(b) paste0("log(", number((b), 0.01), ")")
       )
     )
-  ) -> g1
-g1
+  ) -> g1;g1
 
 
+#====================================================================
 ggsave("./article_results/bixi/data/plot_bixi.png",
   g1,
   width = 320 / 25.4, height = 150 / 25.4, dpi = 600
