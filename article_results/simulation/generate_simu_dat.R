@@ -128,7 +128,7 @@ generate_simulated_data <- function(
 
     stopifnot(kernel_type %in% c("Matern", "AR1"))
     if(kernel_type == "Matern"){
-      kernel =   fields::Matern(distance.mat, smoothness = 5/2)
+      kernel =   fields::Matern(distance.mat, smoothness = 3/2)
 
     }else if(kernel_type == "AR1"){
       kernel = 0.4^distance.mat

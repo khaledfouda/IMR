@@ -9,7 +9,7 @@ require(magrittr)
 source("./article_results/simulation/generate_simu_dat.R")
 # ===============================================================================
 # you need the first function in test_cross_validation.R
-kernel_type <- "matern"
+kernel_type <- "AR1"
 filename <- paste0("./article_results/saved/simulation_", kernel_type, "_res")
 
 n <- m <- 800
@@ -18,7 +18,7 @@ p <- 0.8
 
 seed <- 2025
 B <- 15
-run_all <- FALSE
+run_all <- F
 if (run_all) {
   all_res <- data.frame()
   for (r in c(5, 15)) {
