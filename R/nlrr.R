@@ -1,18 +1,19 @@
 #-----------------------------------------------------------
 #' @export
 nlrr.cv <- function(
-    inp.dat,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    lambda_beta = NULL,
-    lambda_gamma = NULL,
-    hpar = get_imr_default_hparams(),
-    error_function = error_metric$rmse,
-    thresh = 1e-6,
-    maxit = 300,
-    verbose = 0,
-    seed = NULL,
-    ls_initial = FALSE) {
+  inp.dat,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  lambda_beta = NULL,
+  lambda_gamma = NULL,
+  hpar = get_imr_default_hparams(),
+  error_function = error_metric$rmse,
+  thresh = 1e-6,
+  maxit = 300,
+  verbose = 0,
+  seed = NULL,
+  ls_initial = FALSE
+) {
   #-------------------
   stopifnot(is.Incomplete(inp.dat$Y))
   stopifnot(is.Incomplete(inp.dat$y_train))

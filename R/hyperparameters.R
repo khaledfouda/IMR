@@ -102,20 +102,21 @@ get_lambda_M_max <-
 #' you must either privde X or Z. do not provide both
 #' @export
 get_lambda_lasso_max <- function(
-    y_train,
-    X = NULL,
-    Z = NULL,
-    y_valid = NULL,
-    # W_valid = NULL,
-    y = NULL,
-    # row_cov = TRUE,
-    intercept_row = TRUE,
-    intercept_col = TRUE,
-    hpar = get_imr_default_hparams(),
-    interior_loop_length = 20,
-    maxit = 100,
-    verbose = 0,
-    tol = 1) {
+  y_train,
+  X = NULL,
+  Z = NULL,
+  y_valid = NULL,
+  # W_valid = NULL,
+  y = NULL,
+  # row_cov = TRUE,
+  intercept_row = TRUE,
+  intercept_col = TRUE,
+  hpar = get_imr_default_hparams(),
+  interior_loop_length = 20,
+  maxit = 100,
+  verbose = 0,
+  tol = 1
+) {
   if (!xor(is.null(X), is.null(Z))) {
     stop("Either X or Z must be provided, but not both or neither.")
   }
@@ -260,24 +261,24 @@ get_lambda_lasso_max <- function(
 #-----------------------------------------------------------------------
 #' @export
 adaptive_tuner <- function(
-    eval_fun,
-    step_sizes = c(1, 0.1, 0.01),
-    start_value = 0,
-    end_value = 20, # if start < end then it's ascending.
-    inc_streak_to_stop = 2,
-    ... # all the other parameters being passed to eval_fun
-    ) {
+  eval_fun,
+  step_sizes = c(1, 0.1, 0.01),
+  start_value = 0,
+  end_value = 20, # if start < end then it's ascending.
+  inc_streak_to_stop = 2,
+  ... # all the other parameters being passed to eval_fun
+) {
   results <- data.frame()
   best_overall <- list(parameter = NA, error = Inf, fit = NULL)
-  ascending = start_value < end_value
-  direction = if(ascending) 1 else -1
+  ascending <- start_value < end_value
+  direction <- if (ascending) 1 else -1
   current_start <- start_value
 
   for (k in seq_along(step_sizes)) {
     if (ascending & current_start > end_value) {
       stop("For ascending search, start_value must be <= end_value.")
     }
-    if ( !ascending & current_start < end_value) {
+    if (!ascending & current_start < end_value) {
       stop("For descending search, start_value must be >= end_value.")
     }
     step_size <- step_sizes[k]
@@ -291,8 +292,8 @@ adaptive_tuner <- function(
       step_size = numeric()
     )
 
-    while (( ascending && parameter <= end_value) ||
-           (!ascending && parameter >= end_value)) {
+    while ((ascending && parameter <= end_value) ||
+      (!ascending && parameter >= end_value)) {
       out <- eval_fun(parameter, ...)
       fit <- out[[1]]
       error <- out[[2]]
@@ -331,10 +332,10 @@ adaptive_tuner <- function(
     best_idx <- ord[1]
     best_param <- step_history$parameter[best_idx]
 
-    if(ascending){
+    if (ascending) {
       current_start <- max(best_param - step_size, start_value)
       end_value <- min(best_param + step_size, end_value)
-    }else{
+    } else {
       current_start <- min(best_param + step_size, start_value)
       end_value <- max(best_param - step_size, end_value)
     }

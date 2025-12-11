@@ -44,24 +44,25 @@
 #'
 #' @export
 imr.fit <- function(
-    Y,
-    X = NULL,
-    Z = NULL,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    r = 2,
-    lambda_M = 0,
-    lambda_beta = 0,
-    lambda_gamma = 0,
-    Ur = NULL,
-    dr = NULL,
-    Uc = NULL,
-    dc = NULL,
-    maxit = 300,
-    thresh = 1e-5,
-    trace = FALSE,
-    warm_start = NULL,
-    ls_initial = TRUE) {
+  Y,
+  X = NULL,
+  Z = NULL,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  r = 2,
+  lambda_M = 0,
+  lambda_beta = 0,
+  lambda_gamma = 0,
+  Ur = NULL,
+  dr = NULL,
+  Uc = NULL,
+  dc = NULL,
+  maxit = 300,
+  thresh = 1e-5,
+  trace = FALSE,
+  warm_start = NULL,
+  ls_initial = TRUE
+) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
 
@@ -208,7 +209,6 @@ imr.fit <- function(
     }
 
 
-
     #  Update gamma via soft-threshold -------------------------------------
     if (gamma_flag) {
       gamma <- soft_threshold_cpp(
@@ -240,7 +240,6 @@ imr.fit <- function(
     Y@x <- Y@x + old_val - M_obs
 
 
-
     # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
     # A_mat <- AD
     if (laplace_r_flag) {
@@ -258,7 +257,6 @@ imr.fit <- function(
     old_val <- M_obs
     M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
-
 
 
     # 4.7 Convergence check ----------------------------------------------------
@@ -308,17 +306,18 @@ imr.fit <- function(
 #' }
 #' @export
 imr.fit_no_low_rank <- function(
-    Y,
-    X = NULL,
-    Z = NULL,
-    lambda_beta = NULL,
-    lambda_gamma = NULL,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    maxit = 300,
-    thresh = 1e-5,
-    warm_start = NULL,
-    trace = FALSE) {
+  Y,
+  X = NULL,
+  Z = NULL,
+  lambda_beta = NULL,
+  lambda_gamma = NULL,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  maxit = 300,
+  thresh = 1e-5,
+  warm_start = NULL,
+  trace = FALSE
+) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
 
@@ -399,8 +398,6 @@ imr.fit_no_low_rank <- function(
       change <- old_val - gamma0
       add_to_cols_inplace_cpp(Y@x, Y@p, change)
     }
-
-
 
 
     #  Update gamma via soft-threshold -------------------------------------

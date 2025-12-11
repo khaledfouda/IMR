@@ -148,7 +148,6 @@ error_metric <- list(
 )
 
 
-
 # SVD operations. general purpose, selects the optimal function to call
 #' @export
 opt_svd <-

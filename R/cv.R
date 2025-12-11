@@ -1,24 +1,25 @@
 #' @export
 imr.cv_M <- function(
-    y_train,
-    y_valid,
-    X = NULL,
-    Z = NULL,
-    Y_full = NULL,
-    lambda_beta = 0,
-    lambda_gamma = 0,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    hpar = get_imr_default_hparams(),
-    error_function = error_metric$rmse,
-    thresh = 1e-6,
-    maxit = 300,
-    trace = TRUE,
-    old_fit = NULL,
-    ls_initial = TRUE,
-    seed = NULL) {
+  y_train,
+  y_valid,
+  X = NULL,
+  Z = NULL,
+  Y_full = NULL,
+  lambda_beta = 0,
+  lambda_gamma = 0,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  hpar = IMR::get_imr_default_hparams(),
+  error_function = IMR:::error_metric$rmse,
+  thresh = 1e-6,
+  maxit = 300,
+  trace = TRUE,
+  old_fit = NULL,
+  ls_initial = TRUE,
+  seed = NULL
+) {
   # set seed and check input matrix type
-  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
+  if ((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
   stopifnot(is.Incomplete(y_train))
   stopifnot(is.Incomplete(y_valid))
   if (!is.null(Y_full)) stopifnot(is.Incomplete(Y_full))
@@ -26,7 +27,7 @@ imr.cv_M <- function(
   # lambda lambda_m sequence
   if (is.null(hpar$M$lambda_max)) {
     hpar$M$lambda_max <- get_lambda_M_max(
-      y_train, X, Z, T, T,
+      y_train, X, Z, TRUE, TRUE,
       lambda_beta, lambda_gamma
     ) *
       hpar$M$lambda_factor
@@ -179,27 +180,30 @@ imr.cv_M <- function(
 #----------------------------------------------------------
 #' @export
 imr.cv_laplace <- function(
-    data,
-    lambda_beta = 0,
-    lambda_gamma = 0,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    hpar = get_imr_default_hparams(),
-    error_function = IMR:::error_metric$rmse,
-    n_streaks = 2,
-    thresh = 1e-6,
-    maxit = 300,
-    trace = TRUE,
-    old_fit = NULL,
-    ls_initial = TRUE,
-    seed = NULL) {
+  data,
+  lambda_beta = 0,
+  lambda_gamma = 0,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  hpar = IMR::get_imr_default_hparams(),
+  error_function = IMR:::error_metric$rmse,
+  n_streaks = 2,
+  thresh = 1e-6,
+  maxit = 300,
+  trace = TRUE,
+  old_fit = NULL,
+  ls_initial = TRUE,
+  seed = NULL
+) {
   stopifnot(is.Incomplete(data$Y))
   stopifnot(is.Incomplete(data$y_train))
   stopifnot(is.Incomplete(data$y_valid))
-  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
+  if ((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
   #---------------------------------------------------
 
-  # fits a single "r" and returns [fit, error]
+  # fixed: all. variable: none. number of fits: 1.
+  # fits a single "rank" and returns [fit, error]; with all lambdas fixed.
+  # this is a single fit where all parameters are fixed but it returns validation error
   rank_fit_function <- function(r, data, hpar, lambda_betaa, lambda_gammaa,
                                 intercept_row, intercept_col,
                                 trace, thresh, maxit,
@@ -231,6 +235,8 @@ imr.cv_laplace <- function(
     return(list(fit, verror))
   }
 
+  #---
+  # variable: rank (r). others fixed. sequential. number of fits: r_min -> r_max with r_step and earlystop
   # fits a single [lambda r or lambda c] and then run adaptive tuner to
   # find the best "r" rank. Also returns [fit, error]
   laplace_fit_function <- function(lambda, row, data, hpar, lambda_beta,
@@ -263,7 +269,7 @@ imr.cv_laplace <- function(
     if (trace) {
       message(sprintf(
         "%s | lambda = %.3f | Best rank = %d | error = %.5f",
-        if(row) "rows" else "columns",
+        if (row) "rows" else "columns",
         lambda,
         results$best_parameter,
         results$best_error
@@ -275,6 +281,12 @@ imr.cv_laplace <- function(
   #--- we fit the function above twice, once for laplace rows and once for columns
   #---
   if (is.null(hpar$laplacian_col$U)) stop("Laplace matrices must be initialized")
+
+  #  variable: lambda_laplace, rank. Fixed: lambda_beta/gamma. Supposed to be parallel!!
+  # we run on a grid
+
+
+  #----------------
   results_rows <- IMR::adaptive_tuner(laplace_fit_function,
     step_sizes = hpar$laplace$step_sizes,
     start_value = hpar$laplace$start_value,
@@ -327,8 +339,10 @@ imr.cv_laplace <- function(
       results_cols$best_error
     ))
   }
-  hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
-                                                        results_cols$best_parameter)
+  hpar$laplacian_col <- IMR::decompose_symmetric_matrix(
+    data$similarity_col,
+    results_cols$best_parameter
+  )
 
   results <- list(rows = results_rows, cols = results_cols)
   # (optional) retrain on the full data
@@ -364,21 +378,22 @@ imr.cv_laplace <- function(
 #-----------------------------------------------------------
 #' @export
 imr.cv <- function(
-    inp.dat,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    lambda_beta = NULL,
-    lambda_gamma = NULL,
-    lambda_gamma_default = NULL,
-    hpar = get_imr_default_hparams(),
-    error_function = error_metric$rmse,
-    thresh = 1e-6,
-    maxit = 300,
-    verbose = 0,
-    ls_initial = FALSE,
-    seed = NULL,
-    fast.cv = FALSE,
-    separate_tuning = FALSE) {
+  inp.dat,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  lambda_beta = NULL,
+  lambda_gamma = NULL,
+  lambda_gamma_default = NULL,
+  hpar = get_imr_default_hparams(),
+  error_function = error_metric$rmse,
+  thresh = 1e-6,
+  maxit = 300,
+  verbose = 0,
+  ls_initial = FALSE,
+  seed = NULL,
+  fast.cv = FALSE,
+  separate_tuning = FALSE
+) {
   if (fast.cv) {
     return(
       IMR:::nlrr.cv(
