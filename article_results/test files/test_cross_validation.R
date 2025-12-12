@@ -39,9 +39,9 @@ sim_res <- function(dat, fit, name = "", ortho = TRUE,
 
 #-------------------------------------------------
 
-n <- 600
-m <- 800
-r <- 5
+n <- 300
+m <- 400
+r <- 4
 seed <- 2025
 
 dat <-
@@ -58,20 +58,28 @@ dat$similarity_cols %<>% solve()
 inp.dat <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)
 data <- inp.dat$model
 
+# the following are input parameters to the cv function >>
+lambda_beta <- lambda_gamma <- 0
+intercept_row <- intercept_col <- FALSE
+error_function <- IMR:::error_metric$rmse
+n_streaks <- 2; thresh = 1e-6; maxit=500; trace=TRUE; old_fit=NULL; ls_initial=FALSE;seed=2025
 
-
-
+# set-up the hpar >>
 hpar <- get_imr_default_hparams(dat$similarity_rows, data$similarity_cols, 0, 0)
-hpar$M$n.lambda <- 20
-hpar$M$rank.step <- 1
-# hpar$rank$rank.min <- hpar$rank$rank.max <- hpar$M$rank.min <-
-#  hpar$M$rank.max <- hpar$M$rank.init <- r
-hpar$laplace$step_sizes <- c(5, 1, 0.1)
-hpar$laplace$start_value <- 30
-hpar$laplace$end_value <- 0
-hpar$rank$step_sizes <- c(2, 1)
+hpar$laplace$lambda_step_sizes <- c(5, 1)
+hpar$laplace$alpha_step_sizes <- c(0.1)
 hpar$rank$n_streaks <- hpar$laplace$n_streaks <- 1
 
+# initialize parallel workers
+future::plan(future::sequential)
+future::plan(future::multisession, workers = 6)
+
+#--- done -------- go run from the function >>
+# delete this part later
+
+
+
+#--------------
 res <- data.frame()
 for (b in 1:1) {
   timesim <- system.time(fitsim <- IMR:::imr.cv_laplace(inp.dat$model, 0, 0, F, F, hpar, trace = T))

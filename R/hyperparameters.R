@@ -41,14 +41,17 @@ get_imr_default_hparams <- function(similarity_row = NULL,
     laplacian_col = laplacian_col,
     rank = list(
       step_sizes = c(2, 1),
-      rank.min = 2,
-      rank.max = 30,
+      min = 2,
+      max = 30,
       n_streaks = 2
     ),
     laplace = list(
-      step_sizes = c(5, 2, 1, 0.1, 0.01),
-      start_value = 0,
-      end_value = 30,
+      alpha_step_sizes = c(0.1, 0.01),
+      alpha_min = 0,
+      alpha_max = 1,
+      lambda_step_sizes = c(5, 2, 1, 0.1),
+      lambda_min = 0,
+      lambda_max = 30,
       n_streaks = 2
     )
   )

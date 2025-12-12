@@ -482,3 +482,20 @@ a = partial_crossprod(dat$X, (dat$beta), dat$fit_data$train@i, dat$fit_data$trai
 b =  partial_crossprod_cpp(dat$X, (dat$beta), dat$fit_data$train@i, dat$fit_data$train@p,F),
 times = 500
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
