@@ -39,9 +39,9 @@ sim_res <- function(dat, fit, name = "", ortho = TRUE,
 
 #-------------------------------------------------
 
-n <- 300
-m <- 400
-r <- 4
+n <- 800
+m <- 900
+r <- 6
 seed <- 2025
 
 dat <-
@@ -68,11 +68,11 @@ n_streaks <- 2; thresh = 1e-6; maxit=500; trace=TRUE; old_fit=NULL; ls_initial=F
 hpar <- get_imr_default_hparams(dat$similarity_rows, data$similarity_cols, 0, 0)
 hpar$laplace$lambda_step_sizes <- c(5, 1)
 hpar$laplace$alpha_step_sizes <- c(0.1)
+hpar$laplace$alpha_min <- hpar$laplace$alpha_max <- 0.5
 hpar$rank$n_streaks <- hpar$laplace$n_streaks <- 1
 
 # initialize parallel workers
-future::plan(future::sequential)
-future::plan(future::multisession, workers = 6)
+initialize_parallel_workers(9)
 
 #--- done -------- go run from the function >>
 # delete this part later
@@ -80,6 +80,28 @@ future::plan(future::multisession, workers = 6)
 
 
 #--------------
+
+
+#---- we now test the cv lambda_laplace function: >>>>
+bench::bench_time(fitsi <- simpute.cv(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$Y_full,
+                                      trace = T,
+                                      tol = 2, seed = seed,
+                                      maxit = 600,
+                                      test_error = IMR:::error_metric$rmse,
+                                      n.lambda = 20)) -> time.si
+
+round(lubridate::time_length(time.si, "minute"), 2)
+
+bench::bench_time(res <-
+                    IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
+                                         intercept_col = F,
+                             num_cores = 9)) -> time.lap
+round(lubridate::time_length(time.lap, "minute"), 2)
+sim_res(dat, res$best_fit, "laplace")
+sim_res(dat, fitsi$fit, "SoftImpute")
+
+
+#--------------------------------------------------------
 res <- data.frame()
 for (b in 1:1) {
   timesim <- system.time(fitsim <- IMR:::imr.cv_laplace(inp.dat$model, 0, 0, F, F, hpar, trace = T))
@@ -88,8 +110,8 @@ for (b in 1:1) {
     tol = 2, seed = seed,
     n.lambda = 20,
     test_error = IMR:::error_metric$rmse,
-    rank.init = hpar$M$rank.min, maxit = 600,
-    rank.step = 1, rank.limit = hpar$M$rank.max
+    #rank.init = hpar$M$rank.min, maxit = 600,
+    #rank.step = 1, rank.limit = hpar$M$rank.max
     # lambda0_fun = IMR::get_lambda_M_max
   ))
 

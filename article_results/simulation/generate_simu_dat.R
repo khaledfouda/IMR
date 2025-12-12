@@ -110,14 +110,14 @@ generate_simulated_data <- function(
   if(structured_error_A){
       distance.mat = fields::rdist(as.matrix(1:n))
 
-    stopifnot(kernel_type %in% c("Matern", "AR1"))
-    if(kernel_type == "Matern"){
+  #  stopifnot(kernel_type %in% c("Matern", "AR1"))
+    #if(kernel_type == "Matern"){
       kernel =   fields::Matern(distance.mat, smoothness = 5/2)
 
-    }else if(kernel_type == "AR1"){
-      kernel = 0.8^distance.mat
-    }
-    U = t(MASS::mvrnorm(r, rep(1,n), kernel))
+    #}else if(kernel_type == "AR1"){
+    #  kernel = 0.8^distance.mat
+    #}
+    U = t(MASS::mvrnorm(r, rep(0,n), kernel))
     similarity_rows = kernel
 
   }else
@@ -126,14 +126,14 @@ generate_simulated_data <- function(
   if(structured_error_B){
     distance.mat = fields::rdist(as.matrix(1:m))
 
-    stopifnot(kernel_type %in% c("Matern", "AR1"))
-    if(kernel_type == "Matern"){
-      kernel =   fields::Matern(distance.mat, smoothness = 3/2)
+  #  stopifnot(kernel_type %in% c("Matern", "AR1"))
+   # if(kernel_type == "Matern"){
+    #  kernel =   fields::Matern(distance.mat, smoothness = 3/2)
 
-    }else if(kernel_type == "AR1"){
+    #}else if(kernel_type == "AR1"){
       kernel = 0.4^distance.mat
-    }
-    V = t(MASS::mvrnorm(r, rep(1,m), kernel))
+    #}
+    V = t(MASS::mvrnorm(r, rep(0,m), kernel))
     similarity_cols = kernel
 
   }else

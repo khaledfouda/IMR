@@ -29,13 +29,13 @@ get_imr_default_hparams <- function(similarity_row = NULL,
     ),
     beta = list(
       lambda_max = NULL, # if NULL, computed internally (recommended)
-      n.lambda   = 20,
-      init.tol   = 3
+      n_lambda   = 20,
+      init_tol   = 3
     ),
     gamma = list(
       lambda_max = NULL,
-      n.lambda   = 20,
-      init.tol   = 3
+      n_lambda   = 20,
+      init_tol   = 3
     ),
     laplacian_row = laplacian_row,
     laplacian_col = laplacian_col,
