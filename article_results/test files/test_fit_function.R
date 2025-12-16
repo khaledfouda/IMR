@@ -5,23 +5,18 @@ require(tidyverse)
 source("./article_results/simulation/generate_simu_dat.R")
 
 # goal -> simulate fit function
-n = 400
-m = 300
-r = 4
+n = 10
+m = 8
+r = 2
 set.seed(2025)
 dat <-
-  generate_simulated_data(n, m, 10, 20, 0, 0.8,
+  generate_simulated_data(n, m, 2, 2, 5, 0.8,
                           sparsity_beta = .5, sparsity_gamma = 0.0,
                           structured_error_A = T,
                           structured_error_B = T,
                           prepare_for_fitting = T,mv_coeffs = T,seed = 2025)
-inp.dat <- list(
-  Y = dat$fit_data$Y_full,
-  y_train = dat$fit_data$train,
-  y_valid = dat$fit_data$valid,
-  Xq = dat$fit_data$X$Q,
-  Zq = dat$fit_data$Z$Q
-)
+inp.dat <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)
+
 hpar <- IMR::get_imr_default_hparams()
 #hpar$laplacian_col <- IMR::decompose_symmetric_matrix(dat$similarity_cols,1e-6,grid[i])
 
@@ -144,7 +139,20 @@ ggplot(results_rows$history, aes(x = parameter, y = error, color = factor(step_s
     color = "Step size"
   ) +
   theme_minimal()
-
+#==============================================
+Y = inp.dat$Y
+X = inp.dat$Xq
+Z = inp.dat$Zq
+intercept_row = FALSE
+intercept_col = FALSE
+r = 2
+lambda_M = 0.1
+lambda_beta = 0.1
+lambda_gamma = 0.2
+Ur = NULL;dr = NULL;Uc = NULL;dc = NULL
+maxit = 300;thresh = 1e-5;trace = TRUE
+warm_start = NULL
+ls_initial = TRUE
 
 
 

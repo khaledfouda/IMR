@@ -48,28 +48,26 @@ BEGIN_RCPP
 END_RCPP
 }
 // add_to_rows_inplace_cpp
-void add_to_rows_inplace_cpp(NumericVector yx, const IntegerVector i, const NumericVector add_per_row, double alpha);
-RcppExport SEXP _IMR_add_to_rows_inplace_cpp(SEXP yxSEXP, SEXP iSEXP, SEXP add_per_rowSEXP, SEXP alphaSEXP) {
+void add_to_rows_inplace_cpp(NumericVector yx, const IntegerVector i, const NumericVector add_per_row);
+RcppExport SEXP _IMR_add_to_rows_inplace_cpp(SEXP yxSEXP, SEXP iSEXP, SEXP add_per_rowSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type yx(yxSEXP);
     Rcpp::traits::input_parameter< const IntegerVector >::type i(iSEXP);
     Rcpp::traits::input_parameter< const NumericVector >::type add_per_row(add_per_rowSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    add_to_rows_inplace_cpp(yx, i, add_per_row, alpha);
+    add_to_rows_inplace_cpp(yx, i, add_per_row);
     return R_NilValue;
 END_RCPP
 }
 // add_to_cols_inplace_cpp
-void add_to_cols_inplace_cpp(NumericVector yx, const IntegerVector p, const NumericVector add_per_col, const double alpha);
-RcppExport SEXP _IMR_add_to_cols_inplace_cpp(SEXP yxSEXP, SEXP pSEXP, SEXP add_per_colSEXP, SEXP alphaSEXP) {
+void add_to_cols_inplace_cpp(NumericVector yx, const IntegerVector p, const NumericVector add_per_col);
+RcppExport SEXP _IMR_add_to_cols_inplace_cpp(SEXP yxSEXP, SEXP pSEXP, SEXP add_per_colSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type yx(yxSEXP);
     Rcpp::traits::input_parameter< const IntegerVector >::type p(pSEXP);
     Rcpp::traits::input_parameter< const NumericVector >::type add_per_col(add_per_colSEXP);
-    Rcpp::traits::input_parameter< const double >::type alpha(alphaSEXP);
-    add_to_cols_inplace_cpp(yx, p, add_per_col, alpha);
+    add_to_cols_inplace_cpp(yx, p, add_per_col);
     return R_NilValue;
 END_RCPP
 }
@@ -195,8 +193,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_soft_threshold_cpp", (DL_FUNC) &_IMR_soft_threshold_cpp, 2},
     {"_IMR_row_means_cpp", (DL_FUNC) &_IMR_row_means_cpp, 2},
     {"_IMR_col_means_cpp", (DL_FUNC) &_IMR_col_means_cpp, 2},
-    {"_IMR_add_to_rows_inplace_cpp", (DL_FUNC) &_IMR_add_to_rows_inplace_cpp, 4},
-    {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 4},
+    {"_IMR_add_to_rows_inplace_cpp", (DL_FUNC) &_IMR_add_to_rows_inplace_cpp, 3},
+    {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 3},
     {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
     {"_IMR_update_A_sim_cpp", (DL_FUNC) &_IMR_update_A_sim_cpp, 7},

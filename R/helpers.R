@@ -106,6 +106,7 @@ verify_warm_start <- function(M, J, min_eigv = 1e-6) {
   }
   d <- M$d
   if (is.null(d)) {
+    warning("warm start verification failed. Reinitializing...")
     return(NULL)
   }
   if (any(d > 0)) {
@@ -115,6 +116,7 @@ verify_warm_start <- function(M, J, min_eigv = 1e-6) {
     }
     verify_low_rank(M, J, min_eigv)
   } else {
+    warning("warm start verification failed. Reinitializing...")
     NULL
   }
 }

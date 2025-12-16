@@ -66,41 +66,23 @@ NumericVector col_means_cpp(SEXP yS4, const int n_rows) {
 // [[Rcpp::export]]
 void add_to_rows_inplace_cpp(NumericVector yx,
                              const IntegerVector i,
-                             const NumericVector add_per_row,
-                             double alpha = 1.0)
+                             const NumericVector add_per_row)
 {
-  const R_xlen_t nr = add_per_row.size();
-  const R_xlen_t nnz = yx.size();
-  if (i.size() != nnz)
-    stop("Length mismatch: length(i)=%ld must equal length(yx)=%ld",
-         (long)i.size(), (long)nnz);
-
-
-  for (R_xlen_t k = 0; k < nnz; ++k) {
-    int r = i[k];
-    if (r >= 0 && r < nr)          // guard
-      yx[k] += alpha * add_per_row[r];
-    else
-      stop("row index out of range");
+  // [later add this for speed]const int* RESTRICT ip = INTEGER(i);
+  for (R_xlen_t k = 0; k < yx.size(); ++k) {
+      yx[k] +=  add_per_row[i[k]];
   }
 }
+
 // [[Rcpp::export]]
 void add_to_cols_inplace_cpp(NumericVector yx,
                              const IntegerVector p,
-                             const NumericVector add_per_col,
-                             const double alpha = 1.0) {
+                             const NumericVector add_per_col) {
   const int m = p.size() - 1;
-  const R_xlen_t nnz = yx.size();
+
   for (int j = 0; j < m; ++j) {
-    const int start = p[j];
-    const int end   = p[j+1];
-    const double v = alpha * add_per_col[j];
-    if(v == 0.0) continue;
-    // if(pj > 0 && pj < nnz)
-    for (int k = start; k < end; ++k)
-      yx[k] += v;
-    // else
-    //   stop("Out of bound");
+    for (int k = p[j]; k < p[j+1]; ++k)
+      yx[k] += add_per_col[j];
   }
 }
 

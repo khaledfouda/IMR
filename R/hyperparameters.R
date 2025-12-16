@@ -17,45 +17,32 @@ get_imr_default_hparams <- function(similarity_row = NULL,
   }
 
   list(
-    M = list(
-      lambda_max = NULL, # = lambda_{M,min}
-      lambda_factor = 1 / 4, # ignored if lambda_init is provided
-      n.lambda = 20, # sequence from lambda_init to 0 (inclusive)
-      rank.init = 2,
-      rank.max = 30,
-      rank.min = 2,
-      rank.step = 2,
-      early.stopping = 1
-    ),
     beta = list(
-      max = NULL, # if NULL, computed internally (recommended)
       min   = 0,
-      n_streaks = 2,
+      max = NULL, # if NULL, computed internally (recommended)
       step_sizes = c(5,1),
+      n_streaks = 2,
       value = 0 # if equal to max then no tuning to be done
     ),
     gamma = list(
-      max = NULL, # if NULL, computed internally (recommended)
       min   = 0,
-      n_streaks = 2,
+      max = NULL, # if NULL, computed internally (recommended)
       step_sizes = c(5,1),
+      n_streaks = 2,
       value = 0 # if equal to max then no tuning to be done
     ),
     laplacian_row = laplacian_row,
     laplacian_col = laplacian_col,
     rank = list(
-      step_sizes = c(2, 1),
       min = 2,
       max = 30,
+      step_sizes = c(2, 1),
       n_streaks = 2
     ),
     laplace = list(
-      alpha_step_sizes = c(0.1, 0.01),
-      alpha_min = 0,
-      alpha_max = 1,
-      lambda_step_sizes = c(5, 2, 1, 0.1),
-      lambda_min = 0,
-      lambda_max = 30,
+      min = 0,
+      max = 30,
+      step_sizes = c(5, 2, 1, 0.1),
       n_streaks = 2
     )
   )

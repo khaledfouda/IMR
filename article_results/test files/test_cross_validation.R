@@ -50,7 +50,7 @@ r <- 6
 seed <- 2025
 
 dat <-
-  generate_simulated_data(n, m, r, 3, 0, 0.8,
+  generate_simulated_data(n, m, r, 3, 5, 0.8,
     sparsity_beta = 0, sparsity_gamma = 0,
     intercept = FALSE,
     structured_error_A = T,

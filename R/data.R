@@ -47,7 +47,7 @@ prepare_data <- function(Y, X = NULL, Z = NULL,
 }
 
 #' @export
-reconstruct <- function(fit, dat, trace = TRUE) {
+reconstruct <- function(fit, dat, trace = TRUE, shared_information=FALSE) {
   out <- list(beta = NA, gamma = NA, M = NA, xbeta = NA, gammaz = NA, estimates = 0)
 
   check_mat <- function(mat, is_matrix = TRUE) {
@@ -71,17 +71,30 @@ reconstruct <- function(fit, dat, trace = TRUE) {
     out$M <- fit$u %*% (fit$d * t(fit$v))
     out$estimates <- out$M
   }
-  if (check_mat(fit$beta) & check_mat(dat$X) & check_mat(dat$Xr)) {
-    if (trace) message("Constructing XBeta ...")
-    out$beta <- solve(dat$Xr) %*% fit$beta
-    out$xbeta <- dat$X %*% out$beta
-    out$estimates <- out$estimates + out$xbeta
+  if (check_mat(dat$X) & check_mat(dat$Xr)) {
+    if(!shared_information && check_mat(fit$beta)){
+      if (trace) message("Constructing XBeta ...")
+      out$beta <- solve(dat$Xr) %*% fit$beta
+      out$estimates <- out$estimates + out$xbeta
+    }else if(shared_information && check_mat(fit$beta, FALSE)){
+      if (trace) message("Constructing XBeta ...")
+      out$beta <- solve(dat$Xr) %*% fit$beta
+      out$xbeta <- dat$X %*% out$beta
+      out$estimates <- out$estimates + out$xbeta  %*% matrix(1, 1, ncol(out$estimates))
+    }
   }
   if (check_mat(fit$gamma) & check_mat(dat$Z) & check_mat(dat$Zr)) {
-    if (trace) message("Constructing GammaZ ...")
-    out$gamma <- fit$gamma %*% solve(t(dat$Zr))
-    out$gammaz <- out$gamma %*% t(dat$Z)
-    out$estimates <- out$estimates + out$gammaz
+    if(!shared_information && check_mat(fit$beta)){
+      out$gamma <- fit$gamma %*% solve(t(dat$Zr))
+      out$gammaz <- out$gamma %*% t(dat$Z)
+      out$estimates <- out$estimates + out$gammaz
+    }else if(shared_information && check_mat(fit$beta, FALSE)){
+      if (trace) message("Constructing GammaZ ...")
+      out$gamma <- fit$gamma %*% solve(t(dat$Zr))
+      out$gammaz <- out$gamma %*% t(dat$Z)
+      out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% t(out$gammaz)
+
+    }
   }
   if (check_mat(fit$beta0, FALSE)) {
     if (trace) message("Constructing row intercepts ...")

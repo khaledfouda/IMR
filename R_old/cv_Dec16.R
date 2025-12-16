@@ -25,7 +25,7 @@ imr.cv_laplace <- function(
   #---------------------------------------------------
 
   # fixed: all. variable: none. number of fits: 1.
-  # fits a single fit and returns [fit, error]; with all lambdas fixed.
+  # fits a single "rank" and returns [fit, error]; with all lambdas fixed.
   # this is a single fit where all parameters are fixed but it returns validation error
   rank_fit_function <- function(r, data, hpar, shared_information,
                                 lambda_laplace,
@@ -33,26 +33,7 @@ imr.cv_laplace <- function(
                                 trace, thresh, maxit,
                                 ls_initial, fit=NULL) {
     if(shared_information){
-      fit <- IMR::imr.fit_shared(
-        Y = data$y_train,
-        X = data$Xq,
-        Z = data$Zq,
-        r = r,
-        lambda_M = lambda_laplace,
-        lambda_beta = hpar$beta$value,
-        lambda_gamma = hpar$gamma$value,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        Ur = hpar$laplacian_row$U,
-        dr = hpar$laplacian_row$d,
-        Uc = hpar$laplacian_col$U,
-        dc = hpar$laplacian_col$d,
-        warm_start = fit,
-        trace = F,
-        thresh = thresh,
-        maxit = maxit,
-        ls_initial = ls_initial
-      )
+
     }else{
       fit <- IMR::imr.fit(
         Y = data$y_train,
@@ -85,15 +66,24 @@ imr.cv_laplace <- function(
   }
 
   #---
-  #' this function takes a single lambda_laplace and finds the optimal rank. everything else fixed.
-  laplace_cv_lambda_function <- function(lambda_laplace, data, hpar,
-                                        intercept_row, shared_information,
+
+
+  #--- we fit the function above twice, once for laplace rows and once for columns
+  #---
+  if (is.null(hpar$laplacian_row$U) || is.null(hpar$laplacian_col$U) )
+    stop("Laplace matrices must be initialized")
+
+  #  variable: alpha, lambda_laplace, rank. Fixed: lambda_beta/gamma. Supposed to be parallel!!
+  # we run on a grid of (alpha, lambda_laplace)
+  #' this function takes a single alpha and finds the optimal rank. everything else fixed.
+  laplace_cv_alpha_function <- function(alpha, data, hpar, lambda_laplace,
+                                        intercept_row,
                                         intercept_col, trace, thresh,
                                         maxit, ls_initial, fit = NULL, warm_start = NULL) {
     if(!is.null(data$similarity_rows) && lambda_laplace > 0)
-      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row, lambda_laplace)
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row, lambda_laplace * alpha)
     if(!is.null(data$similarity_cols) && lambda_laplace > 0)
-      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col, lambda_laplace)
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col, lambda_laplace * (1 - alpha))
 
     results <- IMR::adaptive_tuner(rank_fit_function,
       step_sizes = hpar$rank$step_sizes,
@@ -102,8 +92,6 @@ imr.cv_laplace <- function(
       inc_streak_to_stop = hpar$rank$n_streaks,
       data = data,
       hpar = hpar,
-      lambda_laplace = lambda_laplace,
-      shared_information = shared_information,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       trace = trace,
@@ -114,24 +102,62 @@ imr.cv_laplace <- function(
     )
     if (trace >= 3) {
       message(sprintf(
-        " lambda_laplace = %.3f | best rank = %.0f | error = %.5f",
+        " lambda_laplace = %.3f | alpha = %.3f | best rank = %.0f | error = %.5f",
+        lambda_laplace,
+        alpha,
+        results$best_parameter,
+        results$best_error
+      ))
+    }
+    results$best_fit$alpha = alpha
+    results$best_fit$lambda_laplace = lambda_laplace
+    return(list(fit = results$best_fit, error = results$best_error))
+  }
+
+  #-- layer two >>
+  #' This function takes a single lambda_laplace and finds the optimal (alpha, rank) combination
+  #' for a fixed lambda_beta, lambda_gamma
+  laplace_cv_lambda_function <- function(lambda_laplace, data, hpar,
+                                         intercept_row,
+                                         intercept_col, trace, thresh,
+                                         maxit, ls_initial, fit = NULL,
+                                         warm_start = NULL) {
+    results <- IMR::adaptive_tuner(laplace_cv_alpha_function,
+      step_sizes = hpar$laplace$alpha_step_sizes,
+      start_value = if(lambda_laplace > 0) hpar$laplace$alpha_min else 0,
+      end_value = if(lambda_laplace > 0) hpar$laplace$alpha_max else 0,
+      inc_streak_to_stop = hpar$laplace$n_streaks,
+      lambda_laplace = lambda_laplace,
+      data = data,
+      hpar = hpar,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      trace = trace,
+      thresh = thresh,
+      warm_start = warm_start,
+      maxit = maxit,
+      ls_initial = ls_initial
+    )
+    if (trace >= 2) {
+      message(sprintf(
+        "lambda_laplace = %.3f | best alpha = %.3f | best rank = %.0f | error = %.5f",
         lambda_laplace,
         results$best_parameter,
+        results$best_fit$r,
         results$best_error
       ))
     }
     results$best_fit$lambda_laplace = lambda_laplace
     return(list(fit = results$best_fit, error = results$best_error))
   }
-
   #----------------
   #' the following goes over a grid of lambda_laplace and then calls what's above.
   #' this one is supposed to run in parallel!! implement that.
   #' output: results$best_parameter: best lambda_laplace, and error. it also returns results$fit
   results <- IMR:::parallel_grid_1d_adaptive(
-    param_min = hpar$laplace$min,
-    param_max = hpar$laplace$max,
-    step_sizes = hpar$laplace$step_sizes,
+    param_min = hpar$laplace$lambda_min,
+    param_max = hpar$laplace$lambda_max,
+    step_sizes = hpar$laplace$lambda_step_sizes,
     f = laplace_cv_lambda_function,
     .progress = TRUE,
     .trace = trace >= 5,
@@ -139,7 +165,6 @@ imr.cv_laplace <- function(
     .seed = TRUE,
     data = data,
     hpar = hpar,
-    shared_information = shared_information,
     intercept_row = intercept_row,
     intercept_col = intercept_col,
     trace = trace,
@@ -152,8 +177,9 @@ imr.cv_laplace <- function(
 
   if (trace >= 1) {
     message(sprintf(
-      "Best lambda_laplace = %.3f | best rank = %.0f | error = %.5f",
+      "Best lambda_laplace = %.3f | best alpha = %.3f | best rank = %.0f | error = %.5f",
       results$best_fit$lambda_laplace,
+      results$best_fit$alpha,
       results$best_fit$r,
       results$best_error
     ))

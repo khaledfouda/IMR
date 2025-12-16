@@ -13,12 +13,12 @@ col_means_cpp <- function(yS4, n_rows) {
     .Call(`_IMR_col_means_cpp`, yS4, n_rows)
 }
 
-add_to_rows_inplace_cpp <- function(yx, i, add_per_row, alpha = 1.0) {
-    invisible(.Call(`_IMR_add_to_rows_inplace_cpp`, yx, i, add_per_row, alpha))
+add_to_rows_inplace_cpp <- function(yx, i, add_per_row) {
+    invisible(.Call(`_IMR_add_to_rows_inplace_cpp`, yx, i, add_per_row))
 }
 
-add_to_cols_inplace_cpp <- function(yx, p, add_per_col, alpha = 1.0) {
-    invisible(.Call(`_IMR_add_to_cols_inplace_cpp`, yx, p, add_per_col, alpha))
+add_to_cols_inplace_cpp <- function(yx, p, add_per_col) {
+    invisible(.Call(`_IMR_add_to_cols_inplace_cpp`, yx, p, add_per_col))
 }
 
 frob_ratio_cpp <- function(Uold, Dsqold, Vold, U, Dsq, V) {
