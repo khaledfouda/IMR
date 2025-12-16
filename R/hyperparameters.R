@@ -28,14 +28,18 @@ get_imr_default_hparams <- function(similarity_row = NULL,
       early.stopping = 1
     ),
     beta = list(
-      lambda_max = NULL, # if NULL, computed internally (recommended)
-      n_lambda   = 20,
-      init_tol   = 3
+      max = NULL, # if NULL, computed internally (recommended)
+      min   = 0,
+      n_streaks = 2,
+      step_sizes = c(5,1),
+      value = 0 # if equal to max then no tuning to be done
     ),
     gamma = list(
-      lambda_max = NULL,
-      n_lambda   = 20,
-      init_tol   = 3
+      max = NULL, # if NULL, computed internally (recommended)
+      min   = 0,
+      n_streaks = 2,
+      step_sizes = c(5,1),
+      value = 0 # if equal to max then no tuning to be done
     ),
     laplacian_row = laplacian_row,
     laplacian_col = laplacian_col,
@@ -269,6 +273,7 @@ adaptive_tuner <- function(
   start_value = 0,
   end_value = 20, # if start < end then it's ascending.
   inc_streak_to_stop = 2,
+  .warm_start = NULL,
   ... # all the other parameters being passed to eval_fun
 ) {
   results <- data.frame()
@@ -276,7 +281,7 @@ adaptive_tuner <- function(
   ascending <- start_value < end_value
   direction <- if (ascending) 1 else -1
   current_start <- start_value
-
+  fit = .warm_start
   for (k in seq_along(step_sizes)) {
     if (ascending & current_start > end_value) {
       stop("For ascending search, start_value must be <= end_value.")
@@ -297,9 +302,10 @@ adaptive_tuner <- function(
 
     while ((ascending && parameter <= end_value) ||
       (!ascending && parameter >= end_value)) {
-      out <- eval_fun(parameter, ...)
-      fit <- out[[1]]
-      error <- out[[2]]
+      out <- eval_fun(parameter, fit=fit,  ...)
+      fit <- out$fit
+      #print(fit$d[1])
+      error <- out$error
 
       step_history <- rbind(
         step_history,
@@ -313,7 +319,7 @@ adaptive_tuner <- function(
       if (error < best_overall$error) {
         best_overall$parameter <- parameter
         best_overall$error <- error
-        best_overall$fit <- fit
+        best_overall$fit <- out$fit
       }
 
       if (error >= prev_error) {

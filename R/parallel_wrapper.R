@@ -387,3 +387,5 @@ parallel_grid_1d_adaptive <- function(param_min,
 
   return(result)
 }
+
+

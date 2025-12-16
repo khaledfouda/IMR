@@ -13,6 +13,7 @@ generate_simulated_data <- function(
     p = 6,
     q = 6,
     missp = 0.8,
+    intercept = FALSE,
     collinear = FALSE,
     # half_discrete        = FALSE,
     sparsity_beta = 1,
@@ -204,12 +205,21 @@ generate_simulated_data <- function(
     }
   }
 
+  if(intercept) {
+    row_intercept <- runif(n, -4, -2)
+    col_intercept <- rnorm(m, 3, 3)
+  }else
+    row_intercept <- col_intercept <- NULL
   # 8) Observed data with Gaussian noise ---------------------------------------
   THETA <- M
   if (p > 0) THETA <- THETA + X %*% beta
   if (q > 0) THETA <- THETA + gamma %*% t(Z)
+  if(intercept){
+    THETA <- THETA + row_intercept %*% matrix(1,1,m)
+    THETA <- THETA + matrix(1, n, 1) %*% t(col_intercept)
+  }
   # generate noise
-  noise_sd <- 1
+  noise_sd <- 1#sd(THETA)
   E <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
 
   # if(structured_error){
@@ -261,6 +271,8 @@ generate_simulated_data <- function(
     mask = mask,
     similarity_rows = similarity_rows,
     similarity_cols = similarity_cols,
+    intercept_row  = row_intercept,
+    intercept_col = col_intercept,
     # X        = X,
     # Z        = Z,
     # gamma    = gamma,

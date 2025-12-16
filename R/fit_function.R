@@ -180,46 +180,6 @@ imr.fit <- function(
     U_old <- U
     V_old <- V
     D_old <- Dsq
-    # Intercepts (row/column) ---------------------------------------------
-    # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
-      old_val <- beta0
-      beta0 <- row_means_cpp(Y, nc) + beta0
-      change <- old_val - beta0
-      add_to_rows_inplace_cpp(Y@x, Y@i, change)
-    }
-
-    # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
-      old_val <- gamma0
-      gamma0 <- col_means_cpp(Y, nr) + gamma0
-      change <- old_val - gamma0
-      add_to_cols_inplace_cpp(Y@x, Y@p, change)
-    }
-
-    #  Update beta via soft-threshold --------------------------------------
-    if (beta_flag) {
-      beta <- soft_threshold_cpp(
-        as.matrix((crossprod(X, Y)) + beta),
-        lambda_beta
-      )
-      old_val <- xb_obs
-      xb_obs <- partial_crossprod(X, beta, irow, pcol)
-      Y@x <- Y@x + old_val - xb_obs
-    }
-
-
-    #  Update gamma via soft-threshold -------------------------------------
-    if (gamma_flag) {
-      gamma <- soft_threshold_cpp(
-        as.matrix(Y %*% Z + gamma),
-        lambda_gamma
-      )
-
-      old_val <- zg_obs
-      zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
-      Y@x <- Y@x + old_val - zg_obs
-    }
 
     #  Update (V, Dsq, U) from the "B" side --------------------------------
     # B_mat = BD
@@ -258,6 +218,51 @@ imr.fit <- function(
     M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
     Y@x <- Y@x + old_val - M_obs
 
+
+
+
+
+    #  Update beta via soft-threshold --------------------------------------
+    if (beta_flag) {
+      beta <- soft_threshold_cpp(
+        as.matrix((crossprod(X, Y)) + beta),
+        lambda_beta
+      )
+      old_val <- xb_obs
+      xb_obs <- partial_crossprod(X, beta, irow, pcol)
+      Y@x <- Y@x + old_val - xb_obs
+    }
+
+
+    #  Update gamma via soft-threshold -------------------------------------
+    if (gamma_flag) {
+      gamma <- soft_threshold_cpp(
+        as.matrix(Y %*% Z + gamma),
+        lambda_gamma
+      )
+
+      old_val <- zg_obs
+      zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
+      Y@x <- Y@x + old_val - zg_obs
+    }
+
+
+    # Intercepts (row/column) ---------------------------------------------
+    # Row-level intercepts (beta0), then apply delta to residuals.
+    if (intercept_row) {
+      old_val <- beta0
+      beta0 <- row_means_cpp(Y, nc) + beta0
+      change <- old_val - beta0
+      add_to_rows_inplace_cpp(Y@x, Y@i, change)
+    }
+
+    # Column-level intercepts (gamma0), then apply delta to residuals.
+    if (intercept_col) {
+      old_val <- gamma0
+      gamma0 <- col_means_cpp(Y, nr) + gamma0
+      change <- old_val - gamma0
+      add_to_cols_inplace_cpp(Y@x, Y@p, change)
+    }
 
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
@@ -382,22 +387,6 @@ imr.fit_no_low_rank <- function(
     iter <- iter + 1
     old_err <- Y@x[]
 
-    # Intercepts (row/column) ---------------------------------------------
-    # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
-      old_val <- beta0
-      beta0 <- row_means_cpp(Y, nc) + beta0
-      change <- old_val - beta0
-      add_to_rows_inplace_cpp(Y@x, Y@i, change)
-    }
-
-    # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
-      old_val <- gamma0
-      gamma0 <- col_means_cpp(Y, nr) + gamma0
-      change <- old_val - gamma0
-      add_to_cols_inplace_cpp(Y@x, Y@p, change)
-    }
 
 
     #  Update gamma via soft-threshold -------------------------------------
@@ -422,6 +411,25 @@ imr.fit_no_low_rank <- function(
       xb_obs <- partial_crossprod(X, beta, irow, pcol)
       Y@x <- Y@x + old_val - xb_obs
     }
+
+    # Intercepts (row/column) ---------------------------------------------
+    # Row-level intercepts (beta0), then apply delta to residuals.
+    if (intercept_row) {
+      old_val <- beta0
+      beta0 <- row_means_cpp(Y, nc) + beta0
+      change <- old_val - beta0
+      add_to_rows_inplace_cpp(Y@x, Y@i, change)
+    }
+
+    # Column-level intercepts (gamma0), then apply delta to residuals.
+    if (intercept_col) {
+      old_val <- gamma0
+      gamma0 <- col_means_cpp(Y, nr) + gamma0
+      change <- old_val - gamma0
+      add_to_cols_inplace_cpp(Y@x, Y@p, change)
+    }
+
+
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- mean((Y@x - old_err)^2)
 

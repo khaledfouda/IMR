@@ -35,7 +35,7 @@ mapx <- as.data.frame(dat$X) %>%
   dplyr::select(user, group)
 
 
-
+IMR::initialize_parallel_workers()
 
 mapz %<>%
   group_by(movie) %>%
