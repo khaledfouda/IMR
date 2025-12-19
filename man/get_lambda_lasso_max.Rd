@@ -13,6 +13,7 @@ get_lambda_lasso_max(
   y = NULL,
   intercept_row = TRUE,
   intercept_col = TRUE,
+  shared_information = FALSE,
   hpar = get_imr_default_hparams(),
   interior_loop_length = 20,
   maxit = 100,

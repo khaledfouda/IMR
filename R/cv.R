@@ -1,4 +1,3 @@
-
 #----------------------------------------------------------
 #' @export
 imr.cv_laplace <- function(
@@ -27,65 +26,46 @@ imr.cv_laplace <- function(
   # fixed: all. variable: none. number of fits: 1.
   # fits a single fit and returns [fit, error]; with all lambdas fixed.
   # this is a single fit where all parameters are fixed but it returns validation error
-  rank_fit_function <- function(r, data, hpar, shared_information,
+  rank_fit_function <- function(r, fdata, hpar, shared_information,
                                 lambda_laplace,
                                 intercept_row, intercept_col,
                                 trace, thresh, maxit,
-                                ls_initial, fit=NULL) {
-    if(shared_information){
-      fit <- IMR::imr.fit_shared(
-        Y = data$y_train,
-        X = data$Xq,
-        Z = data$Zq,
-        r = r,
-        lambda_M = lambda_laplace,
-        lambda_beta = hpar$beta$value,
-        lambda_gamma = hpar$gamma$value,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        Ur = hpar$laplacian_row$U,
-        dr = hpar$laplacian_row$d,
-        Uc = hpar$laplacian_col$U,
-        dc = hpar$laplacian_col$d,
-        warm_start = fit,
-        trace = F,
-        thresh = thresh,
-        maxit = maxit,
-        ls_initial = ls_initial
-      )
-    }else{
-      fit <- IMR::imr.fit(
-        Y = data$y_train,
-        X = data$Xq,
-        Z = data$Zq,
-        r = r,
-        lambda_M = lambda_laplace,
-        lambda_beta = hpar$beta$value,
-        lambda_gamma = hpar$gamma$value,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        Ur = hpar$laplacian_row$U,
-        dr = hpar$laplacian_row$d,
-        Uc = hpar$laplacian_col$U,
-        dc = hpar$laplacian_col$d,
-        warm_start = fit,
-        trace = F,
-        thresh = thresh,
-        maxit = maxit,
-        ls_initial = ls_initial
-      )
-    }
-    vestim <- IMR:::reconstruct_partial(fit, data, data$y_valid)
-    verror <- error_function(data$y_valid@x, vestim@x)
+                                ls_initial, fit=NULL,
+                                error_function = IMR:::error_metric$rmse) {
+
+    fit <- IMR::imr.fit(
+      Y = fdata$y_train,
+      X = fdata$Xq,
+      Z = fdata$Zq,
+      r = r,
+      lambda_M = lambda_laplace,
+      lambda_beta = hpar$beta$value,
+      lambda_gamma = hpar$gamma$value,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      shared_information = shared_information,
+      Ur = hpar$laplacian_row$U,
+      dr = hpar$laplacian_row$d,
+      Uc = hpar$laplacian_col$U,
+      dc = hpar$laplacian_col$d,
+      warm_start = fit,
+      trace = F,
+      thresh = thresh,
+      maxit = maxit,
+      ls_initial = ls_initial
+    )
+
+    vestim <- IMR:::reconstruct_partial(fit, fdata, fdata$y_valid, shared_information)
+    verror <- error_function(fdata$y_valid@x, vestim@x)
     # verbose
 
-    if (trace >= 4) message(sprintf("rank=%d | err=%.5f ", r, verror))
+    if (trace >= 3) message(sprintf("rank=%d | err=%.5f ", r, verror))
     fit$r = r
     return(list(fit = fit, error = verror))
   }
 
   #---
-  #' this function takes a single lambda_laplace and finds the optimal rank. everything else fixed.
+  # this function takes a single lambda_laplace and finds the optimal rank. everything else fixed.
   laplace_cv_lambda_function <- function(lambda_laplace, data, hpar,
                                         intercept_row, shared_information,
                                         intercept_col, trace, thresh,
@@ -100,7 +80,7 @@ imr.cv_laplace <- function(
       start_value = hpar$rank$min,
       end_value = hpar$rank$max,
       inc_streak_to_stop = hpar$rank$n_streaks,
-      data = data,
+      fdata = data,
       hpar = hpar,
       lambda_laplace = lambda_laplace,
       shared_information = shared_information,
@@ -112,7 +92,7 @@ imr.cv_laplace <- function(
       maxit = maxit,
       ls_initial = ls_initial
     )
-    if (trace >= 3) {
+    if (trace >= 2) {
       message(sprintf(
         " lambda_laplace = %.3f | best rank = %.0f | error = %.5f",
         lambda_laplace,
@@ -125,18 +105,18 @@ imr.cv_laplace <- function(
   }
 
   #----------------
-  #' the following goes over a grid of lambda_laplace and then calls what's above.
-  #' this one is supposed to run in parallel!! implement that.
-  #' output: results$best_parameter: best lambda_laplace, and error. it also returns results$fit
+  # the following goes over a grid of lambda_laplace and then calls what's above.
+  # this one is supposed to run in parallel!! implement that.
+  # output: results$best_parameter: best lambda_laplace, and error. it also returns results$fit
   results <- IMR:::parallel_grid_1d_adaptive(
     param_min = hpar$laplace$min,
     param_max = hpar$laplace$max,
     step_sizes = hpar$laplace$step_sizes,
     f = laplace_cv_lambda_function,
     .progress = TRUE,
-    .trace = trace >= 5,
-    .packages = c("IMR"),
-    .seed = TRUE,
+    .trace = trace >= 4,
+    #.packages = c("IMR"),
+    .seed = if(is.null(seed)) FALSE else seed,
     data = data,
     hpar = hpar,
     shared_information = shared_information,
@@ -165,22 +145,23 @@ imr.cv_laplace <- function(
 
   # (optional) retrain on the full data
   if (!is.null(data$Y) & final_fit) {
-    hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
-                                                          results$best_fit$lambda_laplace *
-                                                            results$best_fit$alpha)
-    hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
-                                                          results$best_fit$lambda_laplace *
-                                                            (1 - results$best_fit$alpha))
+    if(!is.null(data$similarity_rows) && results$best_fit$lambda_laplace > 0)
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
+                                                          results$best_fit$lambda_laplace)
+    if(!is.null(data$similarity_cols) && results$best_fit$lambda_laplace > 0)
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
+                                                          results$best_fit$lambda_laplace)
     fit <- IMR::imr.fit(
       Y = data$Y,
       X = data$Xq,
       Z = data$Zq,
       r = results$best_fit$r,
-      lambda_M = 0,
+      lambda_M = results$best_fit$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
+      shared_information = shared_information,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,
       Uc = hpar$laplacian_col$U,
@@ -212,6 +193,7 @@ imr.cv <- function(
   maxit = 500,
   trace = 0,
   ls_initial = FALSE,
+  shared_information = FALSE,
   num_cores = num_cores,
   warm_start = NULL,
   seed = NULL,
@@ -271,7 +253,7 @@ imr.cv <- function(
     hpar$beta$max <- IMR::get_lambda_lasso_max(
       y_train = data$y_train,
       X = data$Xq,
-      y_valid = data$y_valid,
+      #y_valid = data$y_valid,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 100,
@@ -279,10 +261,10 @@ imr.cv <- function(
     )
   }
   if (gamma_flag & is.null(hpar$gamma$max)) {
-    hpar$gamma$max <- get_lambda_lasso_max(
+    hpar$gamma$max <- IMR::get_lambda_lasso_max(
       y_train = data$y_train,
       Z = data$Zq,
-      y_valid = data$y_valid,
+      #y_valid = data$y_valid,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 100,
@@ -295,6 +277,7 @@ imr.cv <- function(
   # parallel setup
   # the following function takes
   single_fit <- function(parameter, type="rows", data, intercept_row, intercept_col,
+                         shared_information,
                          hpar, error_function, thresh, trace, maxit, ls_initial,
                          seed, num_cores, fit = NULL){
 
@@ -308,6 +291,7 @@ imr.cv <- function(
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       hpar = hpar,
+      shared_information = shared_information,
       error_function = error_function,
       thresh = thresh,
       trace = trace - 2,
@@ -321,11 +305,10 @@ imr.cv <- function(
     if (trace >= 2) {
       message(sprintf(
         paste0( "lambda_beta = %.2f | lambda_gamma = %.2f | ",
-          "best lambda_laplace = %.2f | best alpha = %.2f | best rank = %.0f | error = %.3f"),
+          "best lambda_laplace = %.2f | best rank = %.0f | error = %.3f"),
         hpar$beta$value,
         hpar$gamma$value,
         results$best_fit$lambda_laplace,
-        results$best_fit$alpha,
         results$best_fit$r,
         results$best_error
       ))
@@ -352,6 +335,7 @@ imr.cv <- function(
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       hpar = hpar,
+      shared_information = shared_information,
       error_function = error_function,
       thresh = thresh,
       trace = trace,
@@ -366,11 +350,10 @@ imr.cv <- function(
     if (trace >= 1) {
       message(sprintf(
         paste0( "best lambda_beta = %.2f | lambda_gamma = %.2f | ",
-                "best lambda_laplace = %.2f | best alpha = %.2f | best rank = %.0f | error = %.3f"),
+                "best lambda_laplace = %.2f | best rank = %.0f | error = %.3f"),
         hpar$beta$value,
         hpar$gamma$value,
         results$best_fit$lambda_laplace,
-        results$best_fit$alpha,
         results$best_fit$r,
         results$best_error
       ))
@@ -390,6 +373,7 @@ imr.cv <- function(
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       hpar = hpar,
+      shared_information = shared_information,
       error_function = error_function,
       thresh = thresh,
       trace = trace,
@@ -403,11 +387,10 @@ imr.cv <- function(
     if (trace >= 1) {
       message(sprintf(
         paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-                "best lambda_laplace = %.2f | best alpha = %.2f | best rank = %.0f | error = %.3f"),
+                "best lambda_laplace = %.2f |  best rank = %.0f | error = %.3f"),
         hpar$beta$value,
         hpar$gamma$value,
         results$best_fit$lambda_laplace,
-        results$best_fit$alpha,
         results$best_fit$r,
         results$best_error
       ))
@@ -415,22 +398,24 @@ imr.cv <- function(
 
 }
     if (!is.null(data$Y)) {
-      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
-                                                            results$best_fit$lambda_laplace *
-                                                              results$best_fit$alpha)
-      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
-                                                            results$best_fit$lambda_laplace *
-                                                              (1 - results$best_fit$alpha))
+      if(!is.null(data$similarity_rows) && results$best_fit$lambda_laplace > 0)
+        hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
+                                                              results$best_fit$lambda_laplace)
+      if(!is.null(data$similarity_cols) && results$best_fit$lambda_laplace > 0)
+        hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
+                                                              results$best_fit$lambda_laplace)
+
       fit <- IMR::imr.fit(
         Y = data$Y,
         X = data$Xq,
         Z = data$Zq,
         r = results$best_fit$r,
-        lambda_M = 0,
+        lambda_M = results$best_fit$lambda_laplace,
         lambda_beta = hpar$beta$value,
         lambda_gamma = hpar$gamma$value,
         intercept_row = intercept_row,
         intercept_col = intercept_col,
+        shared_information = shared_information,
         Ur = hpar$laplacian_row$U,
         dr = hpar$laplacian_row$d,
         Uc = hpar$laplacian_col$U,

@@ -24,6 +24,7 @@ generate_simulated_data <- function(
     # the following are for similairty matrices
     structured_error_A = FALSE,
     structured_error_B = FALSE,
+    SNR = 0.6/0.4,
     kernel_type = "Matern",
     seed = NULL) {
   require(utils)
@@ -96,10 +97,10 @@ generate_simulated_data <- function(
     }
   } else {
     if (p > 0) {
-      beta <- matrix(runif(p * m, 1, 2), nrow = p, ncol = m)
+      beta <- matrix(runif(p, 1, 2), nrow = p, ncol = m)
     }
     if (q > 0) {
-      gamma <- matrix(runif(n * q, 1, 2), nrow = n, ncol = q)
+      gamma <- matrix(runif(q, 1, 2), nrow = n, ncol = q, TRUE)
     }
   }
   # =====================================================================
@@ -219,7 +220,9 @@ generate_simulated_data <- function(
     THETA <- THETA + matrix(1, n, 1) %*% t(col_intercept)
   }
   # generate noise
-  noise_sd <- 1#sd(THETA)
+
+  noise_sd <- sqrt((sum( (THETA-mean(THETA))^2 )/(n*m-1)) / (SNR^2))
+  #noise_sd <- 1
   E <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
 
   # if(structured_error){

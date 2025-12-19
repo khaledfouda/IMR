@@ -21,6 +21,7 @@ imr.fit(
   maxit = 300,
   thresh = 1e-05,
   trace = FALSE,
+  shared_information = FALSE,
   warm_start = NULL,
   ls_initial = TRUE
 )

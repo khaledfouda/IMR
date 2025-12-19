@@ -105,6 +105,7 @@ get_lambda_lasso_max <- function(
   # row_cov = TRUE,
   intercept_row = TRUE,
   intercept_col = TRUE,
+  shared_information = FALSE,
   hpar = get_imr_default_hparams(),
   interior_loop_length = 20,
   maxit = 100,
@@ -132,11 +133,12 @@ get_lambda_lasso_max <- function(
       lambda_gamma = 0,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
+      shared_information = shared_information,
       maxit = maxit,
       trace = F
     )
     lambda_M <- 0
-    r <- 5
+    r <- 2
   } else {
     mfit <- IMR::imr.cv_M(
       y_train = y_train,
@@ -181,6 +183,7 @@ get_lambda_lasso_max <- function(
       lambda_gamma  = lambda_gamma,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
+      shared_information = shared_information,
       maxit         = maxit,
       trace         = FALSE
     )
@@ -340,7 +343,7 @@ adaptive_tuner <- function(
     # current_start <- step_history$parameter[second_idx]
     # end_value <- step_history$parameter[best_idx] + step_size
   }
-
+  fit <- NULL # reset just in case
   list(
     best_parameter = best_overall$parameter,
     best_error     = best_overall$error,

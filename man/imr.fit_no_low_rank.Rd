@@ -12,6 +12,7 @@ imr.fit_no_low_rank(
   lambda_gamma = NULL,
   intercept_row = FALSE,
   intercept_col = FALSE,
+  shared_information = FALSE,
   maxit = 300,
   thresh = 1e-05,
   warm_start = NULL,

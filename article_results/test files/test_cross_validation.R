@@ -1,7 +1,5 @@
 library(devtools)
-clean_dll()
-Rcpp::compileAttributes()
-document()
+#clean_dll(); Rcpp::compileAttributes(); document()
 load_all()
 # devtools::uninstall(); devtools::install()
 require(tidyverse)
@@ -11,12 +9,13 @@ source("./other_models/SoftImpute_cv.R")
 
 sim_res <- function(dat, fit, name = "",
                     error_metric = IMR:::error_metric$rmse,
+                    shared_information = FALSE,
                     digits = 5) {
   # dat should include: Y, theta, beta, X, Xr, Z, Zr
   # prepare data : we need values for: M, beta, theta
   # expect fit$ to contain (u, d, and v) or (M)
 
-  refit <- IMR::reconstruct(fit, dat)
+  refit <- IMR::reconstruct(fit, dat,shared_information = shared_information)
   test.obs <- dat$Y == 0
 
   out <- data.frame(model = name)
@@ -26,7 +25,7 @@ sim_res <- function(dat, fit, name = "",
   out$beta_rmse <- error_metric(refit$beta, dat$beta)
   out$M_rmse <- error_metric(refit$M, dat$M)
 
-  out$rank <- qr(refit$estimates)$rank
+  out$rank <- length(fit$d)#qr(refit$estimates)$rank
   true_singular <- IMR::opt_svd(dat$theta, tol = 1e-6)$d
   num_singular <- length(true_singular)
   if (length(fit$d) > num_singular) {
@@ -44,31 +43,32 @@ sim_res <- function(dat, fit, name = "",
 
 #-------------------------------------------------
 
-n <- 800
-m <- 600
-r <- 6
+n <- 600
+m <- 500
+r <- 3
 seed <- 2025
 
 dat <-
-  generate_simulated_data(n, m, r, 3, 5, 0.8,
+  generate_simulated_data(n, m, r, 2, 3, 0.7,
     sparsity_beta = 0, sparsity_gamma = 0,
     intercept = FALSE,
-    structured_error_A = T,
-    structured_error_B = T,
-    prepare_for_fitting = T, mv_coeffs = T, seed = 2025
+    structured_error_A = F, SNR = 1,
+    structured_error_B = F,
+    prepare_for_fitting = T, mv_coeffs = F, seed = 2025
   )
 
-dat$similarity_rows %<>% solve()
-dat$similarity_cols %<>% solve()
+#dat$similarity_rows %<>% solve()
+#dat$similarity_cols %<>% solve()
 
 
-# dat$similarity_rows <- diag(1, nrow(dat$theta))
-# dat$similarity_cols <- diag(1, ncol(dat$theta))
+dat$similarity_rows <- diag(1, nrow(dat$theta))
+dat$similarity_cols <- diag(1, ncol(dat$theta))
 
 inp.dat <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)
 data <- inp.dat
 dat$Xr <- data$Xr;
-
+dat$Zr <- data$Zr;
+data$X <- data$Z <- NULL;
 
 # the following are input parameters to the cv function >>
 lambda_beta <- lambda_gamma <- 0
@@ -80,21 +80,34 @@ num_cores = 0; warm_start = NULL;
 
 # set-up the hpar >>
 hpar <- get_imr_default_hparams(data$similarity_rows, data$similarity_cols, 0, 0)
-hpar$laplace$lambda_step_sizes <- c(.2)
-hpar$laplace$alpha_step_sizes <- c(0.1)
-hpar$laplace$lambda_max <- 10
-hpar$laplace$alpha_min <- 0.5; hpar$laplace$alpha_max <-0.5
+hpar$laplace$step_sizes <- c(.1)
+hpar$laplace$max <- 5
+hpar$laplace$min <- 0;
 hpar$rank$n_streaks <- hpar$laplace$n_streaks <- 1
-hpar$beta$step_sizes <- c(0.3, 0.1, 0.05)
+hpar$beta$step_sizes <- c(0.3)
 hpar$beta$n_streaks <- 2
 # hpar$beta$max <- hpar$beta$value <- 500
 # hpar$gamma$max <- hpar$gamma$value <- 500
 
 # initialize parallel workers
-IMR::initialize_parallel_workers(9)
+IMR::initialize_parallel_workers(8)
 
 #--- done -------- go run from the function >>
 # delete this part later
+n1 = IMR::opt_svd(
+  IMR::naive_MC(resid),
+  r, n, m, FALSE, FALSE
+)
+n2 <- IMR::opt_svd(
+  resid,
+  r, n, m, FALSE, FALSE
+)
+
+n1$d
+n2$d
+
+n1$u[100,]
+
 
 #--------------
 
@@ -107,32 +120,166 @@ bench::bench_time(fitsi <- simpute.cv(dat$fit_data$train, dat$fit_data$valid, da
                                       test_error = IMR:::error_metric$rmse,
                                       n.lambda = 20)) -> time.si
 
-round(lubridate::time_length(time.si, "minute"), 2)
+round(lubridate::time_length(time.si[2], "minute"), 2)
 
 data_nocov <- data
 data_nocov$X <- data_nocov$Xq <- data_nocov$Xr <- NULL
-
+data_nocov$Z <- data_nocov$Zq <- data_nocov$Zr <- NULL
 
 #-  1. IMR without intercepts or covariates
 res1 <-
-  IMR:::imr.cv_laplace(data_nocov, trace=2, hpar=hpar, intercept_row = F,
+  IMR:::imr.cv_laplace(data_nocov, trace=3, hpar=hpar, intercept_row = F,
                        intercept_col = F, ls_initial = F,
-                       seed = 2025, warm_start = NULL,
+                       seed = 2025, warm_start = NULL, maxit=500,
                        num_cores = 0)
 
 #-  2. IMR with intercept
 res2 <-
   IMR:::imr.cv_laplace(data_nocov, trace=2, hpar=hpar, intercept_row = T,
-                       intercept_col = T, ls_initial = F,
+                       intercept_col = T, ls_initial = T,
                        seed = 2025, warm_start = NULL,
-                       num_cores = 0)
+                       num_cores = 8)
 
 #-  3.  IMR with covariates
 res3 <-
-  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = F,
+  IMR:::imr.cv_laplace(data, trace=1, hpar=hpar, intercept_row = F,
+                       intercept_col = F, ls_initial = TRUE,
                        seed = 2025, warm_start = NULL,
-                       num_cores = 0)
+                       num_cores = 8)
+
+res5 <- IMR::imr.cv(
+  data, hpar = hpar, trace = 2, ls_initial = T, num_cores = 8, seed=2025
+)
+
+
+y_train <- data$y_train; X = NULL; Z = data$Zq;shared_information=FALSE
+
+hpar$beta$max <- 3
+hpar$gamma$max <- NULL
+
+
+res41 <-
+  IMR:::imr.cv_laplace(data, trace=3, hpar=hpar, intercept_row = F,
+                       intercept_col = F, ls_initial = T,
+                       seed = 5025, warm_start = NULL,
+                       shared_information = TRUE,
+                       num_cores = 8)
+
+
+all(res41$best_fit$u == res4$best_fit$u)
+
+
+fit <- IMR::imr.fit_no_low_rank(
+  Y = data$y_train, X = data$Xq, Z = data$Zq,
+  lambda_beta = 0, lambda_gamma = 0, intercept_row = F,
+  intercept_col = F, shared_information = T, maxit = 600,
+  trace = TRUE
+)
+
+sdd = IMR::opt_svd((data$y_train), 5,n,m,F,F)
+fit[names(sdd)] <- sdd
+fit$d[1:5] <- 0
+sim_res(dat, fit, "Covariates (beta from Covariates)",T)
+
+
+IMR:::imr.cv_laplace(mdata,
+                    trace=4, hpar=hpar, intercept_row = F,
+                    intercept_col = F, ls_initial = T,final_fit = F,
+                    seed = NULL, warm_start = NULL, maxit=600,
+                    shared_information = TRUE,
+                    num_cores = 5) -> out2
+
+fit <- out1$best_fit
+vestim <- IMR::reconstruct_partial(fit, mdata, mdata$y_valid, T)
+IMR:::error_metric$rmse(mdata$y_valid@x, vestim@x)
+
+out2$best_fit$lambda_laplace
+
+rank_fit_function(2, mdata, hpar, T, 5, F, F, T, 1e-6, 600, F, NULL)$error
+r = 6; data = mdata; shared_information=T; lambda_laplace=5; intercept_row=intercept_col=F;
+thresh=1e-6; trace=T; maxit=600; ls_initial=F; error_function=IMR:::error_metric$rmse; fit=NULL
+
+
+outrec <- IMR::reconstruct(fit, data, T, T)
+error_function(data$y_valid@x, outrec$estimates[as.matrix(data$y_valid!=0)])
+
+
+
+IMR::adaptive_tuner(rank_fit_function,
+                    step_sizes = hpar$rank$step_sizes,
+                    start_value = hpar$rank$min,
+                    end_value = hpar$rank$max,
+                    inc_streak_to_stop = hpar$rank$n_streaks,
+                    data = data,
+                    hpar = hpar,
+                    lambda_laplace = lambda_laplace,
+                    shared_information = shared_information,
+                    intercept_row = intercept_row,
+                    intercept_col = intercept_col,
+                    trace = trace,
+                    thresh = thresh,
+                    .warm_start = NULL,
+                    maxit = maxit,
+                    ls_initial = F
+)
+
+
+res2$best_fit$d
+
+fit <- res4$best_fit
+target <- data$y_valid
+dat$Xq <- data$Xq
+
+errormet <- IMR:::error_metric$rmse
+
+sim_res(dat, results1$IMRXZLS[[10]]$best_fit, "Covariates (beta from Covariates)",errormet,T)
+sim_res(dat, res41$best_fit, "Covariates (beta from Covariates)",errormet,T)
+
+
+
+error_function(data$y_valid@x, target@x)
+data$X <- data$Z <- NULL
+
+target <- IMR::reconstruct_partial(fit, dat, target, TRUE, TRUE)
+
+res4$best_fit$beta
+dat$fit_data$Rbeta[1,] %>% summary()
+res3$best_fit$beta[1,] %>% summary()
+fit$beta[1,] %>% summary()
+res3$best_fit$beta[2,] %>% summary()
+xbeta <- data$Xq %*% res4$best_fit$beta
+xbeta2 <- res2$best_fit$beta0
+error_function(xbeta, xbeta2)
+
+
+xbeta2[1:10]
+
+res4$best_fit$gamma
+dat$fit_data$gammaRt[1,]
+res3$best_fit$gamma[,1] %>% summary()
+res3$best_fit$gamma[,2] %>% summary()
+
+fit1 <- IMR::imr.fit(
+  Y = data$y_train,
+  X = data$Xq,
+  Z = data$Zq,
+  r = 2,
+  lambda_M = 5,
+  lambda_beta = hpar$beta$value,
+  lambda_gamma = hpar$gamma$value,
+  intercept_row = F,
+  intercept_col = F,
+  shared_information = T,
+  Ur = hpar$laplacian_row$U,
+  dr = hpar$laplacian_row$d,
+  Uc = hpar$laplacian_col$U,
+  dc = hpar$laplacian_col$d,
+  warm_start = NULL,
+  trace = T,
+  thresh = 1e-6,
+  maxit = 500,
+  ls_initial = T
+)
 
 
 #-  4. IMR with covariates but initialize covariates with IMR with covariates
@@ -179,6 +326,13 @@ res7 <-
                        num_cores = 0)
 
 
+res4$best_fit$beta <- matrix(res4$best_fit$beta, 2, m)
+res4$best_fit$gamma <- matrix(res4$best_fit$gamma, n, 2, T)
+
+
+fit2 <- fit <- res4$best_fit
+fit2$beta <- matrix(res4$best_fit$beta, 2, m)
+fit2$gamma <- matrix(res4$best_fit$gamma, n, 2, T)
 
 errormet <- IMR:::error_metric$rmse
 require(gt)
@@ -186,12 +340,12 @@ require(gt)
 rbind(
   sim_res(dat, res1$best_fit, "None",errormet),
   sim_res(dat, res2$best_fit, "intercept",errormet ),
-  sim_res(dat, res3$best_fit, "Covariates",errormet),
-  sim_res(dat, res4$best_fit, "Covariates (beta from Covariates)",errormet),
-  #sim_res(dat, res5$best_fit, "Covariates (but with random init)",errormet),
-  sim_res(dat, res6$best_fit, "Covariates(beta is true beta)",errormet),
-  sim_res(dat, res7$best_fit, "Covariates(AB^T is from None)",errormet),
-  sim_res(dat, fitsi$fit, "SoftImpute",errormet)
+  #sim_res(dat, res3$best_fit, "Covariates",errormet),
+   sim_res(dat, res4$best_fit, "Covariates (beta from Covariates)",errormet,T),
+  # #sim_res(dat, res5$best_fit, "Covariates (but with random init)",errormet),
+  # sim_res(dat, res6$best_fit, "Covariates(beta is true beta)",errormet),
+  # sim_res(dat, res7$best_fit, "Covariates(AB^T is from None)",errormet),
+   sim_res(dat, fitsi$fit, "SoftImpute",errormet)
 ) %>%
   arrange(test_rmse) %>%
   dplyr::select(-eigen_rmse) %>%
@@ -355,3 +509,8 @@ trace <- T
 thresh <- 1e-6
 maxit <- 300
 ls_initial <- FALSE
+
+
+
+
+#$#$#$#$#$

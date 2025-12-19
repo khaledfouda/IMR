@@ -18,12 +18,12 @@ prepare_data <- function(Y, X = NULL, Z = NULL,
   if (!is.null(similarity_rows)) {
     out$similarity_rows <- similarity_rows
   } else {
-    out$similarity_rows <- diag(1, nrow(Y), nrow(Y))
+    out$similarity_rows <- NULL #diag(1, nrow(Y), nrow(Y))
   }
   if (!is.null(similarity_cols)) {
     out$similarity_cols <- similarity_cols
   } else {
-    out$similarity_cols <- diag(1, ncol(Y), ncol(Y))
+    out$similarity_cols <- NULL #diag(1, ncol(Y), ncol(Y))
   }
 
   if (!is.null(X)) {
@@ -47,9 +47,13 @@ prepare_data <- function(Y, X = NULL, Z = NULL,
 }
 
 #' @export
-reconstruct <- function(fit, dat, trace = TRUE, shared_information=FALSE) {
+reconstruct <- function(fit, data, trace = TRUE, shared_information=FALSE) {
   out <- list(beta = NA, gamma = NA, M = NA, xbeta = NA, gammaz = NA, estimates = 0)
-
+  # remove this check later
+  if(shared_information){
+    if(!is.null(fit$beta)) fit$beta <- as.vector(fit$beta)
+    if(!is.null(fit$gamma)) fit$gamma <- as.vector(fit$gamma)
+  }
   check_mat <- function(mat, is_matrix = TRUE) {
     if (any(is.na(mat))) {
       return(FALSE)
@@ -71,28 +75,30 @@ reconstruct <- function(fit, dat, trace = TRUE, shared_information=FALSE) {
     out$M <- fit$u %*% (fit$d * t(fit$v))
     out$estimates <- out$M
   }
-  if (check_mat(dat$X) & check_mat(dat$Xr)) {
+  if (check_mat(data$X) & check_mat(data$Xr)) {
     if(!shared_information && check_mat(fit$beta)){
       if (trace) message("Constructing XBeta ...")
-      out$beta <- solve(dat$Xr) %*% fit$beta
+      out$beta <- solve(data$Xr) %*% fit$beta
+      out$xbeta <- data$X %*% out$beta
       out$estimates <- out$estimates + out$xbeta
     }else if(shared_information && check_mat(fit$beta, FALSE)){
       if (trace) message("Constructing XBeta ...")
-      out$beta <- solve(dat$Xr) %*% fit$beta
-      out$xbeta <- dat$X %*% out$beta
+      out$beta <- solve(data$Xr) %*% fit$beta
+      out$xbeta <- data$X %*% out$beta
       out$estimates <- out$estimates + out$xbeta  %*% matrix(1, 1, ncol(out$estimates))
     }
   }
-  if (check_mat(fit$gamma) & check_mat(dat$Z) & check_mat(dat$Zr)) {
-    if(!shared_information && check_mat(fit$beta)){
-      out$gamma <- fit$gamma %*% solve(t(dat$Zr))
-      out$gammaz <- out$gamma %*% t(dat$Z)
-      out$estimates <- out$estimates + out$gammaz
-    }else if(shared_information && check_mat(fit$beta, FALSE)){
+  if (check_mat(data$Z) & check_mat(data$Zr)) {
+    if(!shared_information && check_mat(fit$gamma)){
       if (trace) message("Constructing GammaZ ...")
-      out$gamma <- fit$gamma %*% solve(t(dat$Zr))
-      out$gammaz <- out$gamma %*% t(dat$Z)
-      out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% t(out$gammaz)
+      out$gamma <- fit$gamma %*% solve(t(data$Zr))
+      out$gammaz <- out$gamma %*% t(data$Z)
+      out$estimates <- out$estimates + out$gammaz
+    }else if(shared_information && check_mat(fit$gamma, FALSE)){
+      if (trace) message("Constructing GammaZ ...")
+      out$gamma <- fit$gamma %*% solve(t(data$Zr))
+      out$gammaz <- out$gamma %*% t(data$Z)
+      out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% out$gammaz
 
     }
   }
@@ -109,7 +115,7 @@ reconstruct <- function(fit, dat, trace = TRUE, shared_information=FALSE) {
 }
 #-----------------------------
 #' @export
-reconstruct_partial <- function(fit, dat, target, trace = FALSE) {
+reconstruct_partial <- function(fit, data, target, shared_information = FALSE, trace = FALSE) {
   stopifnot(is.Incomplete(target))
   if (trace) message("Constructing M ...")
   target@x <- IMR:::partial_crossprod(fit$u, fit$d * t(fit$v), target@i, target@p)
@@ -130,14 +136,24 @@ reconstruct_partial <- function(fit, dat, target, trace = FALSE) {
     return(FALSE)
   }
 
-  if (check_mat(fit$beta) & check_mat(dat$X) & check_mat(dat$Xr)) {
+  if (check_mat(data$Xq) && check_mat(data$Xr)) {
     if (trace) message("Constructing XBeta ...")
-    target@x <- target@x + partial_crossprod(dat$X, fit$beta, target@i, target@p)
+    if(shared_information){
+      xbeta <- data$Xq %*% fit$beta
+      add_to_rows_inplace_cpp(target@x, target@i, xbeta)
+    }else
+      target@x <- target@x + partial_crossprod(data$Xq, fit$beta, target@i, target@p)
   }
-  if (check_mat(fit$gamma) & check_mat(dat$Z) & check_mat(dat$Zr)) {
+  if (check_mat(data$Zq) && check_mat(data$Zr)) {
     if (trace) message("Constructing GammaZ ...")
-    target@x <- target@x + partial_crossprod(fit$gamma, dat$Z, target@i, target@p, TRUE)
+    if(shared_information){
+      gammaz <- tcrossprod(fit$gamma, data$Zq)
+      add_to_cols_inplace_cpp(target@x, target@p, gammaz)
+    }else
+    target@x <- target@x + partial_crossprod(fit$gamma, data$Zq, target@i, target@p, TRUE)
   }
+
+
   if (check_mat(fit$beta0, FALSE)) {
     if (trace) message("Constructing row intercepts ...")
     add_to_rows_inplace_cpp(target@x, target@i, fit$beta0)

@@ -253,12 +253,12 @@ parallel_grid_1d <- function(grid,
   n_tasks <- length(parameter_values)
 
   # Progressor placeholder, used only when .progress = TRUE
-  p <- NULL
+  progressor <- NULL
 
   # Worker: evaluate f(parameter = value, ...) and optionally update progress
   worker <- function(i) {
-    if (!is.null(p)) {
-      on.exit(p(), add = TRUE)
+    if (!is.null(progressor)) {
+      on.exit(progressor(), add = TRUE)
     }
 
     value <- parameter_values[[i]]
@@ -284,7 +284,7 @@ parallel_grid_1d <- function(grid,
   # Evaluate the grid, optionally with a progress bar
   res <- if (.progress && requireNamespace("progressr", quietly = TRUE)) {
     progressr::with_progress({
-      p <<- progressr::progressor(along = seq_len(n_tasks))
+      progressor <<- progressr::progressor(along = seq_len(n_tasks))
       run()
     })
   } else {
