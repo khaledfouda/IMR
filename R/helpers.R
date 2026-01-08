@@ -106,17 +106,17 @@ verify_warm_start <- function(M, J, min_eigv = 1e-6) {
   }
   d <- M$d
   if (is.null(d)) {
-    warning("warm start verification failed. Reinitializing...")
+    warning("warm start verification failed - no singular values detected -. Reinitializing...")
     return(NULL)
   }
-  if (any(d > 0)) {
+  if (any(d >= 0)) {
     if (length(d) == 1) {
       M$u <- matrix(M$u, ncol = 1)
       M$v <- matrix(M$v, ncol = 1)
     }
     verify_low_rank(M, J, min_eigv)
   } else {
-    warning("warm start verification failed. Reinitializing...")
+    warning("warm start verification failed - no nonegative singular values -. Reinitializing...")
     NULL
   }
 }

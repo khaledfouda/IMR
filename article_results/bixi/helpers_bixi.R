@@ -46,13 +46,16 @@ BKTR_Bixi_Wrapper <- function(
   )
 
   results <- c(results,
-               prepare_output_bixi(NA, dat$X, test.estimates$y_est,
-                                   train.estimates$y_est, test.estimates$y,
-                                   train.estimates$y))
+               prepare_output_bixi(X = dat$X,
+                                   Z = dat$Z,
+                                   estim.test = test.estimates$y_est,
+                                   estim.train = train.estimates$y_est,
+                                   obs.test = test.estimates$y,
+                                   obs.train = train.estimates$y))
 
-  results$total_num_fits = 1000
+  # results$total_num_fits = 1000
   results$time = bktr_fit$time
-  results$time_per_fit = results$time  / results$total_num_fits
+  # results$time_per_fit = results$time  / results$total_num_fits
   results$cov_summaries = bktr_fit$fit$beta_covariates_summary
   results$sparsity = 0
   if(return_fit) return(list(fit=bktr_fit, results=results))
@@ -86,30 +89,35 @@ generate_similarity_bixi <- function(miss      = 0.8,
   temporal_kernel = BKTR::KernelSE$new()
   spatial_kernel$set_positions(bkdat$spatial_positions_df)
   temporal_kernel$set_positions(bkdat$temporal_positions_df)
-  spatial_kernel$kernel_gen()  %>% as.matrix() -> spatial_kernel
-  temporal_kernel$kernel_gen() %>% as.matrix() -> temporal_kernel
+
+  symmetrize <- function(x) (x + t(x))/2
+
+  spatial_kernel$kernel_gen()  %>%
+    as.matrix() -> #%>%
+    solve() %>%
+    symmetrize() ->
+    spatial_kernel
+  temporal_kernel$kernel_gen() %>% as.matrix() %>%
+    solve() %>% symmetrize() -> temporal_kernel
   list(spatial=spatial_kernel, temporal=temporal_kernel)
 }
 
 
 prepare_output_bixi <- function(
-    time,
     X,
+    Z,
     estim.test,
     estim.train,
     obs.test,
     obs.train,
-    time_per_fit = NA,
-    total_num_fits = NA,
     beta.estim  = NA,
+    gamma.estim = NA,
     M.estim     = NA,
-    test_error  = IMR:::error_metric$rmse
+    test_error  = IMR:::error_metric$rmse,
+    digits = 5
 ) {
   # Core metrics
   results <- list(
-    time           = time,
-    time_per_fit   = time_per_fit,
-    total_num_fits = total_num_fits,
     error.test  = test_error(estim.test, obs.test),
     corr.test   = cor(estim.test, obs.test),
     error.train = test_error(estim.train, obs.train),
@@ -121,15 +129,22 @@ prepare_output_bixi <- function(
       qr(beta.estim)$rank,
       error = function(e) NA
     ),
-    sparsity    = tryCatch(
+    sparsity_beta    = tryCatch(
       sum(beta.estim == 0) / length(beta.estim),
+      error = function(e) NA
+    ),
+    rank_gamma   = tryCatch(
+      qr(gamma.estim)$rank,
+      error = function(e) NA
+    ),
+    sparsity_gamma    = tryCatch(
+      sum(gamma.estim == 0) / length(gamma.estim),
       error = function(e) NA
     )
   )
 
-
   # Covariate coefficient summaries
-  results$cov_summaries <- tryCatch({
+  results$beta_summaries <- tryCatch({
     apply(beta.estim, 1, summary) |>
       as.data.frame() |>
       t() |>
@@ -142,22 +157,40 @@ prepare_output_bixi <- function(
       `rownames<-`(colnames(X))
   }, error = function(e) NA)
 
+  results$gamma_summaries <- tryCatch({
+    apply(gamma.estim, 2, summary) |>
+      as.data.frame() |>
+      t() |>
+      as.data.frame() |>
+      dplyr::mutate(
+        prop_non_zero = apply(gamma.estim, 2, function(x)
+          sum(x != 0) / length(x)
+        )
+      ) |>
+      `rownames<-`(colnames(Z))
+  }, error = function(e) NA)
+
   results
 }
 
 
-output_wrapper_bixi <- function(fit, dat, odat){
-  out <- IMR:::reconstruct(fit$fit, dat)
-  prepare_output_bixi(
-    NULL,
-    X           = dat$X,
-    estim.test  = out$estimates[as.matrix(odat$splits$test != 0)],
-    estim.train = out$estimates[as.matrix(odat$Y.inc != 0)],
-    obs.test    = odat$splits$test@x,
-    obs.train   = odat$Y.inc@x,
-    beta.estim  = out$beta,
-    M.estim     = out$M,
-    time_per_fit = fit$time_per_fit,
-    total_num_fits = fit$total_num_fits)
-}
+output_wrapper_bixi <- function(fit, dat, shared_information = FALSE){
 
+
+  out <- IMR:::reconstruct(fit, dat$modd,shared_information =  shared_information)
+
+  return(list(
+    rec = out,
+    res = prepare_output_bixi(
+      X           = dat$X,
+      Z           = dat$Z,
+      estim.test  = out$estimates[as.matrix(dat$test_mask==1)],
+      estim.train = out$estimates[as.matrix(dat$modd$obs_mask == 1)],
+      obs.test    = dat$test@x,
+      obs.train   = dat$modd$Y@x,
+      beta.estim  = out$beta,
+      gamma.estim = out$gamma,
+      M.estim     = out$M
+    )
+  ))
+}

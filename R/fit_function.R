@@ -66,7 +66,6 @@ imr.fit <- function(
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
-
   dims <- dim(Y)
   nr <- dims[1]
   nc <- dims[2]
@@ -258,7 +257,7 @@ imr.fit <- function(
     if (beta_flag) {
       if(shared_information){
         beta <- soft_threshold_cpp(
-          (crossprod(X, row_means_cpp(Y, nc) )) + beta,
+          crossprod(X, row_means_cpp(Y, nc) ) + beta,
           lambda_beta
         )
         old_val <- xbeta
@@ -549,7 +548,7 @@ imr.fit_no_low_rank <- function(
   }
 
   if (iter == maxit) {
-    warning("Did not converge in ", maxit, " iterations.")
+    warning("[no-low-rank] Did not converge in ", maxit, " iterations.")
   }
 
   #  return -----------------------------------------

@@ -256,7 +256,10 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
 #' @param time_cov Logical; if TRUE, use time-varying covariates
 #' @return A list with matrices X, Y, masks, and splits.
 prepare_bixi_data <- function(miss_p = 0.8,
-                              timestamp = "25Sep") {
+                              timestamp = "25Sep", seed = NULL,
+                              val_prop = 0.2,
+                              x_keep = c("x_humidity","x_max_temp_f","x_mean_temp_c",
+                                         "x_total_precip_mm","x_holiday" )) {
 
   # Read pre-saved train/test splits --------------
   file_prefix <- paste0(
@@ -277,7 +280,8 @@ prepare_bixi_data <- function(miss_p = 0.8,
     group_by(row) %>%
     slice(1) %>%
     ungroup() %>%
-    dplyr::select(-row)
+    dplyr::select(-row) %>%
+    dplyr::select(x_keep)
 
   Z <- train_df %>%
     dplyr::select(column, starts_with("z_")) %>%
@@ -317,59 +321,9 @@ prepare_bixi_data <- function(miss_p = 0.8,
     " max = {max(row_na)}({round(100*max(row_na)/dim(Y)[2],1)}%)\n",
     " Train     : {round(100*mean(!is.na(Y)),1)}%"
   ))
-  # Observation mask -----------------------------
-  obs_mask <- (!is.na(Y)) * 1
-  # print(sum(obs_mask == 1) / length(obs_mask))
-
-  # Identify test entries via merge --------------
-  mixed <- train_df %>%
-    dplyr::select(row, column, y) %>%
-    merge(
-      dplyr::select(test_df, row, column, y),
-      by = c("row", "column"),
-      all.x = TRUE
-    ) %>%
-    as.data.frame() %>%
-    arrange(row, column) %>%
-    mutate(
-      # missing is true for observed training observations + missing
-      # missing is false for the test set
-      missing = !(is.na(y.x) & !is.na(y.y))
-    )
-  # print(sum(mixed$missing) / nrow(mixed))
-
-  test_mask <- reshape2::dcast(
-    mixed,
-    row ~ column,
-    value.var = "missing"
-  ) %>%
-    dplyr::select(-row) %>%
-    { colnames(.) <- NULL; . } %>%
-    as.matrix() * 1
-  # print(sum(1 - test_mask) / length(test_mask))
-  # obs mask is 1 for training  and 0 for missing
-  # print(obs_mask[1:5, 1:5])
-  # test mask is 0 for test and 1 otherwise
-  # print(test_mask[1:5, 1:5])
-
-  # Validation mask via MC split -----------------
-  # valid mask is 0 for validation and 1 otherwise
-  valid_mask <- IMR:::mask_train_test_split(obs_mask, testp = 0.2)
-
-  # Assemble core model.dat -----------------------
-  model_dat <- list(
-    X     = as.matrix(X),
-    Z     = as.matrix(Z),
-    Y     = Y,
-    masks = list(
-      tr_val = obs_mask,
-      test   = test_mask,
-      valid  = valid_mask
-    )
-  )
-
-  # Prepare test matrix ---------------------------
-  test_mat <- train_df %>%
+  #-------
+  # test dataset
+  test_inc <- train_df %>%
     dplyr::select(row, column, y) %>%
     merge(
       dplyr::select(test_df, row, column, y),
@@ -387,28 +341,101 @@ prepare_bixi_data <- function(miss_p = 0.8,
     as.matrix() %>%
     IMR::as.Incomplete()
 
-  message(glue("Test      : {round(100*sum(test_mat!=0)/length(test_mat),1)}%"))
+  message(glue("Test      : {round(100*sum(test_inc!=0)/length(test_inc),1)}%"))
+
+  # Observation mask -----------------------------
+  #obs_mask <- (!is.na(Y)) * 1
+  # print(sum(obs_mask == 1) / length(obs_mask))
+
+
+
+  # sum(test_mask)
+  # sum(output$obs_mask,na.rm = T)
+  #
+  # length(test_mat@x)
+  # # Identify test entries via merge --------------
+  # mixed <- train_df %>%
+  #   dplyr::select(row, column, y) %>%
+  #   merge(
+  #     dplyr::select(test_df, row, column, y),
+  #     by = c("row", "column"),
+  #     all.x = TRUE
+  #   ) %>%
+  #   as.data.frame() %>%
+  #   arrange(row, column) %>%
+  #   mutate(
+  #     # missing is true for observed training observations + missing
+  #     # missing is false for the test set
+  #     missing = !(is.na(y.x) & !is.na(y.y))
+  #   )
+  # # print(sum(mixed$missing) / nrow(mixed))
+  #
+  # test_mask <- reshape2::dcast(
+  #   mixed,
+  #   row ~ column,
+  #   value.var = "missing"
+  # ) %>%
+  #   dplyr::select(-row) %>%
+  #   { colnames(.) <- NULL; . } %>%
+  #   as.matrix() * 1
+  # print(sum(1 - test_mask) / length(test_mask))
+  # obs mask is 1 for training  and 0 for missing
+  # print(obs_mask[1:5, 1:5])
+  # test mask is 0 for test and 1 otherwise
+  # print(test_mask[1:5, 1:5])
+
+  # Validation mask via MC split -----------------
+  # valid mask is 0 for validation and 1 otherwise
+  #valid_mask <- IMR:::mask_train_test_split(obs_mask, testp = 0.2)
+
+  kernels <- generate_similarity_bixi(miss_p, timestamp)
+  output <- list()
+  output$modd <- IMR::prepare_data(Y, X=as.matrix(X), Z=as.matrix(Z),
+                                  similarity_rows = kernels$temporal,
+                                  similarity_cols = kernels$spatial,
+                                  seed = seed,val_prop = val_prop)
+
+  output$test_mask = IMR::as.Incomplete((test_inc != 0)*1)
+  output$test = test_inc
+  output$X = X
+  output$Z = Z
+  output$col_names = colnames(Y)
+  output$row_names = train_df$row %>% unique()
+
+  # Assemble core model.dat -----------------------
+  # model_dat <- list(
+  #   X     = as.matrix(X),
+  #   Z     = as.matrix(Z),
+  #   Y     = Y,
+  #   masks = list(
+  #     tr_val = obs_mask,
+  #     test   = test_mask,
+  #     valid  = valid_mask
+  #   )
+  # )
+
+
   # message(glue("Test*train {sum((test_mat*Y),na.rm=T)}"))
   # Compile splits --------------------------------
-  Xqr <- qr(model_dat$X)
-  Zqr <- qr(model_dat$Z)
-  model_dat$Xq <- qr.Q(Xqr)
-  model_dat$Xr <- qr.R(Xqr)
-  model_dat$Zq <- qr.Q(Zqr)
-  model_dat$Zr <- qr.R(Zqr)
-  model_dat$Y.inc <- IMR::as.Incomplete(model_dat$Y)
-
-  model_dat$splits <- list(
-    train = IMR::as.Incomplete(model_dat$Y * valid_mask),
-    valid = IMR::as.Incomplete(model_dat$Y * (1 - valid_mask)),
-    test  = test_mat
-  )
+  # Xqr <- qr(model_dat$X)
+  # Zqr <- qr(model_dat$Z)
+  # model_dat$Xq <- qr.Q(Xqr)
+  # model_dat$Xr <- qr.R(Xqr)
+  # model_dat$Zq <- qr.Q(Zqr)
+  # model_dat$Zr <- qr.R(Zqr)
+  # model_dat$Y.inc <- IMR::as.Incomplete(model_dat$Y)
+  #
+  # model_dat$splits <- list(
+  #   train = IMR::as.Incomplete(model_dat$Y * valid_mask),
+  #   valid = IMR::as.Incomplete(model_dat$Y * (1 - valid_mask)),
+  #   test  = test_mat
+  # )
 
   # print(length(model_dat$splits$train@x) / length(model_dat$Y))
   # print(length(model_dat$splits$test@x))
   # print(length(model_dat$splits$valid@x))
 
-  return(model_dat)
+  return(output)
 }
 
 #--------------------------------------------------------------------------------------------

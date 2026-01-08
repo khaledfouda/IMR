@@ -299,13 +299,13 @@ imr.cv <- function(
       ls_initial = ls_initial,
       seed = seed,
       num_cores = num_cores,
-      warm_start = fit,
+      #warm_start = fit,
       final_fit = FALSE
     )
     if (trace >= 2) {
       message(sprintf(
-        paste0( "lambda_beta = %.2f | lambda_gamma = %.2f | ",
-          "best lambda_laplace = %.2f | best rank = %.0f | error = %.3f"),
+        paste0( "lambda_beta = %.5f | lambda_gamma = %.5f | ",
+          "best lambda_laplace = %.3f | best rank = %.0f | error = %.6f"),
         hpar$beta$value,
         hpar$gamma$value,
         results$best_fit$lambda_laplace,
@@ -327,8 +327,8 @@ imr.cv <- function(
     results <- IMR::adaptive_tuner(
       single_fit,
       step_sizes = hpar$beta$step_sizes,
-      start_value = hpar$beta$max,
-      end_value = 0,
+      end_value = hpar$beta$max,
+      start_value = 0,
       inc_streak_to_stop = hpar$beta$n_streaks,
       type = "rows",
       data = data,
@@ -349,8 +349,8 @@ imr.cv <- function(
     hpar$beta$value <- results$best_fit$lambda_beta
     if (trace >= 1) {
       message(sprintf(
-        paste0( "best lambda_beta = %.2f | lambda_gamma = %.2f | ",
-                "best lambda_laplace = %.2f | best rank = %.0f | error = %.3f"),
+        paste0( "best lambda_beta = %.5f | lambda_gamma = %.5f | ",
+                "best lambda_laplace = %.4f | best rank = %.0f | error = %.5f"),
         hpar$beta$value,
         hpar$gamma$value,
         results$best_fit$lambda_laplace,
@@ -365,8 +365,8 @@ imr.cv <- function(
     results <- IMR::adaptive_tuner(
       single_fit,
       step_sizes = hpar$gamma$step_sizes,
-      start_value = hpar$gamma$max,
-      end_value = 0,
+      end_value = hpar$gamma$max,
+      start_value = 0,
       inc_streak_to_stop = hpar$gamma$n_streaks,
       type = "cols",
       data = data,
@@ -387,7 +387,7 @@ imr.cv <- function(
     if (trace >= 1) {
       message(sprintf(
         paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-                "best lambda_laplace = %.2f |  best rank = %.0f | error = %.3f"),
+                "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
         hpar$beta$value,
         hpar$gamma$value,
         results$best_fit$lambda_laplace,

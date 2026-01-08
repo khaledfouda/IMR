@@ -3,42 +3,50 @@ prepare_data <- function(Y, X = NULL, Z = NULL,
                          similarity_rows = NULL,
                          similarity_cols = NULL,
                          val_prop = 0.2, seed = 2025) {
-  out <- list(model = list(Xq = NULL, Zq = NULL, Xr = NULL, Zr = NULL))
+  out <- list()
   if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   out$Y <- IMR::as.Incomplete(Y)
   message("Performing train/valid split")
   obs_mask <- as.matrix(Y != 0)
   out$valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  out$train_mask <- IMR::as.Incomplete(obs_mask * (1 - out$valid_mask))
+  train_mask <- IMR::as.Incomplete(obs_mask * (1 - out$valid_mask))
   out$valid_mask <- IMR::as.Incomplete(out$valid_mask)
-  out$y_train <- IMR::as.Incomplete(Y * out$train_mask)
+  out$obs_mask <- IMR::as.Incomplete(obs_mask * 1)
+
+  out$y_train <- IMR::as.Incomplete(Y * train_mask)
   out$y_valid <- IMR::as.Incomplete(Y * out$valid_mask)
-  rm(obs_mask)
+
 
   if (!is.null(similarity_rows)) {
+    stopifnot(nrow(similarity_rows) == nrow(Y))
+    stopifnot(isSymmetric(similarity_rows))
+    stopifnot(nrow(similarity_rows) == ncol(similarity_rows))
     out$similarity_rows <- similarity_rows
   } else {
-    out$similarity_rows <- NULL #diag(1, nrow(Y), nrow(Y))
+    out$similarity_rows <- NULL
   }
   if (!is.null(similarity_cols)) {
+    stopifnot(nrow(similarity_cols) == ncol(Y))
+    stopifnot(isSymmetric(similarity_cols))
+    stopifnot(nrow(similarity_cols) == ncol(similarity_cols))
     out$similarity_cols <- similarity_cols
   } else {
-    out$similarity_cols <- NULL #diag(1, ncol(Y), ncol(Y))
+    out$similarity_cols <- NULL
   }
 
   if (!is.null(X)) {
     stopifnot(is.matrix(X))
     stopifnot(nrow(X) == nrow(Y))
-    xqr <- qr(as.matrix(X))
-    out$X <- X
+    xqr <- qr(X)
+    #out$X <- X
     out$Xq <- qr.Q(xqr)
     out$Xr <- out$Xr <- qr.R(xqr)
   }
   if (!is.null(Z)) {
     stopifnot(is.matrix(Z))
     stopifnot(nrow(Z) == ncol(Y))
-    Zqr <- qr(as.matrix(Z))
-    out$Z <- Z
+    Zqr <- qr(Z)
+    #out$Z <- Z
     out$Zq <- qr.Q(Zqr)
     out$Zr <- out$Zr <- qr.R(Zqr)
   }
@@ -75,29 +83,29 @@ reconstruct <- function(fit, data, trace = TRUE, shared_information=FALSE) {
     out$M <- fit$u %*% (fit$d * t(fit$v))
     out$estimates <- out$M
   }
-  if (check_mat(data$X) & check_mat(data$Xr)) {
+  if (check_mat(data$Xq) && check_mat(data$Xr)) {
     if(!shared_information && check_mat(fit$beta)){
       if (trace) message("Constructing XBeta ...")
       out$beta <- solve(data$Xr) %*% fit$beta
-      out$xbeta <- data$X %*% out$beta
+      out$xbeta <- data$Xq %*% fit$beta
       out$estimates <- out$estimates + out$xbeta
     }else if(shared_information && check_mat(fit$beta, FALSE)){
       if (trace) message("Constructing XBeta ...")
       out$beta <- solve(data$Xr) %*% fit$beta
-      out$xbeta <- data$X %*% out$beta
+      out$xbeta <- data$Xq %*% fit$beta
       out$estimates <- out$estimates + out$xbeta  %*% matrix(1, 1, ncol(out$estimates))
     }
   }
-  if (check_mat(data$Z) & check_mat(data$Zr)) {
+  if (check_mat(data$Zq) && check_mat(data$Zr)) {
     if(!shared_information && check_mat(fit$gamma)){
       if (trace) message("Constructing GammaZ ...")
       out$gamma <- fit$gamma %*% solve(t(data$Zr))
-      out$gammaz <- out$gamma %*% t(data$Z)
+      out$gammaz <- fit$gamma %*% t(data$Zq)
       out$estimates <- out$estimates + out$gammaz
     }else if(shared_information && check_mat(fit$gamma, FALSE)){
       if (trace) message("Constructing GammaZ ...")
       out$gamma <- fit$gamma %*% solve(t(data$Zr))
-      out$gammaz <- out$gamma %*% t(data$Z)
+      out$gammaz <- fit$gamma %*% t(data$Zq)
       out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% out$gammaz
 
     }
