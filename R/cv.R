@@ -55,6 +55,7 @@ imr.cv_laplace <- function(
       ls_initial = ls_initial
     )
 
+
     vestim <- IMR:::reconstruct_partial(fit, fdata, fdata$y_valid, shared_information)
     verror <- error_function(fdata$y_valid@x, vestim@x)
     # verbose
@@ -259,6 +260,8 @@ imr.cv <- function(
       maxit = 100,
       verbose = trace
     )
+    if (is.function(hpar$beta$step_sizes)){}
+      hpar$beta$step_sizes <- hpar$beta$step_sizes(hpar$beta$min, hpar$beta$max)
   }
   if (gamma_flag & is.null(hpar$gamma$max)) {
     hpar$gamma$max <- IMR::get_lambda_lasso_max(
@@ -270,6 +273,8 @@ imr.cv <- function(
       maxit = 100,
       verbose = trace
     )
+    if(is.function(hpar$gamma$step_sizes))
+      hpar$gamma$step_sizes <- hpar$gamma$step_sizes(hpar$gamma$min, hpar$gamma$max)
   }
 
 

@@ -64,9 +64,22 @@ BKTR_Bixi_Wrapper <- function(
 
 
 generate_similarity_bixi <- function(miss      = 0.8,
-                                     timestamp = format(Sys.Date(), "%d%b")){
+                                     timestamp = "25Sep",
+                                     spatial = "Matern",
+                                     temporal = "Matern",
+                                     spatial_jitter = FALSE,
+                                     temporal_jitter = FALSE,
+                                     matern_range = function(x){x <- x[upper.tri(x)]; median(x[x>0])},
+                                     cor.target = 0.5,
+                                     kappa_max = 1e4,
+                                     tau_max = 1e-2,
+                                     ell_t = 1.3,
+                                     ell_s = 1.3,
+                                     matern_scale = NULL){
   require(BKTR)
   bkdat <- BixiData$new()
+  stopifnot(temporal %in% c("Matern", "original", "RBF", "none"))
+  stopifnot(spatial %in% c("Matern", "original", "none", "RBF"))
 
   file_prefix <- paste0(
     "./article_results/bixi/data/splits/",
@@ -76,29 +89,91 @@ generate_similarity_bixi <- function(miss      = 0.8,
     "_"
   )
   train.df <- readRDS(paste0(file_prefix, "train.rds"))
-
   train.df %<>% rename(location=column, time = row)
-  #train.df <- setkey(as.data.table(train.df), location, time)
 
   bkdat$temporal_positions_df %<>%
     filter(time %in% train.df$time)
-  bkdat$spatial_positions_df %<>%
-    filter(location %in% train.df$location)
 
-  spatial_kernel = BKTR::KernelMatern$new(smoothness_factor = 3)
-  temporal_kernel = BKTR::KernelSE$new()
-  spatial_kernel$set_positions(bkdat$spatial_positions_df)
+  p_lgth <- KernelParameter$new(value = 7, is_fixed = TRUE)
+  se_lgth <- KernelParameter$new(value = 6.448, is_fixed = TRUE)
+  per_lgth <- KernelParameter$new(value = 0.941, is_fixed = TRUE)
+  temporal_kernel <- KernelSE$new(lengthscale = se_lgth) *
+    KernelPeriodic$new(lengthscale = per_lgth, period_length = p_lgth)
+  #temporal_kernel = BKTR::KernelSE$new()
   temporal_kernel$set_positions(bkdat$temporal_positions_df)
 
-  symmetrize <- function(x) (x + t(x))/2
+  bkdat$spatial_positions_df %<>%
+    filter(location %in% train.df$location)
+  sp_lgth <- KernelParameter$new(value = 21.128, is_fixed = TRUE)
+  spatial_kernel = BKTR::KernelMatern$new(smoothness_factor = 5,lengthscale = sp_lgth)
+  spatial_kernel$set_positions(bkdat$spatial_positions_df)
 
-  spatial_kernel$kernel_gen()  %>%
-    as.matrix() -> #%>%
-    solve() %>%
-    symmetrize() ->
-    spatial_kernel
-  temporal_kernel$kernel_gen() %>% as.matrix() %>%
-    solve() %>% symmetrize() -> temporal_kernel
+
+  choose_jitter <- function(K, kappa_max = 1e4, tau_max = 1e-2, tau0 = 1e-12) {
+    s <- mean(diag(K))
+    tau2 <- tau0 * s
+    n <- nrow(K)
+    repeat {
+      Kt <- K + diag(tau2, n)
+        kap <- kappa(Kt)
+        #print(kap)
+        if (is.finite(kap) && kap <= kappa_max) return(tau2)
+
+      tau2 <- tau2 * 10
+      if (tau2 > tau_max * s) return(tau2)
+    }
+  }
+
+  if(temporal == "Matern"){
+    d = temporal_kernel$distance_matrix %>% as.matrix()
+    #min(d[upper.tri(d)])
+    # dvec <- d[upper.tri(d)]
+    # dvec <- dvec[dvec > 0]
+    # range0 <- median(dvec)
+    range0 <- fields::Matern.cor.to.range(matern_range(d), nu=3/2)
+    temporal_kernel <- fields::Matern(d, smoothness = 3/2, range = range0)
+
+  }else if (temporal == "none"){
+    n = train.df$time %>% unique() %>% length()
+    temporal_kernel = diag(1, n, n)
+  }else if (temporal == "RBF"){
+    d = temporal_kernel$distance_matrix %>% as.matrix()
+    temporal_kernel <- exp(-(d^2) / (2 * ell_t^2))
+
+  }else if (temporal == "original"){
+
+    temporal_kernel <- temporal_kernel$kernel_gen() %>% as.matrix()
+  }
+  if(temporal_jitter) temporal_kernel <- temporal_kernel +
+    diag(choose_jitter(temporal_kernel, kappa_max, tau_max), nrow(temporal_kernel))
+  temporal_kernel <- chol2inv(temporal_kernel)
+
+  if(spatial == "Matern"){
+
+    d = spatial_kernel$distance_matrix %>% as.matrix()
+    # #min(d[upper.tri(d)])
+    # dvec <- d[upper.tri(d)]
+    # dvec <- dvec[dvec > 0]
+    # range0 <- median(dvec)
+    if(is.null(matern_scale))
+      matern_scale <- fields::Matern.cor.to.range(matern_range(d), nu=5/2, cor.target = cor.target)
+    spatial_kernel <- fields::Matern(d, smoothness = 5/2, range = matern_scale)
+
+
+  }else if (spatial == "none"){
+    n = train.df$location %>% unique() %>% length()
+    spatial_kernel = diag(1, n, n)
+  }else if (spatial == "original"){
+    spatial_kernel = spatial_kernel$kernel_gen() %>% as.matrix()
+  }else if (spatial == "RBF"){
+    d = spatial_kernel$distance_matrix %>% as.matrix()
+    spatial_kernel <- exp(-(d^2) / (2 * ell_s^2))
+  }
+
+  if(spatial_jitter) spatial_kernel <- spatial_kernel +
+    diag(choose_jitter(spatial_kernel, kappa_max, tau_max), nrow(spatial_kernel))
+    spatial_kernel <- chol2inv(spatial_kernel)
+
   list(spatial=spatial_kernel, temporal=temporal_kernel)
 }
 
