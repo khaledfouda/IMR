@@ -1,4 +1,5 @@
 library(devtools)
+
 # devtools::uninstall(); devtools::install()
 # clean_dll(); Rcpp::compileAttributes(); document()
 devtools::load_all()
@@ -260,15 +261,15 @@ datatable(tab, rownames = FALSE, options = list(pageLength = nrow(tab), dom = "t
 
   all_res %>% arrange(error) %>% mutate(error = round(error,6))
 }
-saveRDS(all_res,"./article_results/bixi/data/results_jan26/seed_vs_valsize.rds")
-
+#saveRDS(all_res,"./article_results/bixi/data/results_jan26/seed_vs_valsize.rds")
+all_res <- readRDS("./article_results/bixi/data/results_jan26/seed_vs_valsize.rds")
 summ_res <- function(x)
   paste0(round(mean(x),4), " (", round(sd(x),4), ")[",round(min(x),4), ",",
          round(max(x),4), "]")
 all_res %>%
   dplyr::select(-temporal, -spatial) %>%
   group_by(model, intercept, val_size) %>%
-  summarise_all(summ_res ) #%>%
+  dplyr::summarise_all(summ_res ) #%>%
 #----------------------------------------------------------------------------------------------
 # 2)
 
