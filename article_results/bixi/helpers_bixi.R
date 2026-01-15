@@ -65,6 +65,7 @@ BKTR_Bixi_Wrapper <- function(
 
 generate_similarity_bixi <- function(miss      = 0.8,
                                      timestamp = "25Sep",
+                                     prefix    = "",
                                      spatial = "Matern",
                                      temporal = "Matern",
                                      spatial_jitter = FALSE,
@@ -88,6 +89,9 @@ generate_similarity_bixi <- function(miss      = 0.8,
     timestamp,
     "_"
   )
+  if(prefix != "")
+    file_prefix <- paste0(file_prefix, prefix, "_")
+
   train.df <- readRDS(paste0(file_prefix, "train.rds"))
   train.df %<>% rename(location=column, time = row)
 

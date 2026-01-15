@@ -17,8 +17,34 @@ source("./article_results/bixi/helpers_bixi.R")
 #------------------------------------------------------------
 # step 1: generate the data
 num_testsets = 50
-date = "Jan14"
-test_pct = 0.5
+timestamp = "Jan"
+original_missing_pct = 0.1163287
+test_pct <- 0.2
+total_miss = test_pct + original_missing_pct -> miss_p
+seed = 2025
+for(prefix in 1:num_testsets){
+  preprocess_bixi_data(total_miss, timestamp, seed, prefix,F)
+}
+#----------------------------------------------------------------
+# step 2: train BKTR on all of them
+
+for(prefix in 1:num_testsets){
+  o = fit_BKTR_to_Bixi(total_miss, timestamp, prefix, seed)
+}
+#-------------------------------------------------------------
+# step 3: train our model + soft-impute >>
+
+
+
+dat <- prepare_bixi_data(total_miss, timestamp, seed, val_prop = 0.2, prefix="test",
+                  spatial = "original", temporal="original",
+                  spatial_jitter = TRUE,
+                  temporal_jitter = TRUE,
+                  kappa_max = 1e3,
+                  tau_max =1e-1)
+
+
+
 
 o = prepare_bixi_data(test_pct, "25Sep")
 

@@ -1,10 +1,11 @@
 # required libraries:
 # magrittr, tidyverse
 
-preprocess_bixi_data <- function(miss_pct = 0.85,
+preprocess_bixi_data <- function(miss_pct = 0.5,
                                  timestamp = format(Sys.Date(), "%d%b"),
                                  seed = 2025,
-                                 prefix = "") {
+                                 prefix = "",
+                                 file_override = FALSE) {
   require(BKTR)
   require(corrr)
   # Set seed for reproducibility ---------------------------
@@ -67,6 +68,10 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
   data_df %<>%
     filter(!(column %in% low.obs.stations))
   #----------------------------------------------------------------------------------
+  # this is the part where the test set was fixed no matter the missing percentage
+  # I'll remove for now since we no longer need it
+  do.not.run = FALSE
+  if (do.not.run){
   test50  <- readRDS("article_results/bixi/data/splits/50percent_25Sep_test.rds")
   data_df %<>%
     left_join(
@@ -77,6 +82,7 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     ) %>%
     mutate(u = ifelse(isTRUE(flag), NA, y)) %>%
     select(-flag)
+  }
 
   # Initialize train/test -----------------------------------
 
@@ -84,30 +90,27 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
   # Determine dimensions & thresholds -----------------------
   num_rows    <- length(unique(data_df$row))
   num_columns <- length(unique(data_df$column))
-  min_obs     <- 0
   # but consider that we remove 95% or missing_rate of each column
   #min_obs <- min_obs / ( (1 - miss_pct) * 0.8)
   # the 0.8 is for the CV with 5 folds
   message(paste0("Response data matrix dimension is:", num_rows,
                  "x",num_columns))
 
-  data_df %>%
-    group_by(column) %>%
-    summarize(na.sum = sum(!is.na(y))) %>%
-    arrange(na.sum) %>%
-    filter(na.sum < min_obs) %>%
-    select(column) -> cols_to_remove
-  message("Removing the following columns for containing less observations",
-          " than required ", cols_to_remove)
-  # Identify columns with enough data ----------------------
-  test_df <-
-    train_df <-
+  min_obs     <- 0
+  if(min_obs > 0){
     data_df %>%
-    group_by(column) %>%
-    filter(sum(!is.na(y)) >= min_obs) %>%
-    ungroup()
+      group_by(column) %>%
+      summarize(na.sum = sum(!is.na(y))) %>%
+      arrange(na.sum) %>%
+      filter(na.sum < min_obs) %>%
+      select(column) -> cols_to_remove
+    message("Removing the following columns for containing less observations",
+            " than required ", cols_to_remove)
+  }
+  # Identify columns with enough data ----------------------
+  test_df <- train_df <- data_df
 
-  train_df %>%
+  data_df %>%
     group_by(column) %>%
     summarise(na.sum = sum(!is.na(y))) %>%
     arrange(na.sum) %>%
@@ -119,27 +122,27 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
   #====================================================================
   # we will leave the columns with very low number of observations
   # we will choose those with min_obs*90
-  train <- train_df; test <- test_df
+  #train <- train_df; test <- test_df
   train_df <-
-    train_df |>
+    data_df |>
     mutate(
       row_id = row_number(),
       orig_y = y
-    ) %>%
-    group_by(column) %>%
-    mutate(num_observed = sum(!is.na(y))) %>%
-    ungroup() %>%
-    mutate(low_obs = num_observed < (min_obs *(1/(1-miss_pct))) * (miss_pct) ) %>%
-    select(-num_observed)
+    )# %>%
+    #group_by(column) %>%
+    #mutate(num_observed = sum(!is.na(y))) %>%
+    #ungroup() %>%
+    #mutate(low_obs = num_observed < (min_obs *(1/(1-miss_pct))) * (miss_pct) ) %>%
+    #select(-num_observed)
 
-  train_df %>%
-    filter(low_obs == TRUE) %>%
-    select(column) %>%
-    unique() %>% nrow() -> num_guarded_cols
+  # train_df %>%
+  #   filter(low_obs == TRUE) %>%
+  #   select(column) %>%
+  #   unique() %>% nrow() -> num_guarded_cols
+  #
+  # message("Guarding ", num_guarded_cols, " columns.")
 
-  message("Guarding ", num_guarded_cols, " columns.")
-
-  test_df <- test_df |>
+  test_df <- data_df |>
     mutate(
       row_id            = row_number(),
       orig_y = y
@@ -156,10 +159,11 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     stop("Not enough non-missing values to reach 95% missing.")
   }
 
+  # mask_ids are the ids to set 0 and be a test set.
   mask_ids <-
     train_df |>
     filter(!is.na(orig_y)) |>
-    filter(!low_obs) |>
+    #filter(!low_obs) |>
     slice_sample(n = n_to_mask) |>
     pull(row_id)
   # train -> set masks_ids to Na. inverse to test
@@ -186,24 +190,27 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     select(-row_id, -orig_y)
   #=================================================================
   # recheck the amount the missing per column
-  train_df %>%
-    group_by(column) %>%
-    summarize(na.sum = sum(!is.na(y))) %>%
-    arrange(na.sum) %>%
-    filter(na.sum < min_obs) %>%
-    select(column) -> cols_to_remove
-  print(cols_to_remove$column)
-  message("Removing ", length(unique(cols_to_remove$column)),
-          " columns for containing less observations",
-          " than required")
-  train_df %<>%
-    filter(!(column %in% cols_to_remove$column)) %>%
-    select(-low_obs) %>%
-    arrange(row, column)
-  test_df %<>%
-    filter(!(column %in% cols_to_remove$column)) %>%
-    arrange(row, column)
-  message("Number of resulting columns: ", length(unique(train_df$column)))
+  if(min_obs > 0){
+
+    train_df %>%
+      group_by(column) %>%
+      summarize(na.sum = sum(!is.na(y))) %>%
+      arrange(na.sum) %>%
+      filter(na.sum < min_obs) %>%
+      select(column) -> cols_to_remove
+    print(cols_to_remove$column)
+    message("Removing ", length(unique(cols_to_remove$column)),
+            " columns for containing less observations",
+            " than required")
+    train_df %<>%
+      filter(!(column %in% cols_to_remove$column)) %>%
+      select(-low_obs) %>%
+      arrange(row, column)
+    test_df %<>%
+      filter(!(column %in% cols_to_remove$column)) %>%
+      arrange(row, column)
+    message("Number of resulting columns: ", length(unique(train_df$column)))
+  }
 
   #-------------------
   train_df %>%
@@ -228,8 +235,9 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
                  length(unique(train_df$column))))
 
   # Finalize test_df (drop NA departures) -----------------
-  test_df <- test_df %>%
-    filter(!is.na(y))
+  # DO NOT DO IT THAT; SERIOUSLY! DON'T!!!
+  # test_df <- test_df %>%
+  #   filter(!is.na(y))
 
     #train_df  %<>% rename(location=column, time=row)
     #test_df   %<>% rename(location=column, time=row)
@@ -246,10 +254,12 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
   if(prefix != "")
     file_prefix <- paste0(file_prefix, prefix, "_")
   if(file.exists(paste0(file_prefix, "train.rds"))){
-    stop("File already exists: ", paste0(file_prefix, "train.rds"))
+    if(!file_override)
+      stop("File already exists: ", paste0(file_prefix, "train.rds"))
+    message("Warning: Overridding an existing file ...")
   }
   saveRDS(train_df, file = paste0(file_prefix, "train.rds"))
-  saveRDS(test50,  file = paste0(file_prefix, "test.rds"))
+  saveRDS(test_df,  file = paste0(file_prefix, "test.rds"))
 }
 ######################
 
@@ -261,8 +271,12 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
 prepare_bixi_data <- function(miss_p = 0.5,
                               timestamp = "25Sep", seed = NULL,
                               val_prop = 0.2,
+                              prefix = "",
                               x_keep = c("x_humidity","x_max_temp_f","x_mean_temp_c",
-                                         "x_total_precip_mm","x_holiday" )) {
+                                         "x_total_precip_mm","x_holiday" ),
+                              ...
+                              # these parameters are sent to the kernel generation
+                              ) {
 
   # Read pre-saved train/test splits --------------
   file_prefix <- paste0(
@@ -272,6 +286,8 @@ prepare_bixi_data <- function(miss_p = 0.5,
     timestamp,
     "_"
   )
+  if(prefix != "")
+    file_prefix <- paste0(file_prefix, prefix, "_")
 
   train_df <- readRDS(paste0(file_prefix, "train.rds"))
   test_df  <- readRDS(paste0(file_prefix, "test.rds"))
@@ -284,7 +300,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
     slice(1) %>%
     ungroup() %>%
     dplyr::select(-row) %>%
-    dplyr::select(x_keep)
+    dplyr::select(all_of(x_keep))
 
   Z <- train_df %>%
     dplyr::select(column, starts_with("z_")) %>%
@@ -326,63 +342,74 @@ prepare_bixi_data <- function(miss_p = 0.5,
   ))
   #-------
   # test dataset
-  test_inc <- train_df %>%
-    dplyr::select(row, column, y) %>%
-    merge(
-      dplyr::select(test_df, row, column, y),
-      by = c("row", "column"),
-      all.x = TRUE
-    ) %>%
-    as.data.frame() %>%
-    arrange(row, column) %>%
-    dplyr::select(row, column, y.y) %>%
-    reshape2::dcast(
-      row ~ column,
-      value.var = "y.y"
-    ) %>%
+  test_set <- reshape2::dcast(
+    test_df,
+    row ~ column,
+    value.var = "y"
+  ) %>%
     dplyr::select(-row) %>%
     as.matrix() %>%
     IMR::as.Incomplete()
 
-  message(glue("Test      : {round(100*sum(test_inc!=0)/length(test_inc),1)}%"))
+  #
+  #
+  # test_inc <- train_df %>%
+  #   dplyr::select(row, column, y) %>%
+  #   merge(
+  #     dplyr::select(test_df, row, column, y),
+  #     by = c("row", "column"),
+  #     all.x = TRUE
+  #   ) %>%
+  #   as.data.frame() %>%
+  #   arrange(row, column) %>%
+  #   dplyr::select(row, column, y.y) %>%
+  #   reshape2::dcast(
+  #     row ~ column,
+  #     value.var = "y.y"
+  #   ) %>%
+  #   dplyr::select(-row) %>%
+  #   as.matrix() %>%
+  #   IMR::as.Incomplete()
+
+  message(glue("Test      : {round(100*sum(test_set!=0)/length(test_set),1)}%"))
 
   # Observation mask -----------------------------
   #obs_mask <- (!is.na(Y)) * 1
   #print(sum(obs_mask == 1) / length(obs_mask))
-  mean(test_mask)
+  #mean(test_mask)
 
-  mixed %>%
-    filter((!is.na(y.x)) & (!is.na(y.y))) %>% view()
+  # mixed %>%
+  #   filter((!is.na(y.x)) & (!is.na(y.y))) %>% view()
   # sum(test_mask)
   # sum(output$obs_mask,na.rm = T)
   #
   # length(test_mat@x)
   # # Identify test entries via merge --------------
-  mixed <- train_df %>%
-    dplyr::select(row, column, y) %>%
-    merge(
-      dplyr::select(test_df, row, column, y),
-      by = c("row", "column"),
-      all.x = TRUE
-    ) %>%
-    as.data.frame() %>%
-    arrange(row, column) %>%
-    mutate(
-      # missing is true for observed training observations + missing
-      # missing is false for the test set
-      missing = !(is.na(y.x) & !is.na(y.y))
-    )
-  # print(sum(mixed$missing) / nrow(mixed))
-
-  test_mask2 <- reshape2::dcast(
-    mixed,
-    row ~ column,
-    value.var = "missing"
-  ) %>%
-    dplyr::select(-row) %>%
-    { colnames(.) <- NULL; . } %>%
-    as.matrix() * 1
-  print(sum(1 - test_mask2) / length(test_mask2))
+  # mixed <- train_df %>%
+  #   dplyr::select(row, column, y) %>%
+  #   merge(
+  #     dplyr::select(test_df, row, column, y),
+  #     by = c("row", "column"),
+  #     all.x = TRUE
+  #   ) %>%
+  #   as.data.frame() %>%
+  #   arrange(row, column) %>%
+  #   mutate(
+  #     # missing is true for observed training observations + missing
+  #     # missing is false for the test set
+  #     missing = !(is.na(y.x) & !is.na(y.y))
+  #   )
+  # # print(sum(mixed$missing) / nrow(mixed))
+  #
+  # test_mask2 <- reshape2::dcast(
+  #   mixed,
+  #   row ~ column,
+  #   value.var = "missing"
+  # ) %>%
+  #   dplyr::select(-row) %>%
+  #   { colnames(.) <- NULL; . } %>%
+  #   as.matrix() * 1
+  # print(sum(1 - test_mask2) / length(test_mask2))
   #obs mask is 1 for training  and 0 for missing
   #print(obs_mask[1:5, 1:5])
   #test mask is 0 for test and 1 otherwise
@@ -392,15 +419,15 @@ prepare_bixi_data <- function(miss_p = 0.5,
   # valid mask is 0 for validation and 1 otherwise
   #valid_mask <- IMR:::mask_train_test_split(obs_mask, testp = 0.2)
 
-  kernels <- generate_similarity_bixi(miss_p, timestamp)
+  kernels <- generate_similarity_bixi(miss_p, timestamp, prefix=prefix, ...)
   output <- list()
   output$modd <- IMR::prepare_data(Y, X=as.matrix(X), Z=as.matrix(Z),
                                   similarity_rows = kernels$temporal,
                                   similarity_cols = kernels$spatial,
                                   seed = seed,val_prop = val_prop)
 
-  output$test_mask = IMR::as.Incomplete((test_inc != 0)*1)
-  output$test = test_inc
+  output$test_mask = IMR::as.Incomplete((test_set != 0)*1)
+  output$test = test_set
   output$X = X
   output$Z = Z
   output$col_names = colnames(Y)
