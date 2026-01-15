@@ -14,6 +14,12 @@ source("./article_results/bixi/helpers_bixi.R")
 #' First: we will run BKTR on all of them and save them to a file.
 #' Start with 50 different test sets.
 #------------------------------------------------------------
+# step 1: generate the data
+num_testsets = 50
+date = "Jan14"
+test_pct = 0.5
+
+o = prepare_bixi_data(test_pct, date)
 
 
 

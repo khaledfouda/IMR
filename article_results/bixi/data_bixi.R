@@ -3,7 +3,8 @@
 
 preprocess_bixi_data <- function(miss_pct = 0.85,
                                  timestamp = format(Sys.Date(), "%d%b"),
-                                 seed = 2025) {
+                                 seed = 2025,
+                                 prefix = "") {
   require(BKTR)
   require(corrr)
   # Set seed for reproducibility ---------------------------
@@ -242,6 +243,8 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
     timestamp,
     "_"
   )
+  if(prefix != "")
+    file_prefix <- paste0(file_prefix, prefix, "_")
   if(file.exists(paste0(file_prefix, "train.rds"))){
     stop("File already exists: ", paste0(file_prefix, "train.rds"))
   }
