@@ -253,7 +253,8 @@ prepare_output_bixi <- function(
 }
 
 
-output_wrapper_bixi <- function(fit, dat, shared_information = FALSE){
+output_wrapper_bixi <- function(fit, dat, shared_information = FALSE,
+                                test_error  = IMR:::error_metric$rmse){
 
 
   out <- IMR:::reconstruct(fit, dat$modd,shared_information =  shared_information)
@@ -269,7 +270,8 @@ output_wrapper_bixi <- function(fit, dat, shared_information = FALSE){
       obs.train   = dat$modd$Y@x,
       beta.estim  = out$beta,
       gamma.estim = out$gamma,
-      M.estim     = out$M
+      M.estim     = out$M,
+      test_error  = test_error
     )
   ))
 }
