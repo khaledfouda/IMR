@@ -431,9 +431,81 @@ all_res2 %>%
             c("temporal", "spatial", "intercept", "val_size")) %>%
   arrange(order) %>%
   dplyr::select(-order, -seed, -lambda_m, -mape)
+#=====================================================================
 
 
+clean_res <- all_res2 |>
+  # Create a distinct identifier for the 3 model variations
+  mutate(
+    model_id = case_when(
+      temporal == "original" & spatial == "original" & intercept == TRUE  ~ "Orig/Orig (Int)",
+      temporal == "original" & spatial == "original" & intercept == FALSE ~ "Orig/Orig (No Int)",
+      temporal == "none" & spatial == "none" & intercept == FALSE     ~ "None/None (No Int)",
+      TRUE ~ "Other" # Catch-all for safety
+    ),
+    # Ensure val_size is treated as a factor for boxplots, but numeric for lines
+    val_size_fct = factor(val_size)
+  ) |>
+  # Filter to keep only the variations of interest
+  filter(model_id != "Other")
 
+
+summary_table <- clean_res |>
+  summarise(
+    mean_error = mean(error, na.rm = TRUE),
+    sd_error   = sd(error, na.rm = TRUE),
+    min_error  = min(error, na.rm = TRUE),
+    max_error  = max(error, na.rm = TRUE),
+    n_reps     = n(),
+    .by = c(model_id, val_size) # Group by Model and Validation Size
+  ) |>
+  arrange(model_id, val_size)
+
+# Print table
+print(summary_table)
+
+# Plot 1: Trend of Mean Error (with Confidence Intervals)
+# This answers: Does changing validation size systematically shift the error?
+p1 <- clean_res |>
+  ggplot(aes(x = val_size, y = error, color = model_id)) +
+  # Add jittered points to see raw data distribution
+  geom_jitter(alpha = 0.2, width = 0.01) +
+  # Add trend lines (mean)
+  #geom_smooth(method = "loess", se = TRUE, alpha = 0.1) +
+  labs(
+    title = "Impact of Validation Size on Test RMSE",
+    subtitle = "Comparing Model Variations",
+    x = "Validation Proportion",
+    y = "Test RMSE",
+    color = "Model Variation"
+  ) +
+  theme_minimal();p1
+
+# Plot 2: Stability Analysis (Boxplots)
+# This answers: Does variance increase/decrease with validation size?
+p2 <- clean_res |>
+  ggplot(aes(x = val_size_fct, y = error, fill = model_id)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.5) +
+  facet_wrap(~model_id, scales = "fixed") +
+  labs(
+    title = "Error Distribution by Validation Size",
+    x = "Validation Proportion",
+    y = "Test RMSE",
+    fill = "Model Variation"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none"); p2
+
+# Display plots
+print(p1)
+print(p2)
+
+# Fit a linear model: Error ~ Model * Validation_Size
+fit_mod <- lm(error ~ model_id * val_size + 1, data = clean_res)
+
+# Check the ANOVA table to see significance of main effects and interactions
+anova(fit_mod)
+summary(fit_mod)
 #=====================================================================
 # Q: choosing val_prop
 B = 30

@@ -20,7 +20,7 @@ num_testsets = 50
 timestamp = "Jan"
 original_missing_pct = 0.1163287
 test_pct <- 0.2
-total_miss = test_pct + original_missing_pct -> miss_p
+total_miss = test_pct + original_missing_pct
 seed = 2025
 for(prefix in 1:num_testsets){
   preprocess_bixi_data(total_miss, timestamp, seed, prefix,F)
