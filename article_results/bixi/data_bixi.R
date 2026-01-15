@@ -258,7 +258,7 @@ preprocess_bixi_data <- function(miss_pct = 0.85,
 #'
 #' @param time_cov Logical; if TRUE, use time-varying covariates
 #' @return A list with matrices X, Y, masks, and splits.
-prepare_bixi_data <- function(miss_p = 0.8,
+prepare_bixi_data <- function(miss_p = 0.5,
                               timestamp = "25Sep", seed = NULL,
                               val_prop = 0.2,
                               x_keep = c("x_humidity","x_max_temp_f","x_mean_temp_c",
@@ -348,44 +348,45 @@ prepare_bixi_data <- function(miss_p = 0.8,
 
   # Observation mask -----------------------------
   #obs_mask <- (!is.na(Y)) * 1
-  # print(sum(obs_mask == 1) / length(obs_mask))
+  #print(sum(obs_mask == 1) / length(obs_mask))
+  mean(test_mask)
 
-
-
+  mixed %>%
+    filter((!is.na(y.x)) & (!is.na(y.y))) %>% view()
   # sum(test_mask)
   # sum(output$obs_mask,na.rm = T)
   #
   # length(test_mat@x)
   # # Identify test entries via merge --------------
-  # mixed <- train_df %>%
-  #   dplyr::select(row, column, y) %>%
-  #   merge(
-  #     dplyr::select(test_df, row, column, y),
-  #     by = c("row", "column"),
-  #     all.x = TRUE
-  #   ) %>%
-  #   as.data.frame() %>%
-  #   arrange(row, column) %>%
-  #   mutate(
-  #     # missing is true for observed training observations + missing
-  #     # missing is false for the test set
-  #     missing = !(is.na(y.x) & !is.na(y.y))
-  #   )
-  # # print(sum(mixed$missing) / nrow(mixed))
-  #
-  # test_mask <- reshape2::dcast(
-  #   mixed,
-  #   row ~ column,
-  #   value.var = "missing"
-  # ) %>%
-  #   dplyr::select(-row) %>%
-  #   { colnames(.) <- NULL; . } %>%
-  #   as.matrix() * 1
-  # print(sum(1 - test_mask) / length(test_mask))
-  # obs mask is 1 for training  and 0 for missing
-  # print(obs_mask[1:5, 1:5])
-  # test mask is 0 for test and 1 otherwise
-  # print(test_mask[1:5, 1:5])
+  mixed <- train_df %>%
+    dplyr::select(row, column, y) %>%
+    merge(
+      dplyr::select(test_df, row, column, y),
+      by = c("row", "column"),
+      all.x = TRUE
+    ) %>%
+    as.data.frame() %>%
+    arrange(row, column) %>%
+    mutate(
+      # missing is true for observed training observations + missing
+      # missing is false for the test set
+      missing = !(is.na(y.x) & !is.na(y.y))
+    )
+  # print(sum(mixed$missing) / nrow(mixed))
+
+  test_mask2 <- reshape2::dcast(
+    mixed,
+    row ~ column,
+    value.var = "missing"
+  ) %>%
+    dplyr::select(-row) %>%
+    { colnames(.) <- NULL; . } %>%
+    as.matrix() * 1
+  print(sum(1 - test_mask2) / length(test_mask2))
+  #obs mask is 1 for training  and 0 for missing
+  #print(obs_mask[1:5, 1:5])
+  #test mask is 0 for test and 1 otherwise
+  #print(test_mask[1:5, 1:5])
 
   # Validation mask via MC split -----------------
   # valid mask is 0 for validation and 1 otherwise
