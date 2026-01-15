@@ -130,10 +130,6 @@ generate_similarity_bixi <- function(miss      = 0.8,
 
   if(temporal == "Matern"){
     d = temporal_kernel$distance_matrix %>% as.matrix()
-    #min(d[upper.tri(d)])
-    # dvec <- d[upper.tri(d)]
-    # dvec <- dvec[dvec > 0]
-    # range0 <- median(dvec)
     range0 <- fields::Matern.cor.to.range(matern_range(d), nu=3/2)
     temporal_kernel <- fields::Matern(d, smoothness = 3/2, range = range0)
 
@@ -155,14 +151,9 @@ generate_similarity_bixi <- function(miss      = 0.8,
   if(spatial == "Matern"){
 
     d = spatial_kernel$distance_matrix %>% as.matrix()
-    # #min(d[upper.tri(d)])
-    # dvec <- d[upper.tri(d)]
-    # dvec <- dvec[dvec > 0]
-    # range0 <- median(dvec)
     if(is.null(matern_scale))
       matern_scale <- fields::Matern.cor.to.range(matern_range(d), nu=5/2, cor.target = cor.target)
     spatial_kernel <- fields::Matern(d, smoothness = 5/2, range = matern_scale)
-
 
   }else if (spatial == "none"){
     n = train.df$location %>% unique() %>% length()

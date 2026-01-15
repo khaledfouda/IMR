@@ -274,6 +274,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
                               prefix = "",
                               x_keep = c("x_humidity","x_max_temp_f","x_mean_temp_c",
                                          "x_total_precip_mm","x_holiday" ),
+                              bktr_variables = FALSE,
                               ...
                               # these parameters are sent to the kernel generation
                               ) {
@@ -308,6 +309,13 @@ prepare_bixi_data <- function(miss_p = 0.5,
     slice(1) %>%
     ungroup() %>%
     dplyr::select(-column)
+
+  if(bktr_variables){
+    X <- X %>%
+      dplyr::select(x_mean_temp_c, x_total_precip_mm)
+    Z <- Z %>%
+      dplyr::select(z_area_park)
+  }
 
   # Build response matrix Y -----------------------
   Y <- reshape2::dcast(
