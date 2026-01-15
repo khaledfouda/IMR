@@ -51,12 +51,15 @@ fit_BKTR_to_Bixi <- function(miss      = 0.8,
     temporal_kernel = k_local_periodic,
     burn_in_iter = burn_in_iter,
     sampling_iter = sampling_iter)
-  bktr_fit$mcmc_sampling()
+
+  ttime <- bench::bench_time(bktr_fit$mcmc_sampling())
 
 
   time <- round(as.numeric(
     difftime(Sys.time(), start_time, units = "secs")))
-  return_obj <- list(fit = bktr_fit, time = time)
+  return_obj <- list(fit = bktr_fit, time = time,
+                     time1 = lubridate::time_length(ttime[1], "seconds"),
+                     time2 = lubridate::time_length(ttime[2], "seconds"))
 
 
   file_prefix <- paste0(

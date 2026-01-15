@@ -28,7 +28,7 @@ for(prefix in 1:num_testsets){
 #----------------------------------------------------------------
 # step 2: train BKTR on all of them
 
-for(prefix in 1:num_testsets){
+for(prefix in 14:num_testsets){
   o = fit_BKTR_to_Bixi(total_miss, timestamp, prefix, seed)
 }
 #-------------------------------------------------------------
