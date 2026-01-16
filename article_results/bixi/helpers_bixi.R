@@ -4,13 +4,22 @@ BKTR_Bixi_Wrapper <- function(
     seed = NULL,
     miss = .8,
     return_fit = FALSE,
+    prefix = "",
     ...
 ){
   if(!is.null(seed)) set.seed(seed)
+  file_prefix <- paste0(
+    "./article_results/bixi/data/bktrfit_",
+    round(100*miss),
+    "percent_",
+    timestamp,
+    "_"
+  )
+  if(prefix != "")
+    file_prefix <- paste0(file_prefix, prefix, "_")
 
-  bktr_fit <- readRDS(paste0('./article_results/bixi/data/bktr_',
-                             paste0(round(miss*100)),
-                             '_fit.rds'))
+  bktr_fit <- readRDS(paste0(file_prefix,'.rds'))
+
   file_prefix <- paste0(
     "./article_results/bixi/data/splits/",
     round(100*miss),
@@ -18,6 +27,8 @@ BKTR_Bixi_Wrapper <- function(
     timestamp,
     "_"
   )
+  if(prefix != "")
+    file_prefix <- paste0(file_prefix, prefix, "_")
   train <- readRDS(paste0(file_prefix, "train.rds"))
   test  <- readRDS(paste0(file_prefix, "test.rds"))
 
@@ -54,7 +65,7 @@ BKTR_Bixi_Wrapper <- function(
                                    obs.train = train.estimates$y))
 
   # results$total_num_fits = 1000
-  results$time = bktr_fit$time
+  results$time = c(bktr_fit$time, bktr_fit$time1, bktr_fit$time2)
   # results$time_per_fit = results$time  / results$total_num_fits
   results$cov_summaries = bktr_fit$fit$beta_covariates_summary
   results$sparsity = 0

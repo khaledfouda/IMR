@@ -399,7 +399,7 @@ all_runs <- data.frame(); counter = 1;
 
 timestamp = "Jan"
 original_missing_pct = 0.1163287
-test_pct <- 0.3
+test_pct <- 0.2
 total_miss = test_pct + original_missing_pct -> miss_p
 seed = 2026
 #for (cc in c(.05, .1, .2, .3, .4, .5)){
@@ -410,8 +410,10 @@ shared = TRUE
 temporal = "original"
 spatial = "none"
 vals = 0.2
-
-dat <- prepare_bixi_data(miss, timestamp, seed = seed,
+prefix = 15
+for(shared in c(T,F)){
+  for(intercept in c(T,F)){
+dat <- prepare_bixi_data(miss, timestamp, seed = seed, prefix = prefix,
                         val_prop = vals, temporal = temporal, spatial=spatial,
                         temporal_jitter = T, spatial_jitter = T,
                         bktr_variables = TRUE,
@@ -430,10 +432,18 @@ hparam$laplace$max <- 2
 hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
 hparam$rank$max <- 15
 
-res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                             trace=1, hpar=hparam, intercept_row = intercept,
+hparam$beta$step_sizes <- hparam$gamma$step_sizes <-
+  step_size <- function(min_val, max_val, n=40) {
+    step = (max_val - min_val) / (n - 1L)
+    print(step)
+    return(step)
+  }
+
+
+res0 <- IMR:::imr.cv(dat$modd,
+                             trace=2, hpar=hparam, intercept_row = intercept,
                              intercept_col = intercept, ls_initial = T,
-                             seed = seed, warm_start = NULL, maxit=600,
+                             seed = seed, warm_start = NULL, maxit=800,
                              shared_information = shared, thresh=1e-6,
                              num_cores = 0)
 s0 <- output_wrapper_bixi(res0$best_fit, dat,shared)
@@ -452,9 +462,39 @@ all_runs %<>% rbind(data.frame(temporal = temporal,
                counter = counter,
 
                mape = s0.1$res$error.test)); counter=counter+1
-all_runs %>% print()
+all_runs %>% print()}}
 }
 #=======================
 #' we will test the results from BKTR to see what we get
+all_runs <- data.frame(); counter = 1;
+
+timestamp = "Jan"
+original_missing_pct = 0.1163287
+test_pct <- 0.2
+total_miss = test_pct + original_missing_pct -> miss_p -> miss
+seed = 2026
+prefix = 15
+bktr_res <- BKTR_Bixi_Wrapper(dat, timestamp, seed, total_miss, T, prefix)
+print(bktr_res$results$error.test)
+bktr_res$results$time / 60
+#for (cc in c(.05, .1, .2, .3, .4, .5)){
+
+  intercept = TRUE
+  covariate = TRUE
+  shared = TRUE
+  temporal = "original"
+  spatial = "none"
+  vals = 0.2
+
+  dat <- prepare_bixi_data(total_miss, timestamp, seed = seed,prefix = prefix,
+                           val_prop = vals, temporal = temporal, spatial=spatial,
+                           temporal_jitter = T, spatial_jitter = T,
+                           bktr_variables = TRUE,
+                           kappa_max = 1e3, tau_max = 1e-2, cor.target=cc)
+
+
+
+
+
 
 
