@@ -407,13 +407,13 @@ seed = 2026
 intercept = FALSE
 covariate = TRUE
 shared = FALSE
-temporal = "original"
-spatial = "none"
+temporal = "simulated"
+spatial = "simulated"
 vals = 0.2
 prefix = 15
-for(seed in  4:10){
+for(seed in  1:10){
 for(prefix in c(1:8, 14, 15)){
-  initialize_parallel_workers(9)
+  initialize_parallel_workers(7)
 
 #for(shared in c(T,F)){
 #  for(intercept in c(T,F)){
@@ -481,7 +481,7 @@ all_runs %<>% rbind(data.frame(temporal = temporal,
                mape = s0.1$res$error.test)); counter=counter+1
 all_runs %>% print()
 }
-saveRDS(all_runs, "./article_results/bixi/data/results_jan26/imrfit_20testsplits.rds")
+saveRDS(all_runs, "./article_results/bixi/data/results_jan26/imrfit_20testsplits_simulated.rds")
 }
 }
 #=======================
