@@ -411,7 +411,7 @@ temporal = "original"
 spatial = "none"
 vals = 0.2
 prefix = 15
-for(seed in  1:10){
+for(seed in  4:10){
 for(prefix in c(1:8, 14, 15)){
   initialize_parallel_workers(9)
 
