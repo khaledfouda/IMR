@@ -473,7 +473,7 @@ original_missing_pct = 0.1163287
 test_pct <- 0.2
 total_miss = test_pct + original_missing_pct -> miss_p -> miss
 seed = 2026
-prefix = 15
+prefix = 1
 bktr_res <- BKTR_Bixi_Wrapper(dat, timestamp, seed, total_miss, T, prefix)
 print(bktr_res$results$error.test)
 bktr_res$results$time / 60
