@@ -16,7 +16,7 @@ source("./article_results/bixi/helpers_bixi.R")
 #' Start with 50 different test sets.
 #------------------------------------------------------------
 # step 1: generate the data
-num_testsets = 50
+num_testsets = 20
 timestamp = "Jan"
 original_missing_pct = 0.1163287
 test_pct <- 0.2
@@ -24,13 +24,13 @@ total_miss = test_pct + original_missing_pct
 seed = 2025
 for(prefix in 1:num_testsets){
   seed = seed + 1
-  preprocess_bixi_data(total_miss, timestamp, seed, prefix,F)
+  preprocess_bixi_data(total_miss, timestamp, seed, prefix,T)
 }
 #----------------------------------------------------------------
 # step 2: train BKTR on all of them
 
 for(prefix in 14:num_testsets){
-  o = fit_BKTR_to_Bixi(total_miss, timestamp, prefix, seed)
+  o = fit_BKTR_to_Bixi(total_miss, timestamp, prefix, seed = 0)
 }
 #-------------------------------------------------------------
 # step 3: train our model + soft-impute >>

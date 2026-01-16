@@ -404,20 +404,25 @@ total_miss = test_pct + original_missing_pct -> miss_p
 seed = 2026
 #for (cc in c(.05, .1, .2, .3, .4, .5)){
 {
-intercept = TRUE
+intercept = FALSE
 covariate = TRUE
-shared = TRUE
+shared = FALSE
 temporal = "original"
 spatial = "none"
 vals = 0.2
 prefix = 15
-for(shared in c(T,F)){
-  for(intercept in c(T,F)){
-dat <- prepare_bixi_data(miss, timestamp, seed = seed, prefix = prefix,
+for(seed in  1:10){
+for(prefix in 1:20){
+  initialize_parallel_workers(7)
+
+#for(shared in c(T,F)){
+#  for(intercept in c(T,F)){
+
+dat <- prepare_bixi_data(total_miss, timestamp, seed = seed, prefix = prefix,
                         val_prop = vals, temporal = temporal, spatial=spatial,
                         temporal_jitter = T, spatial_jitter = T,
                         bktr_variables = TRUE,
-                        kappa_max = 1e3, tau_max = 1e-2, cor.target=cc)
+                        kappa_max = 1e3, tau_max = 1e-2)
 if(spatial == "none") dat$modd$similarity_cols = NULL
 if(temporal == "none") dat$modd$similarity_rows = NULL
 
@@ -432,20 +437,26 @@ hparam$laplace$max <- 2
 hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
 hparam$rank$max <- 15
 
-hparam$beta$step_sizes <- hparam$gamma$step_sizes <-
-  step_size <- function(min_val, max_val, n=40) {
-    step = (max_val - min_val) / (n - 1L)
-    print(step)
-    return(step)
-  }
+hparam$beta$max = .5
+hparam$gamma$max = .3
+
+hparam$beta$step_sizes = step_size(0, 0.5, 40)
+hparam$gamma$step_sizes = step_size(0, 0.3, 40)
+# hparam$beta$step_sizes <- hparam$gamma$step_sizes <-
+#   step_size <- function(min_val, max_val, n=40) {
+#     step = (max_val - min_val) / (n - 1L)
+#     print(step)
+#     return(step)
+#   }
 
 
-res0 <- IMR:::imr.cv(dat$modd,
+ttime <- bench::bench_time( res0 <- IMR:::imr.cv(dat$modd,
                              trace=2, hpar=hparam, intercept_row = intercept,
                              intercept_col = intercept, ls_initial = T,
                              seed = seed, warm_start = NULL, maxit=800,
                              shared_information = shared, thresh=1e-6,
-                             num_cores = 0)
+                             num_cores = 0))
+
 s0 <- output_wrapper_bixi(res0$best_fit, dat,shared)
 s0.1 <- output_wrapper_bixi(res0$best_fit, dat,shared, IMR:::error_metric$mape)
 all_runs %<>% rbind(data.frame(temporal = temporal,
@@ -460,9 +471,13 @@ all_runs %<>% rbind(data.frame(temporal = temporal,
                seed     = seed, corrtarg = cc,
                error=s0$res$error.test,
                counter = counter,
-
+               time1 = lubridate::time_length(ttime[1], "seconds"),
+               time2 = lubridate::time_length(ttime[2], "seconds"),
                mape = s0.1$res$error.test)); counter=counter+1
-all_runs %>% print()}}
+all_runs %>% print()
+}
+saveRDS(all_runs, "./article_results/bixi/data/results_jan26/imrfit_20testsplits.rds")
+}
 }
 #=======================
 #' we will test the results from BKTR to see what we get
