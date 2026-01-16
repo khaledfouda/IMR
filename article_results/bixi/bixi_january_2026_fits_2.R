@@ -403,7 +403,7 @@ test_pct <- 0.2
 total_miss = test_pct + original_missing_pct -> miss_p
 seed = 2026
 #for (cc in c(.05, .1, .2, .3, .4, .5)){
-{
+ {
 intercept = FALSE
 covariate = TRUE
 shared = FALSE
@@ -411,14 +411,14 @@ temporal = "simulated"
 spatial = "simulated"
 vals = 0.2
 prefix = 15
-for(seed in  1:10){
+for(seed in  5:10){
 for(prefix in c(1:8, 14, 15)){
   initialize_parallel_workers(7)
 
 #for(shared in c(T,F)){
 #  for(intercept in c(T,F)){
-if(seed == 4){
-  if(prefix %in% 1:1)
+if(seed == 5){
+  if(prefix %in% 1:3)
     next
 }
 
@@ -436,13 +436,13 @@ if(!covariate)
 hparam <- IMR::get_imr_default_hparams(dat$modd$similarity_rows,
                                        dat$modd$similarity_cols, 0, 0)
 hparam$laplace$step_sizes <- c(0.1, 0.01)
-hparam$laplace$min <- 0
-hparam$laplace$max <- 2
+hparam$laplace$min <- 0.3
+hparam$laplace$max <- 0.8
 hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
 hparam$rank$max <- 15
 
-hparam$beta$max = .5
-hparam$gamma$max = .3
+hparam$beta$max = hparam$beta$value = hparam$beta$min = .1
+hparam$gamma$max = hparam$gamma$value = hparam$gamma$min = 0
 
 hparam$beta$step_sizes = step_size(0, 0.5, 40)
 hparam$gamma$step_sizes = step_size(0, 0.3, 40)
@@ -454,7 +454,7 @@ hparam$gamma$step_sizes = step_size(0, 0.3, 40)
 #   }
 
 
-ttime <- bench::bench_time( res0 <- IMR:::imr.cv(dat$modd,
+ttime <- bench::bench_time( res0 <- IMR:::imr.cv_laplace(dat$modd,
                              trace=2, hpar=hparam, intercept_row = intercept,
                              intercept_col = intercept, ls_initial = T,
                              seed = seed, warm_start = NULL, maxit=800,
@@ -481,7 +481,7 @@ all_runs %<>% rbind(data.frame(temporal = temporal,
                mape = s0.1$res$error.test)); counter=counter+1
 all_runs %>% print()
 }
-saveRDS(all_runs, "./article_results/bixi/data/results_jan26/imrfit_20testsplits_simulated.rds")
+saveRDS(all_runs, "./article_results/bixi/data/results_jan26/imrfit_20testsplits_simulated2.rds")
 }
 }
 #=======================
