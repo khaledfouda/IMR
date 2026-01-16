@@ -413,12 +413,12 @@ vals = 0.2
 prefix = 15
 for(seed in  1:10){
 for(prefix in c(1:8, 14, 15)){
-  initialize_parallel_workers(6)
+  initialize_parallel_workers(9)
 
 #for(shared in c(T,F)){
 #  for(intercept in c(T,F)){
-if(seed == 1){
-  if(prefix %in% 1:2)
+if(seed == 4){
+  if(prefix %in% 1:1)
     next
 }
 
