@@ -29,8 +29,17 @@ for(prefix in 1:num_testsets){
 #----------------------------------------------------------------
 # step 2: train BKTR on all of them
 
-for(prefix in 14:num_testsets){
+for(prefix in 1:8){
   o = fit_BKTR_to_Bixi(total_miss, timestamp, prefix, seed = 0)
+
+  dat <- prepare_bixi_data(total_miss, timestamp, seed = seed, prefix = prefix,
+                           val_prop = vals, temporal = "original", spatial="none",
+                           temporal_jitter = T, spatial_jitter = T,
+                           bktr_variables = TRUE,
+                           kappa_max = 1e3, tau_max = 1e-2)
+  bktr_res <- BKTR_Bixi_Wrapper(dat, timestamp, seed, total_miss, T, prefix)
+  print(bktr_res$results$error.test)
+  print(bktr_res$results$time)
 }
 #-------------------------------------------------------------
 # step 3: train our model + soft-impute >>

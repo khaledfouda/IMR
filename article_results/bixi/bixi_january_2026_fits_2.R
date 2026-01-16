@@ -412,11 +412,15 @@ spatial = "none"
 vals = 0.2
 prefix = 15
 for(seed in  1:10){
-for(prefix in 1:20){
-  initialize_parallel_workers(7)
+for(prefix in c(1:8, 14, 15)){
+  initialize_parallel_workers(6)
 
 #for(shared in c(T,F)){
 #  for(intercept in c(T,F)){
+if(seed == 1){
+  if(prefix %in% 1:2)
+    next
+}
 
 dat <- prepare_bixi_data(total_miss, timestamp, seed = seed, prefix = prefix,
                         val_prop = vals, temporal = temporal, spatial=spatial,
@@ -468,7 +472,8 @@ all_runs %<>% rbind(data.frame(temporal = temporal,
                shared    = shared,
                lambda_m = res0$best_fit$lambda_laplace,
                rank     = s0$res$rank_M,
-               seed     = seed, corrtarg = cc,
+               prefix  = prefix,
+               seed     = seed, #corrtarg = cc,
                error=s0$res$error.test,
                counter = counter,
                time1 = lubridate::time_length(ttime[1], "seconds"),
