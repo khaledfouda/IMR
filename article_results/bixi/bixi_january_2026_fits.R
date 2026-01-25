@@ -181,42 +181,28 @@ datatable(tab, rownames = FALSE, options = list(pageLength = nrow(tab), dom = "t
 #' 2) Fix training size; change val_size and see test error. replicate with different seeds
 #' 3) Test 1) with soft-impute.
 #' -----------------------------------------------------------
-# we begin by generating the data. important here:
-# you do not generate a new test with each seed. you generate a new validation with each seed
-timestamp = "Jan"
-original_missing_pct = 0.1163287
-test_pct <- 0.3
-total_miss = test_pct + original_missing_pct -> miss_p
-seed = 2025
-#preprocess_bixi_data(total_miss, timestamp, seed, "",F)
-
 {
   #B = c(5, 10, 20, 25)
-  with_intercept = c(F)
-  miss = total_miss
-  temporal = "none"
-  spatial = "none"
-  n_seeds = 100
+  with_intercept = c(T,F)
+  miss = 0.5
+  temporal = "original"
+  spatial = "original"
+  n_seeds = 500
   val_size = c(.05, .1, .2, .3)
 
 
   all_res <- data.frame()
   for(i in 1:n_seeds){
-    IMR::initialize_parallel_workers(9)
+    initialize_parallel_workers(9)
     seed = 2025 + i
     for(vals in val_size){
-      dat <- prepare_bixi_data(miss, timestamp, seed = seed,
-                               val_prop = vals, temporal = temporal, spatial=spatial,
-                               temporal_jitter = T, spatial_jitter = T,
-                               kappa_max = 1e4, tau_max = 1e-2)
-
+      dat <- prepare_bixi_data(miss, "25Sep", seed = seed,
+                               val_prop = vals)
       dat$X <- dat$Z <- dat$modd$Xq <- dat$modd$Xr <- dat$modd$Zq <- dat$modd$Zr <- NULL
-
-      #kernels <- generate_similarity_bixi(miss, "25Sep", temporal = temporal, spatial=spatial,
-       #                                   temporal_jitter = T, spatial_jitter = T)
-      #dat$modd$similarity_cols <- kernels$spatial
-      #dat$modd$similarity_rows <- kernels$temporal
-
+      kernels <- generate_similarity_bixi(miss, "25Sep", temporal = temporal, spatial=spatial,
+                                          temporal_jitter = T, spatial_jitter = T)
+      dat$modd$similarity_cols <- kernels$spatial
+      dat$modd$similarity_rows <- kernels$temporal
       if(spatial == "none") dat$modd$similarity_cols = NULL
       if(temporal == "none") dat$modd$similarity_rows = NULL
       hparam <- IMR::get_imr_default_hparams(dat$modd$similarity_rows,
@@ -236,7 +222,6 @@ seed = 2025
                                    shared_information = T, thresh=1e-6,
                                    num_cores = 0)
       s0 <- output_wrapper_bixi(res0$best_fit, dat,T)
-      s0.1 <- output_wrapper_bixi(res0$best_fit, dat,T, IMR:::error_metric$mape)
       all_res %<>% rbind (data.frame(temporal = temporal,
                                      spatial=spatial,
                                      model    = "IMR",
@@ -245,90 +230,56 @@ seed = 2025
                                      lambda_m = res0$best_fit$lambda_laplace,
                                      rank     = s0$res$rank_M,
                                      seed     = seed,
-                                     error=s0$res$error.test,
-                                     mape = s0.1$res$error.test))
+                                     error=s0$res$error.test))
 
       }
       #-- fit soft-impute
-      # fit_si <- simpute.cv(
-      #   y_full = dat$modd$Y,
-      #   y_train = dat$modd$y_train,
-      #   y_valid = dat$modd$y_valid,
-      #   n.lambda = 80,
-      #   trace=FALSE,
-      #    maxit = 800,
-      #   test_error = IMR:::error_metric$rmse
-      # )
-      # s1 <- output_wrapper_bixi(fit_si$fit, dat)
-      # s1.0 <- output_wrapper_bixi(fit_si$fit, dat, T, IMR:::error_metric$mape)
-      # all_res %<>% rbind (data.frame(temporal = temporal,
-      #                                spatial = spatial,
-      #                                model    = "Simpute",
-      #                                val_size = vals,
-      #                                intercept = NA,
-      #                                lambda_m = fit_si$lambda,
-      #                                rank     = s1$res$rank_M,
-      #                                seed     = seed,
-      #                                error=s1$res$error.test,
-      #                                mape = s1.0$res$error.test))
+      fit_si <- simpute.cv(
+        y_full = dat$modd$Y,
+        y_train = dat$modd$y_train,
+        y_valid = dat$modd$y_valid,
+        n.lambda = 80,
+        trace=FALSE,
+         maxit = 800,
+        test_error = IMR:::error_metric$rmse
+      )
+      s1 <- output_wrapper_bixi(fit_si$fit, dat)
+      all_res %<>% rbind (data.frame(temporal = temporal,
+                                     spatial = spatial,
+                                     model    = "Simpute",
+                                     val_size = vals,
+                                     intercept = NA,
+                                     lambda_m = fit_si$lambda,
+                                     rank     = s1$res$rank_M,
+                                     seed     = seed,
+                                     error=s1$res$error.test))
       #---
-      #print(all_res)
+      print(all_res)
     }
-    # all_res %>% arrange(error) %>% mutate(error = round(error,6),
-    #                                       mape  = round(mape, 6)) %>% print()
-
-    all_res %>%
-      dplyr::select(-temporal, -spatial) %>%
-      group_by(model, intercept, val_size) %>%
-      dplyr::summarise_all(summ_res ) %>% print()
-
-      print(i)
+    print(i)
   }
 
   all_res %>% arrange(error) %>% mutate(error = round(error,6))
 }
-saveRDS(all_res,"./article_results/bixi/data/results_jan26/seed_vs_valsize_2.rds")
- summ_res <- function(x)
-   paste0(round(median(x),4), " (", round(sd(x),4), ")[",round(min(x),4), ",",
-          round(max(x),4), "]")
-
-#--- read and analyze
-readRDS("./article_results/bixi/data/results_jan26/seed_vs_valsize_1.rds") %>%
-  mutate(model = ifelse(model == "IMR", "IMR Matern", model)) %>%
-  rbind(
-    readRDS("./article_results/bixi/data/results_jan26/seed_vs_valsize_2.rds") %>%
-      mutate(model = ifelse(model == "IMR", "IMR Identity", model))
-  ) -> all_res
-
-
+#saveRDS(all_res,"./article_results/bixi/data/results_jan26/seed_vs_valsize.rds")
+all_res <- readRDS("./article_results/bixi/data/results_jan26/seed_vs_valsize.rds")
+summ_res <- function(x)
+  paste0(round(mean(x),4), " (", round(sd(x),4), ")[",round(min(x),4), ",",
+         round(max(x),4), "]")
 all_res %>%
   dplyr::select(-temporal, -spatial) %>%
   group_by(model, intercept, val_size) %>%
-  dplyr::summarise_all(mean) %>%
-  ungroup() %>%
-  arrange(error) %>%
-  transmute(model, intercept, val_size, order = 1:n()) %>%
-  left_join(all_res %>%
-              dplyr::select(-temporal, -spatial) %>%
-              group_by(model, intercept, val_size) %>%
-              dplyr::summarise_all(summ_res) %>%
-              ungroup(),
-            c("model", "intercept", "val_size")) %>%
-  arrange(order) %>%
-  dplyr::select(-order, -seed, -lambda_m, -mape)
- #%>%
-
-
+  dplyr::summarise_all(summ_res ) #%>%
 #----------------------------------------------------------------------------------------------
 # 2)
 
 
 {
   #B = c(5, 10, 20, 25)
-  miss = total_miss
-  temporal = "none"
-  spatial = "none"
-  n_seeds = 100
+  miss = 0.5
+  temporal = "original"
+  spatial = "original"
+  n_seeds = 500
   val_size = c(.05, .1, .2, .3)
   max_val = max(val_size)
 
@@ -337,15 +288,15 @@ all_res %>%
 
     initialize_parallel_workers(9)
     seed = 2025 + i
-
-    dat <- prepare_bixi_data(miss, timestamp, seed = seed,
-                             val_prop = 0.3, temporal = temporal, spatial=spatial,
-                             temporal_jitter = T, spatial_jitter = T,
-                             kappa_max = 1e4, tau_max = 1e-2)
+    dat <- prepare_bixi_data(miss, "25Sep", seed = seed,
+                             val_prop = 0.3)
     dat$X <- dat$Z <- dat$modd$Xq <- dat$modd$Xr <- dat$modd$Zq <- dat$modd$Zr <- NULL
+    kernels <- generate_similarity_bixi(miss, "25Sep", temporal = temporal, spatial=spatial,
+                                        temporal_jitter = T, spatial_jitter = T)
+    dat$modd$similarity_cols <- kernels$spatial
+    dat$modd$similarity_rows <- kernels$temporal
     if(spatial == "none") dat$modd$similarity_cols = NULL
     if(temporal == "none") dat$modd$similarity_rows = NULL
-
     hparam <- IMR::get_imr_default_hparams(dat$modd$similarity_rows,
                                            dat$modd$similarity_cols, 0, 0)
     hparam$laplace$step_sizes <- c(0.1, 0.01)
@@ -353,7 +304,6 @@ all_res %>%
     hparam$laplace$max <- 0.5
     hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
     hparam$rank$max <- 15
-
     validation_mask <- as.matrix(dat$modd$valid_mask)
     validation_set <- dat$modd$y_valid
 
@@ -374,7 +324,6 @@ all_res %>%
                                      shared_information = T, thresh=1e-6,
                                      num_cores = 0)
         s0 <- output_wrapper_bixi(res0$best_fit, dat,T)
-        s0.1 <- output_wrapper_bixi(res0$best_fit, dat,T, IMR:::error_metric$mape)
         all_res_s2 %<>% rbind (data.frame(temporal = temporal,
                                        spatial=spatial,
                                        val_size = vals,
@@ -382,55 +331,26 @@ all_res %>%
                                        lambda_m = res0$best_fit$lambda_laplace,
                                        rank     = s0$res$rank_M,
                                        seed     = seed,
-                                       error=s0$res$error.test,
-                                       mape = s0.1$res$error.test))
+                                       error=s0$res$error.test))
 
       }
 
-      #print(all_res_s2)
+      print(all_res_s2)
     }
-    # all_res_s2 %>% arrange(error) %>% mutate(error = round(error,6),
-    #                                       mape  = round(mape, 6)) %>% print()
-
-    all_res_s2 %>%
-      dplyr::select(-temporal, -spatial) %>%
-      group_by(intercept,  val_size) %>%
-      summarise_all(summ_res ) %>% print()
-
     print(i)
   }
 
   all_res_s2 %>% arrange(error) %>% mutate(error = round(error,6))
 }
-saveRDS(all_res_s2,"./article_results/bixi/data/results_jan26/fixedtrain_vs_valsize_3.rds")
+saveRDS(all_res_s2,"./article_results/bixi/data/results_jan26/fixedtrain_vs_valsize.rds")
 
 summ_res <- function(x)
   paste0(round(mean(x),4), " (", round(sd(x),4), ")[",round(min(x),4), ",",
-         round(median(x), 4), ",",
          round(max(x),4), "]")
-readRDS("./article_results/bixi/data/results_jan26/fixedtrain_vs_valsize.rds_2") %>%
-  # mutate(model = ifelse(model == "IMR", "IMR Matern", model)) %>%
-  rbind(
-    readRDS("./article_results/bixi/data/results_jan26/fixedtrain_vs_valsize_3.rds") #%>%
-      # mutate(model = ifelse(model == "IMR", "IMR Identity", model))
-  ) -> all_res2
-
-
-all_res2 %>%
-  #dplyr::select(-temporal, -spatial) %>%
-  group_by(temporal, spatial, intercept, val_size) %>%
-  dplyr::summarise_all(median) %>%
-  ungroup() %>%
-  arrange(error) %>%
-  transmute(temporal, spatial, intercept, val_size, order = 1:n()) %>%
-  left_join(all_res2 %>%
-              #dplyr::select(-temporal, -spatial) %>%
-              group_by(temporal, spatial, intercept, val_size) %>%
-              dplyr::summarise_all(summ_res) %>%
-              ungroup(),
-            c("temporal", "spatial", "intercept", "val_size")) %>%
-  arrange(order) %>%
-  dplyr::select(-order, -seed, -lambda_m, -mape)
+all_res_s2 %>%
+  dplyr::select(-temporal, -spatial) %>%
+  group_by(intercept,  val_size) %>%
+  summarise_all(summ_res ) #%>%
 
 
 
