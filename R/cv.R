@@ -102,7 +102,7 @@ imr.cv_laplace <- function(
       ))
     }
     results$best_fit$lambda_laplace = lambda_laplace
-    return(list(fit = results$best_fit, error = results$best_error))
+    return(list(fit = results$best_fit, error = results$best_error, history = results$history))
   }
 
   #----------------
@@ -199,6 +199,7 @@ imr.cv <- function(
   warm_start = NULL,
   seed = NULL,
   #fast.cv = FALSE,
+  layer_1_parallel = TRUE,
   separate_tuning = FALSE
 ) {
   # if (fast.cv) {
@@ -260,7 +261,7 @@ imr.cv <- function(
       maxit = 100,
       verbose = trace
     )
-    if (is.function(hpar$beta$step_sizes)){}
+    if (is.function(hpar$beta$step_sizes))
       hpar$beta$step_sizes <- hpar$beta$step_sizes(hpar$beta$min, hpar$beta$max)
   }
   if (gamma_flag & is.null(hpar$gamma$max)) {
@@ -328,7 +329,34 @@ imr.cv <- function(
     # if separate then tune beta first followed by gamma. Meanwhile,
     # keep lambda_gamma at 10% of its maximum.
   if(beta_flag){
+    if(layer_1_parallel){
 
+    results <- IMR:::parallel_grid_1d_adaptive(
+      param_min = hpar$beta$min,
+      param_max = hpar$beta$max,
+      step_sizes = hpar$beta$step_sizes,
+      f = single_fit,
+      .progress = TRUE,
+      .trace = trace >= 3,
+      #.packages = c("IMR"),
+      .seed = if(is.null(seed)) FALSE else seed,
+      type = "rows",
+      data = data,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      hpar = hpar,
+      shared_information = shared_information,
+      error_function = error_function,
+      thresh = thresh,
+      trace = trace,
+      maxit = maxit,
+      ls_initial = ls_initial,
+      num_cores = 0,
+      seed = seed
+      #.warm_start = warm_start
+    )
+
+    }else{
     results <- IMR::adaptive_tuner(
       single_fit,
       step_sizes = hpar$beta$step_sizes,
@@ -351,6 +379,7 @@ imr.cv <- function(
       num_cores = num_cores#,
       #fit = NULL
     )
+    }
     hpar$beta$value <- results$best_fit$lambda_beta
     if (trace >= 1) {
       message(sprintf(

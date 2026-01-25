@@ -16,7 +16,8 @@ Imports:
     Rcpp,
     methods,
     tidyr,
-    softImpute
+    softImpute,
+    foreach
 LinkingTo: 
     Rcpp,
     RcppArmadillo

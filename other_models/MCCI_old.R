@@ -187,6 +187,21 @@ MCCI.fit_optimized <- function(data, lambda_1, lambda_2, alpha) {
 }
 
 
+# MCCI.fit_optimized_part1 <- function(data, lambda_1) {
+#   # returns Xbeta only. Not used.
+#   beta_hat = MASS::ginv(data$X.X + data$n1n2Im * lambda_1) %*% data$X.W.theta.Y
+#   Xbeta = data$X %*% beta_hat
+#   return(Xbeta[data$W_fold == 0 & data$W == 1])
+# }
+#
+# MCCI.fit_optimized_part2 <- function(data, lambda_2, alpha) {
+#   # returns Bhat only. Not used.
+#   T_c_D = data$svdd$u %*% (pmax(data$svdd$d - alpha * data$n1n2 * lambda_2, 0) * t(data$svdd$v))
+#   # B hat as in (11)
+#   B_hat = T_c_D / (1 + 2 * (1 - alpha) * data$n1n2 * lambda_2)
+#   return(B_hat[data$W_fold == 0 & data$W == 1])
+# }
+
 
 MCCI.cv <-
   function(Y,
@@ -198,10 +213,10 @@ MCCI.cv <-
            alpha_grid = seq(0.992, 1, length = 20),
            seed = NULL,
            numCores = 1,
-           n1n2_optimized = TRUE,
+           n1n2_optimized = FALSE,
            test_error =IMR:::error_metric$rmse,
            theta_estimator = MCCI_weights$uniform,
-           return_diagn = FALSE) {
+           sequential = FALSE) {
     start_time <- Sys.time()
     fit_counter <- 0
     #' -------------------------------------------------------------------
@@ -225,13 +240,14 @@ MCCI.cv <-
     folds <- MC_Kfold_split(nrow(Y), ncol(Y), n_folds, W, seed)
 
     fold_data = lapply(1:n_folds, function(i) {
+      #train_indices = which(indices != i, arr.ind = TRUE)
+      W_fold = folds[[i]] #W[train_indices,]
       #---------------------------------------------------------------
       # EDIT: I implemented this above in k_fold_cells() no longer needed
       #W_fold[W==0] = 1 # This to avoid having the missing data as test set.
       # Note that we don't have their original values so if they're passed to the validation step,
       # their original will be equal to 0. We hope we have enough W_fold = 0 while W = 1.
       #---------------------------------------------------
-      W_fold = folds[[i]]
       Y_train = Y
       Y_train[W_fold == 0] <- 0
       Y_valid = Y[W_fold == 0 & W == 1]
@@ -245,7 +261,95 @@ MCCI.cv <-
     })
 
     # ************************************************************
+    if (numCores == 1 & sequential == FALSE) {
+      results <-
+        foreach(alpha = alpha_grid, .combine = rbind) %:%
+        foreach(lambda_2 = lambda_2_grid, .combine = rbind) %do% {
+          #test_error =IMR::error_metric$rmse
+          lambda_1 = 0
+          score = 0
+          for (i in 1:n_folds) {
+            data = fold_data[[i]]
+            A_hat_test = MCCI.fit_optimized(data, lambda_1, lambda_2, alpha)
+            # Compute the test error using the provided formula
+            score = score + test_error(A_hat_test, data$Y_valid)
+            # counting the number of fits
+            fit_counter = fit_counter + 1
+          }
+          score = score / n_folds
+          c(alpha, lambda_2, score)
+        }
 
+      # Process results to find the best parameters
+      min_score <- min(results[, 3])
+
+      # Subset to only include results with the minimum score
+      min_results <-
+        results[results[, 3] == min_score, , drop = FALSE] # Keep it as a dataframe
+
+      # Find the one with the highest lambda_2 in case of multiple results with the same score
+      if (nrow(min_results) > 1) {
+        best_result <- min_results[which.max(min_results[, 2]),]
+      } else {
+        best_result <-
+          min_results  # If only one row, it's already the best result
+      }
+      best_params <-
+        list(alpha = best_result[1],
+             lambda_1 = 0,
+             lambda_2 = best_result[2])
+      best_score <- best_result[3]
+
+
+    } else if (numCores == 1 & sequential) {
+      # fixing optimal values of lambda 1 and alpha and optimizing for alpha separately
+      lambda_1 = 0
+      alpha = 1
+      best_score = Inf
+      for (lambda_2 in lambda_2_grid) {
+        score = 0
+        for (i in 1:n_folds) {
+          data = fold_data[[i]]
+          # compute the estimates with a modified fit function
+          A_hat_test = MCCI.fit_optimized(data, lambda_1, lambda_2, alpha)
+          # -- EDIT: Using MCCI's formula in page 205 to compute the test error
+          score = score + test_error(A_hat_test, data$Y_valid)
+          # counting the number of fits
+          fit_counter = fit_counter + 1
+        }
+        score = score / n_folds
+
+        if (score < best_score) {
+          best_score = score
+          best_params$lambda_2 = lambda_2
+        }
+          print(paste(score, "lambda_2", lambda_2))
+      }
+      # fixing optimal values of lambda 2 and lambda 1 and optimizing for alpha separately
+      lambda_2 = best_params$lambda_2
+      lambda_1 = 0
+      best_score = Inf
+      for (alpha in alpha_grid) {
+        score = 0
+        for (i in 1:n_folds) {
+          data = fold_data[[i]]
+          # compute the estimates with a modified fit function
+          A_hat_test = MCCI.fit_optimized(data, lambda_1, lambda_2, alpha)
+          # -- EDIT: Using MCCI's formula in page 205 to compute the test error
+          score = score + test_error(A_hat_test, data$Y_valid)
+          # counting the number of fits
+          fit_counter = fit_counter + 1
+        }
+        score = score / n_folds
+
+        if (score < best_score) {
+          best_score = score
+          best_params$alpha = alpha
+        }
+          print(paste(score, "alpha", alpha))
+      }
+
+    } else{
       # Run on multiple cores
       # prepare the cluster
       require(parallel)
@@ -259,6 +363,8 @@ MCCI.cv <-
         foreach(alpha = alpha_grid, .combine = rbind) %:%
         foreach(lambda_1 = lambda_1_grid, .combine = rbind) %:%
         foreach(lambda_2 = lambda_2_grid, .combine = rbind) %dopar% {
+          #test_error =IMR::error_metric$rmse
+          #lambda_1 = 0
           score = 0
           for (i in 1:n_folds) {
             data = fold_data[[i]]
@@ -270,17 +376,17 @@ MCCI.cv <-
             fit_counter = fit_counter + 1
           }
           score = score / n_folds
-          c(alpha, lambda_1, lambda_2, score)
+          c(alpha, lambda_2, score, lambda_1)
         }
       # Process results to find the best parameters
       # Edited on Dec 1st to pick the minimum score with highest lambda_2 value.
-      min_score <- min(results[, 4])
+      min_score <- min(results[, 3])
       # Subset to only include results with the minimum score
       min_results <-
-        results[results[, 4] == min_score, , drop = FALSE] # drop to keep it as df
+        results[results[, 3] == min_score, , drop = FALSE] # drop to keep it as df
       # In case of multiple results with the same score, find the one with the highest lambda_2
       if (nrow(min_results) > 1) {
-        best_result <- min_results[which.max(min_results[, 3]),]
+        best_result <- min_results[which.max(min_results[, 2]),]
       } else {
         best_result <-
           min_results  # If only one row, it's already the best result
@@ -289,12 +395,12 @@ MCCI.cv <-
       # Extract the best parameters
       best_params <-
         list(alpha = best_result[1],
-             lambda_1 = best_result[2],
-             lambda_2 = best_result[3])
-      best_score <- best_result[4]
+             lambda_1 = best_results[4],
+             lambda_2 = best_result[2])
+      best_score <- best_result[3]
       # close the cluster
       stopCluster(cl)
-
+    }
     #--------------------------------------------
     # fixing optimal values of lambda 2 and alpha and optimizing for lambda 1 separately
     # lambda_2 = best_params$lambda_2
@@ -344,7 +450,7 @@ MCCI.cv <-
             units = "secs")
         )))
     obj$time_per_fit = obj$time / obj$total_num_fits
-    if(return_diagn) obj$results = results
+
     return(obj)
 
   }

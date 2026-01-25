@@ -356,15 +356,21 @@ parallel_grid_1d_adaptive <- function(param_min,
 
   original_min <- param_min
   original_max <- param_max
+  old_grid <- NULL
+  results <- data.frame(parameter = numeric(0),
+                        error     = numeric(0))
 
   for (step in step_sizes) {
-
     grid <- seq(param_min, param_max, step)
     if (length(grid) == 0L) {
       stop(
         "No grid points generated for step size ", step,
         " with current bounds [", param_min, ", ", param_max, "]."
       )
+    }
+    if(!is.null(old_grid)){
+      # check those that we already have results for
+
     }
 
     result <- parallel_grid_1d(grid, f, .seed, .packages, .progress, ...)
@@ -383,6 +389,7 @@ parallel_grid_1d_adaptive <- function(param_min,
         )
       )
     }
+    old_grid <- grid
   }
 
   return(result)

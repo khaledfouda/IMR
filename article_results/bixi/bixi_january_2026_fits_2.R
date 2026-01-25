@@ -276,9 +276,9 @@ clean_res <- all_res |>
   mutate(
     # Create a clear label for each model variation
     model_id = case_when(
-      model == "IMR Matern" & intercept == TRUE  ~ "IMR Matern (Int)",
-      model == "IMR Matern" & intercept == FALSE ~ "IMR Matern (No Int)",
-      model == "IMR Identity" ~ "IMR Identity (No Int)", # Handling if it exists in full data
+      model == "IMR Matern" & intercept == TRUE  ~ "Kernels with intercept",
+      model == "IMR Matern" & intercept == FALSE ~ "Kernels without intercept",
+      model == "IMR Identity" ~ "No kernels, no intercept", # Handling if it exists in full data
       model == "Simpute" ~ "Simpute",
       TRUE ~ paste(model, intercept) # Catch-all
     ),
@@ -305,23 +305,116 @@ clean_res |>
 # Calculate stability metrics across the 100 seeds
 seed_analysis <- clean_res |>
   summarise(
-    mean_error = mean(error, na.rm = TRUE),
-    sd_error   = sd(error, na.rm = TRUE), # This is the "Seed Effect" magnitude
-    cv_percent = (sd(error) / mean(error)) * 100, # Coefficient of Variation
+    mean_error = round(mean(error, na.rm = TRUE),4),
+    sd_error   = round(sd(error, na.rm = TRUE),4), # This is the "Seed Effect" magnitude
+    cv_percent = round((sd(error) / mean(error)) * 100,2), # Coefficient of Variation
     .by = c(model_id, val_size)
   ) |>
-  arrange(val_size, mean_error)
+  arrange(cv_percent)
+
+seed_analysis <- clean_res |>
+  summarise(
+    mean_rank = round(mean(rank, na.rm = TRUE),4),
+    sd_rank   = round(sd(rank, na.rm = TRUE),4), # This is the "Seed Effect" magnitude
+    cv_rank = round((sd(rank) / mean(rank)) * 100,2),
+    mean_lambda = round(mean(lambda_m, na.rm = TRUE),4),
+    sd_lambda   = round(sd(lambda_m, na.rm = TRUE),4), # This is the "Seed Effect" magnitude
+    cv_lambda = round((sd(lambda_m) / mean(lambda_m)) * 100,2),# Coefficient of Variation
+    .by = c(model_id, val_size)
+  ) |>
+  arrange(cv_rank)
+
+seed_analysis <- clean_res |>
+  summarise(
+    mean_error = round(mean(error, na.rm = TRUE),4),
+    sd_error   = round(sd(error, na.rm = TRUE),4), # This is the "Seed Effect" magnitude
+    cv_percent = round((sd(error) / mean(error)) * 100,2), # Coefficient of Variation
+    .by = c(model_id, val_size)
+  ) |>
+  arrange(cv_percent)
+
 
 print(seed_analysis)
 
+pretty_table <- seed_analysis |>
+  # Optional: Arrange by stability if not already sorted
+  #arrange(model_id, val_size) |>
+  arrange(cv_percent) %>%
+  gt() |>
+
+  # --- Header & Layout ---
+  tab_header(
+    title = md("**Effect of  validation size**"),
+    #subtitle = "Impact of changing the random seed (100 replications) at the train-valid step"
+     subtitle = "Impact of changing the size of the validation set while keeping the train fixed. 100 replications"
+  ) |>
+
+  # --- Formatting Numbers ---
+  fmt_percent(
+    columns = val_size,
+    decimals = 0
+  ) |>
+  fmt_number(
+    columns = c(mean_error, sd_error),
+    decimals = 4
+  ) |>
+  fmt_number(
+    columns = cv_percent,
+    pattern = "{x}%", # Add % sign explicitly
+    decimals = 2
+  ) |>
+
+  # --- Column Labels ---
+  cols_label(
+    model_id = "Model",
+    val_size = "Valid Size",
+    mean_error = "Mean RMSE",
+    sd_error = "SD RMSE",
+    cv_percent = "CV"
+  ) |>
+
+  # --- Visual Enhancements ---
+  # Add a "heat map" to the CV column to highlight the unstable rows
+  data_color(
+    columns = cv_percent,
+    method = "numeric",
+    palette = c("#e6f3ff", "#ffcccc") # Light Blue (Stable) to Light Red (Unstable)
+  ) |>
+  # data_color(
+  #   columns = cv_lambda,
+  #   method = "numeric",
+  #   palette = c("#e6f3ff", "#ffcccc") # Light Blue (Stable) to Light Red (Unstable)
+  # ) |>
+
+  # Group columns visually
+  # tab_spanner(
+  #   label = "Predictive Performance",
+  #   columns = c(mean_error)
+  # ) |>
+  # tab_spanner(
+  #   label = "Seed Sensitivity",
+  #   columns = c(sd_error, cv_percent)
+  # ) |>
+
+  # Add borders for readability
+  tab_options(
+    table.border.top.color = "black",
+    heading.border.bottom.color = "black",
+    column_labels.border.bottom.color = "black",
+    table_body.hlines.color = "lightgray",
+    data_row.padding = px(6) # Give the rows some breathing room
+  ); pretty_table
+
+
+##########
 
 clean_res <- all_res2 |>
   # Create a distinct identifier for the 3 model variations
   mutate(
     model_id = case_when(
-      temporal == "original" & spatial == "original" & intercept == TRUE  ~ "Orig/Orig (Int)",
-      temporal == "original" & spatial == "original" & intercept == FALSE ~ "Orig/Orig (No Int)",
-      temporal == "none" & spatial == "none" & intercept == FALSE     ~ "None/None (No Int)",
+      temporal == "original" & spatial == "original" & intercept == TRUE  ~ "Kernels with Intercept",
+      temporal == "original" & spatial == "original" & intercept == FALSE ~ "Kernels without Intercept",
+      temporal == "none" & spatial == "none" & intercept == FALSE     ~ "No kernels, no intercepts",
       TRUE ~ "Other" # Catch-all for safety
     ),
     # Ensure val_size is treated as a factor for boxplots, but numeric for lines
@@ -411,13 +504,13 @@ temporal = "simulated"
 spatial = "simulated"
 vals = 0.2
 prefix = 15
-for(seed in  5:10){
+for(seed in  1:10){
 for(prefix in c(1:8, 14, 15)){
   initialize_parallel_workers(7)
 
 #for(shared in c(T,F)){
 #  for(intercept in c(T,F)){
-if(seed == 5){
+if(seed == 51){
   if(prefix %in% 1:3)
     next
 }

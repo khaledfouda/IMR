@@ -20,15 +20,17 @@ get_imr_default_hparams <- function(similarity_row = NULL,
     beta = list(
       min   = 0,
       max = NULL, # if NULL, computed internally (recommended)
-      step_sizes = c(5,1),
-      n_streaks = 2,
+      #step_sizes = c(5,1),
+      length = 10,
+      #n_streaks = 2,
       value = 0 # if equal to max then no tuning to be done
     ),
     gamma = list(
       min   = 0,
       max = NULL, # if NULL, computed internally (recommended)
-      step_sizes = c(5,1),
-      n_streaks = 2,
+      #step_sizes = c(5,1),
+      length = 10,
+      #n_streaks = 2,
       value = 0 # if equal to max then no tuning to be done
     ),
     laplacian_row = laplacian_row,
@@ -36,7 +38,7 @@ get_imr_default_hparams <- function(similarity_row = NULL,
     rank = list(
       min = 2,
       max = 30,
-      step_sizes = c(2, 1),
+      step_sizes = c(1),
       n_streaks = 2
     ),
     laplace = list(
@@ -339,9 +341,6 @@ adaptive_tuner <- function(
       end_value <- max(best_param - step_size, end_value)
     }
 
-    # second_idx <- if (length(ord) > 1) ord[2] else best_idx
-    # current_start <- step_history$parameter[second_idx]
-    # end_value <- step_history$parameter[best_idx] + step_size
   }
   fit <- NULL # reset just in case
   list(
