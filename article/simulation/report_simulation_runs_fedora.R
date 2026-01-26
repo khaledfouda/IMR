@@ -58,7 +58,7 @@ sim1_res <- function(dat, fit, name="",
 
 #===========================================================================================
 # setting 2)
-n = m = 1000
+n = m = 400
 p = 5;
 q = 5;
 r = 4;
@@ -95,36 +95,56 @@ fitsi <- simpute.cv(y_full = mdat$Y,
                     seed = seed)
 
 hparam <- IMR::get_imr_default_hparams()
-hparam$laplace$step_sizes = c(5,1,0.1)
+hparam$laplace$step_sizes = c(1)#c(5,1,0.1)
+hparam$laplace$min = 10
+hparam$laplace$max = 30
+
 hparam$rank$max = 10
-hparam$beta$length = 30
-hparam$gamma$length = 30
+hparam$beta$length = 10
+hparam$gamma$length = 10
+hparam$beta$max <- hparam$gamma$max <- 2
 #hparam$beta$max = 0
 
-hparam2 <- hparam; hparam2$beta$length = 1; hparam2$beta$max = 0;
-hparam2$gamma$length = 1; hparam2$gamma$max = 0;
+# first tune with a single laplace value
+hparam$laplace$min = hparam$laplace$max = 18.3; hparam$laplace$step_sizes = c(1)
+fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
+                        hpar = hparam, thresh = 1e-6, maxit = 1000,
+                        trace = 3, ls_initial = TRUE, shared_information = FALSE,
+                        seed = seed, num_cores = 7,
+)
+# then we refit to re-tune lammbda_laplace
+
+
 
 bench::mark(
 
-fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
-                       hpar = hparam2, thresh = 1e-6, maxit = 1000,
-                       trace = 0, ls_initial = TRUE, shared_information = FALSE,
-                       seed = seed, num_cores = 7,
-),
+  fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
+                          hpar = hparam, thresh = 1e-6, maxit = 1000,
+                          trace = 3, ls_initial = TRUE, shared_information = FALSE,
+                          seed = seed, num_cores = 5,
+  ),
+  # fitimr = IMR:::imr.cv_3(mdat, intercept_row = FALSE, intercept_col = FALSE,
+  #                         hpar = hparam, thresh = 1e-6, maxit = 1000,
+  #                         trace = 3, ls_initial = TRUE, shared_information = FALSE,
+  #                         seed = seed, num_cores = 7,
+  # ),
 iterations = 1,
-check = TRUE
+check = T
 
 ) -> bb
 
 
 
+bb$result[[1]]$fit$params
+
 print(bb)
 
 dat$Xr <- mdat$Xr
+dat$Zr <- mdat$Zr
 errorm <- IMR:::error_metric$rmse
 
 sim1_res(dat, bb$result[[1]]$fit, "IMR", errorm)
-sim1_res(dat, fit4, "IMR", errorm)
+sim1_res(dat, fitimr$fit, "IMR", errorm)
 
 
 bb2$result[[1]]$hpar$beta
@@ -206,7 +226,7 @@ print(d)
 }
   print(b)
   print(res)
-saveRDS(all_res, "./article/simulation/data/sim1_res.rds")
+saveRDS(all_res, "./article/simulation/data/sim2_res.rds")
 }
 
 
@@ -239,7 +259,7 @@ hpar = hparam; error_function = IMR:::error_metric$rmse;
 thresh = 1e-4; maxit = 300; trace = 3; ls_initial = TRUE;
 shared_information = FALSE; num_cores = 9; warm_start=NULL; seed = 2025;
 
-
+lambda_beta = 0.2; lambda_gamma = 0.2; lambda_laplace = 1
 
 #==== delete end =====
 #' 1. Does randomization alter the outcome? also test the initial values >>
