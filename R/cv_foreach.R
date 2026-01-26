@@ -299,24 +299,6 @@ imr.cv_2 <- function(
       ls_initial = ls_initial
     )
 
-    # fit2 <- IMR::adaptive_tuner(rank_fit_function,
-    #                            step_sizes = hpar$rank$step_sizes,
-    #                            start_value = hpar$rank$min,
-    #                            end_value = hpar$rank$max,
-    #                            inc_streak_to_stop = hpar$rank$n_streaks,
-    #                            fdata = data,
-    #                            hpar = hpar,
-    #                            lambda_laplace = results[1,]$lambda_laplace,
-    #                            shared_information = shared_information,
-    #                            intercept_row = intercept_row,
-    #                            intercept_col = intercept_col,
-    #                            trace = trace,
-    #                            thresh = thresh,
-    #                            .warm_start = warm_start,
-    #                            maxit = maxit,
-    #                            ls_initial = ls_initial
-    # )
-
 
     fit$params <- results[1,]
     return(list(history = results, fit=fit, hpar=hpar))

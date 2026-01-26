@@ -57,31 +57,30 @@ sim1_res <- function(dat, fit, name="",
 }
 
 #===========================================================================================
-# setting 1)
-dims <- c(400, 600, 800, 1000)
-p = 10;
-q = 0;
+# setting 2)
+n = m = 1000
+p = 5;
+q = 5;
 r = 4;
-missing_pct = 0.8
-sparsity_beta = 0.5
-models <- c("IMR", "SImpute", "MCCI")
+missing_pct = seq(.7, .98, .2)
+models <- c("IMR", "SImpute")
 all_res <- res <- data.frame()
 for(b in 1:500){
   seed = 2025 + b
   set.seed(seed)
-for(d in dims){
+for(pct in missing_pct){
 
-n = m = d
 dat <-
-  generate_simulated_data(n, m, r, p, 0, .8,
+  generate_simulated_data(n, m, r, p, q, pct,
                           sparsity_beta = 0,
+                          sparsity_gamma = 0,
                           intercept = FALSE,
                           structured_error_A = F, SNR = 1,
                           structured_error_B = F,
                           prepare_for_fitting = F, mv_coeffs = T, seed = seed)
 
 
-mdat <- IMR::prepare_data(Y = dat$Y, X = dat$X, seed = seed, val_prop = 0.2)
+mdat <- IMR::prepare_data(Y = dat$Y, X = dat$X, Z = dat$Z,  seed = seed, val_prop = 0.2)
 
 fitsi <- simpute.cv(y_full = mdat$Y,
                     y_train = mdat$y_train,
@@ -89,6 +88,8 @@ fitsi <- simpute.cv(y_full = mdat$Y,
                     trace = FALSE,
                     print.best = FALSE,
                     tol = 2,
+                    maxit = 1000,
+                    thresh = 1e-6,
                     n.lambda = 20,
                     test_error = IMR:::error_metric$rmse,
                     seed = seed)
@@ -97,16 +98,18 @@ hparam <- IMR::get_imr_default_hparams()
 hparam$laplace$step_sizes = c(5,1,0.1)
 hparam$rank$max = 10
 hparam$beta$length = 30
+hparam$gamma$length = 30
 #hparam$beta$max = 0
 
 hparam2 <- hparam; hparam2$beta$length = 1; hparam2$beta$max = 0;
+hparam2$gamma$length = 1; hparam2$gamma$max = 0;
 
 bench::mark(
 
 fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
-                       hpar = hparam, thresh = 1e-6, maxit = 1000,
+                       hpar = hparam2, thresh = 1e-6, maxit = 1000,
                        trace = 0, ls_initial = TRUE, shared_information = FALSE,
-                       seed = seed, num_cores = 6,
+                       seed = seed, num_cores = 7,
 ),
 iterations = 1,
 check = TRUE
@@ -119,13 +122,47 @@ print(bb)
 
 dat$Xr <- mdat$Xr
 errorm <- IMR:::error_metric$rmse
+
 sim1_res(dat, bb$result[[1]]$fit, "IMR", errorm)
+sim1_res(dat, fit4, "IMR", errorm)
+
 
 bb2$result[[1]]$hpar$beta
 
 fitimr$fit$params
 
 fitimr$fit$beta
+
+b1 <- bb$result[[1]]$fit$beta
+b2 <- bb$result[[1]]$fit2$beta
+b3 <- bb2$result[[1]]$fit$beta
+
+mask = (b1 != 0) * 1
+
+
+
+fit4 <- IMR:::imr.fit_debias(
+  Y = mdat$Y,
+  X = mdat$Xq,
+  Z = mdat$Zq,
+  r = 5,
+  lambda_M = 14.1,
+  mask_beta = mask,
+  #lambda_gamma = 0,
+  intercept_row = F,
+  intercept_col = F,
+  shared_information = F,
+  warm_start = bb$result[[1]]$fit,
+  trace = T,
+  thresh = 1e-6,
+  maxit = 1000,
+  ls_initial = F
+)
+
+
+b1[1:5,1:5]
+b2[1:5,1:5]
+b3[1:5,1:5]
 
 
 # hparam$beta$step_sizes <- hparam$gamma$step_sizes <-
