@@ -148,6 +148,7 @@ ggplot(sim2.long, aes(x = sparsity, y = mean, color = model, fill = model, group
   ) -> sim2.g; sim2.g
 
 ggsave("./article/simulation/data/sim2_plot1.png", sim2.g, width = 320/25.4, height = 150/25.4, dpi = 600)
+#--------------------------------------------------------------------------------
 
 
 
