@@ -1,6 +1,6 @@
 #' @importFrom foreach foreach %dopar% %:%
 #' @export
-imr.cv_3 <- function(
+imr.cv_tmp <- function(
   data,
   intercept_row = FALSE,
   intercept_col = FALSE,

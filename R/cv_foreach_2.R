@@ -1,6 +1,6 @@
 #' @importFrom foreach foreach %dopar% %:%
 #' @export
-imr.cv_2 <- function(
+imr.cv_3 <- function(
   data,
   intercept_row = FALSE,
   intercept_col = FALSE,
@@ -189,15 +189,15 @@ imr.cv_2 <- function(
   results <-
     foreach::foreach(
       lambda_beta = seq(hpar$beta$min, hpar$beta$max, length.out = hpar$beta$length),
-      .combine = rbind, .options.mc = list(preschedule = F)
+      .combine = rbind, .options.mc = list(preschedule = T)
     ) %:%
     foreach::foreach(
       lambda_gamma = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length),
-      .combine = rbind, .options.mc = list(preschedule = F)
+      .combine = rbind, .options.mc = list(preschedule = T)
     ) %dopar% {
 
-      RhpcBLASctl::blas_set_num_threads(1)
-      RhpcBLASctl::omp_set_num_threads(1)
+    #  RhpcBLASctl::blas_set_num_threads(1)
+    #  RhpcBLASctl::omp_set_num_threads(1)
 
       worker_results <- data.frame()
       for(lambda_laplace in seq(hpar$laplace$max, hpar$laplace$min,- hpar$laplace$step_sizes[1])){

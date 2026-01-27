@@ -189,6 +189,8 @@ imr.cv_2 <- function(
       lambda_gamma = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length),
       .combine = rbind
     ) %dopar% {
+      #RhpcBLASctl::blas_set_num_threads(1)
+      #RhpcBLASctl::omp_set_num_threads(1)
       single_fit(
         lambda_laplace = lambda_laplace,
         lambda_beta = lambda_beta,

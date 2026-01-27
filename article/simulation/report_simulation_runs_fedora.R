@@ -58,27 +58,56 @@ sim1_res <- function(dat, fit, name="",
 
 #===========================================================================================
 # setting 2)
-n = m = 400
+#==================================================================
+#' we now work on second part of the simulation
+#' Results needed: Rmse > beta, gamma, M, test
+#'                 obtain an average hyperparameters (r, 3 x lambda)
+#' Variables: Fix n,m,p,q; change observation rate
+#' Models : IMC, SoftImpute
+#' Second step: use the fit function only to get speed vs model and observation rate
+increase_sparsity <- function(dat, step=0.05){
+  current_sparsity <- mean(dat$mask == 0)
+  target_sparsity <- step + current_sparsity
+  print(paste("Target sparsity is ", target_sparsity))
+  stopifnot(target_sparsity < 1)
+  extra_nonzero_frac <- step / (1 - current_sparsity)
+  nonzero_idx <- which(dat$mask == 1)
+  to_zero_ind <- sample(nonzero_idx, extra_nonzero_frac*length(nonzero_idx),replace = F)
+
+  dat$Y[to_zero_ind] <- 0
+  #dat$Y %<>% IMR::as.Incomplete()
+  #-- we now recreate the train/test splits
+  dat$mask <- as.matrix(dat$Y != 0)
+  dat$sparsity <- target_sparsity
+  return(dat)
+}
+
+
+# --=--=-=-=-=
+n = m = 1000
 p = 5;
 q = 5;
-r = 4;
-missing_pct = seq(.7, .98, .2)
+r = 5;
+missing_pct = seq(.7, .98, .05)
 models <- c("IMR", "SImpute")
 all_res <- res <- data.frame()
+# b = 1; pct=0.9
 for(b in 1:500){
   seed = 2025 + b
+  start1 = Sys.time()
   set.seed(seed)
-for(pct in missing_pct){
-
 dat <-
-  generate_simulated_data(n, m, r, p, q, pct,
+  generate_simulated_data(n, m, r, p, q, .7,
                           sparsity_beta = 0,
                           sparsity_gamma = 0,
                           intercept = FALSE,
                           structured_error_A = F, SNR = 1,
                           structured_error_B = F,
                           prepare_for_fitting = F, mv_coeffs = T, seed = seed)
-
+for(pct in 1:length(missing_pct)){
+start2 = Sys.time()
+if(pct > 1)
+  dat <- increase_sparsity(dat, .05)
 
 mdat <- IMR::prepare_data(Y = dat$Y, X = dat$X, Z = dat$Z,  seed = seed, val_prop = 0.2)
 
@@ -95,49 +124,97 @@ fitsi <- simpute.cv(y_full = mdat$Y,
                     seed = seed)
 
 hparam <- IMR::get_imr_default_hparams()
-hparam$laplace$step_sizes = c(1)#c(5,1,0.1)
-hparam$laplace$min = 10
-hparam$laplace$max = 30
+
 
 hparam$rank$max = 10
-hparam$beta$length = 10
-hparam$gamma$length = 10
-hparam$beta$max <- hparam$gamma$max <- 2
+hparam$beta$length = 5
+hparam$gamma$length = 5
+hparam$beta$max <- hparam$gamma$max <- 0.5
 #hparam$beta$max = 0
 
 # first tune with a single laplace value
-hparam$laplace$min = hparam$laplace$max = 18.3; hparam$laplace$step_sizes = c(1)
+hparam$laplace$min = hparam$laplace$max = 18.9; hparam$laplace$step_sizes = c(1)
 fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
                         hpar = hparam, thresh = 1e-6, maxit = 1000,
-                        trace = 3, ls_initial = TRUE, shared_information = FALSE,
-                        seed = seed, num_cores = 7,
-)
+                        trace = 1, ls_initial = TRUE, shared_information = FALSE,
+                        seed = seed, num_cores = 10)
+
 # then we refit to re-tune lammbda_laplace
+hparam$beta$value = fitimr$fit$params$lambda_beta
+hparam$gamma$value = fitimr$fit$params$lambda_gamma
+hparam$laplace$step_sizes = c(5,1,0.1)
+hparam$laplace$min = 10
+hparam$laplace$max = 25
+
+fitimr = IMR::imr.cv_laplace(mdat, intercept_row = FALSE, intercept_col = FALSE,
+                             hpar = hparam, thresh = 1e-6, maxit = 1000,
+                             trace = 1, ls_initial = TRUE, shared_information = FALSE,
+                             seed = seed, num_cores = 10,final_fit = TRUE,
+                             warm_start = fitimr$fit)
 
 
 
+fitimr$best_fit$lambda_laplace
+
+
+dat$Xr <- mdat$Xr
+dat$Zr <- mdat$Zr
+errorm <- IMR:::error_metric$rmse
+sim1_res(dat, fitsi$fit, "SI", errorm) %>%
+  rbind(sim1_res(dat, fitimr$best_fit, "IMR", errorm)) %>%
+  mutate(metric = "RMSE")->
+  res
+
+errorm <- IMR:::error_metric$rel.rmse
+
+res %<>%
+  rbind(sim1_res(dat, fitsi$fit, "SI", errorm) %>%
+          rbind(sim1_res(dat, fitimr$best_fit, "IMR", errorm)) %>%
+        mutate(metric = "Rel.RMSE")
+        )
+res$dim = n
+res$p = p
+res$q = q
+res$miss_pct = mean(dat$mask == 0)
+res$r = r
+res$lambda_beta = hparam$beta$value
+res$lambda_gamma = hparam$gamma$value
+res$lambda_laplace = fitimr$best_fit$lambda_laplace
+
+all_res %<>% rbind(res)
+print(paste(pct, " in ", round(Sys.time() - start2)))
+print(res)
+}
+  print(paste(b, " in ", round(Sys.time() - start1)))
+  saveRDS(all_res, "./article/simulation/data/sim2_res.rds")
+}
+
+
+
+
+#======================== end ============================================
 bench::mark(
 
   fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
                           hpar = hparam, thresh = 1e-6, maxit = 1000,
-                          trace = 3, ls_initial = TRUE, shared_information = FALSE,
-                          seed = seed, num_cores = 5,
+                          trace = 1, ls_initial = TRUE, shared_information = FALSE,
+                          seed = seed, num_cores = 10,
   ),
   # fitimr = IMR:::imr.cv_3(mdat, intercept_row = FALSE, intercept_col = FALSE,
   #                         hpar = hparam, thresh = 1e-6, maxit = 1000,
   #                         trace = 3, ls_initial = TRUE, shared_information = FALSE,
   #                         seed = seed, num_cores = 7,
   # ),
-iterations = 1,
+iterations = 1, memory = FALSE,
 check = T
 
-) -> bb
+) -> bb3
+print(bb3)
 
 
 
 bb$result[[1]]$fit$params
 
-print(bb)
 
 dat$Xr <- mdat$Xr
 dat$Zr <- mdat$Zr
