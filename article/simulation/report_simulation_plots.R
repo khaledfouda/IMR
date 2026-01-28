@@ -95,6 +95,13 @@ kbl(
 results2 <- readRDS("article/simulation/data/sim2_res.rds")
 
 results2 %>%
+  filter(model == "SI") %>%
+  mutate(miss_pct = round(miss_pct, 2)) %>%
+  select(rank, miss_pct) %>%
+  group_by(miss_pct) %>%
+  summarise_all(mean)
+
+results2 %>%
   filter(metric != "RMSE") %>%
   #dplyr::mutate(rank = abs(rank - 15)) %>%
   dplyr::mutate(sparsity = round(miss_pct, 2)) %>%
@@ -136,9 +143,9 @@ ggplot(sim2.long, aes(x = sparsity, y = mean, color = model, fill = model, group
   geom_point(size = 1.6) +
   scale_color_manual(values = okabe_ito) +
   scale_fill_manual(values  = okabe_ito) +
-  scale_x_continuous(labels = percent_format(accuracy = 1), breaks = seq(.02, 0.3, 0.04)) +
+  scale_x_continuous(labels = percent_format(accuracy = 1), breaks = seq(.05, 0.3, length=6)) +
   facet_wrap(~ metric_lab, labeller = label_parsed, ncol=3, scales="free_y") +
-  labs(x = "Observed Rate (Training)", y = NULL, color = "Model", fill = "Model") +
+  labs(x = "Observed Rate (Training Size)", y = NULL, color = "Model", fill = "Model") +
   theme_minimal(base_size = 10) +
   theme_bw() +
   theme(
@@ -149,7 +156,61 @@ ggplot(sim2.long, aes(x = sparsity, y = mean, color = model, fill = model, group
 
 ggsave("./article/simulation/data/sim2_plot1.png", sim2.g, width = 320/25.4, height = 150/25.4, dpi = 600)
 #--------------------------------------------------------------------------------
+results3 <- readRDS("article/simulation/data/sim2_2_res.rds")
 
+results3 %>%
+  filter(metric == "Rel.RMSE") %>%
+  mutate(obs_rate = 1 - round(miss_pct, 2)) %>%
+  group_by(model, obs_rate) %>%
+  summarise(
+    mean_time = mean(time, na.rm = TRUE),
+    mean_error = mean(test, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = model,
+    values_from = c(mean_time, mean_error)
+  ) %>%
+  mutate(
+    time_ratio = mean_time_IMR / mean_time_SI,
+    error_improve = (mean_error_SI - mean_error_IMR) / mean_error_SI
+  ) %>%
+  select(obs_rate, time_ratio, error_improve) %>%
+  pivot_longer(
+    cols = c(time_ratio, error_improve),
+    names_to = "measure",
+    values_to = "value"
+  ) %>%
+  mutate(
+    measure_label = case_when(
+      measure == "time_ratio" ~ "Computational Cost (Times Slower than SoftImpute)",
+      measure == "error_improve" ~ "Performance Gain (% Improvement over SoftImpute)"
+    )
+  ) -> plot_data
 
+ggplot(plot_data, aes(x = obs_rate, y = value)) +
+  geom_hline(data = filter(plot_data, measure == "time_ratio"),
+             aes(yintercept = 1), linetype = "dashed", color = "grey50") +
+  geom_hline(data = filter(plot_data, measure == "error_improve"),
+             aes(yintercept = 0), linetype = "dashed", color = "grey50") +
+  geom_line(size = 1, color = "#E69F00") + # Okabe-Ito Orange
+  geom_point(size = 2, color = "#E69F00") +
+  facet_wrap(~ measure_label, scales = "free_y", ncol = 1) +
+  scale_x_continuous("Observation Rate (Training Size)", labels = percent_format(accuracy = 1),
+                     breaks = seq(0.05, 0.3, length.out=6)) +
+  scale_y_continuous(
+    name = NULL,
+    labels = function(x) {
+      ifelse(x < 1 & x > -1, percent(x, accuracy = 1), number(x, accuracy = 0.1, suffix = "x"))
+    }
+  ) +
+
+  theme_bw() +
+  theme(
+    strip.text = element_text(face = "bold", size = 11),
+    strip.background = element_rect(fill = "grey95")
+  ) -> diff_plot; diff_plot
+
+ggsave("./article/simulation/data/sim2_plot2.png", diff_plot, width = 320/25.4, height = 150/25.4, dpi = 600)
 
 
