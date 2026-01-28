@@ -116,9 +116,9 @@ results2 %>%
                names_pattern = "^(.*)_error_(mean|sd)$",
                values_to = "val") %>%
   pivot_wider(names_from = stat, values_from = val) %>%
-  mutate(sparsity = 1-sparsity) %>%
+  mutate(sparsity = sparsity) %>%
   arrange(model, sparsity) %>%
-  mutate(ymin = pmax(0, mean-sd), ymax = mean+sd) ->
+  mutate(ymin = pmax(0, mean-sd), ymax = mean+sd)  ->
   sim2.long
 
 
@@ -134,18 +134,25 @@ sim2.long %<>%
   mutate(metric_lab = factor(metric,
                              levels=names(metric_labels),
                              labels = unname(metric_labels)))
+
+rank_line_data <- data.frame(
+  metric_lab = factor("Estimated~Rank", levels = unname(metric_labels)),
+  yintercept = 15
+)
 okabe_ito <- c("#56B4E9","#E69F00")
 metrics <- unique(sim2.long$metric)
 require(scales)
 ggplot(sim2.long, aes(x = sparsity, y = mean, color = model, fill = model, group = model)) +
+  geom_hline(data = rank_line_data, aes(yintercept = yintercept),
+             linetype = "dashed", color = "black", alpha = 0.6) +
   geom_ribbon(aes(ymin = ymin, ymax = ymax), alpha = 0.15, color = NA) +
   geom_line(size = 1) +
   geom_point(size = 1.6) +
   scale_color_manual(values = okabe_ito) +
   scale_fill_manual(values  = okabe_ito) +
-  scale_x_continuous(labels = percent_format(accuracy = 1), breaks = seq(.05, 0.3, length=6)) +
+  scale_x_continuous(labels = percent_format(accuracy = 1), breaks = seq(.7, 0.95, length=6)) +
   facet_wrap(~ metric_lab, labeller = label_parsed, ncol=3, scales="free_y") +
-  labs(x = "Observed Rate (Training Size)", y = NULL, color = "Model", fill = "Model") +
+  labs(x = "Sparsity Level", y = NULL, color = "Model", fill = "Model") +
   theme_minimal(base_size = 10) +
   theme_bw() +
   theme(
@@ -156,11 +163,11 @@ ggplot(sim2.long, aes(x = sparsity, y = mean, color = model, fill = model, group
 
 ggsave("./article/simulation/data/sim2_plot1.png", sim2.g, width = 320/25.4, height = 150/25.4, dpi = 600)
 #--------------------------------------------------------------------------------
-results3 <- readRDS("article/simulation/data/sim2_2_res.rds")
+results3 <- readRDS("article/simulation/data/sim2_3_res.rds")
 
 results3 %>%
   filter(metric == "Rel.RMSE") %>%
-  mutate(obs_rate = 1 - round(miss_pct, 2)) %>%
+  mutate(obs_rate =  round(miss_pct, 2)) %>%
   group_by(model, obs_rate) %>%
   summarise(
     mean_time = mean(time, na.rm = TRUE),
@@ -183,25 +190,47 @@ results3 %>%
   ) %>%
   mutate(
     measure_label = case_when(
-      measure == "time_ratio" ~ "Computational Cost (Times Slower than SoftImpute)",
-      measure == "error_improve" ~ "Performance Gain (% Improvement over SoftImpute)"
+      measure == "time_ratio" ~ "Relative Computational Cost (Ratio)",
+      measure == "error_improve" ~ "RRMSE Reduction (%) Relative to SoftImpute"
     )
-  ) -> plot_data
+  ) %>%
+  mutate(measure_label = factor(measure_label, levels = c(
+    "RRMSE Reduction (%) Relative to SoftImpute",
+    "Relative Computational Cost (Ratio)"
+  )))-> plot_data
 
-ggplot(plot_data, aes(x = obs_rate, y = value)) +
+bounds <- data.frame(
+  measure_label = factor("RRMSE Reduction (%) Relative to SoftImpute",
+                         levels = levels(plot_data$measure_label)),
+  obs_rate = 0.95,
+  value = c(0, 0.7)
+)
+
+ggplot(plot_data, aes(x = (obs_rate), y = value)) +
+  geom_blank(data = bounds) +
+
   geom_hline(data = filter(plot_data, measure == "time_ratio"),
              aes(yintercept = 1), linetype = "dashed", color = "grey50") +
   geom_hline(data = filter(plot_data, measure == "error_improve"),
              aes(yintercept = 0), linetype = "dashed", color = "grey50") +
-  geom_line(size = 1, color = "#E69F00") + # Okabe-Ito Orange
+
+  geom_line(size = 1, color = "#E69F00") +
   geom_point(size = 2, color = "#E69F00") +
+
   facet_wrap(~ measure_label, scales = "free_y", ncol = 1) +
-  scale_x_continuous("Observation Rate (Training Size)", labels = percent_format(accuracy = 1),
-                     breaks = seq(0.05, 0.3, length.out=6)) +
+  scale_x_continuous("Sparsity Level", labels = percent_format(accuracy = 1),
+                     breaks = seq(0.95, 0.7, length.out=6)) +
   scale_y_continuous(
     name = NULL,
     labels = function(x) {
       ifelse(x < 1 & x > -1, percent(x, accuracy = 1), number(x, accuracy = 0.1, suffix = "x"))
+    },
+    breaks = function(limits) {
+      if (limits[2] <= 0.8) {
+        return(c(0, .1, .3, .5, .7))#c(seq(0, 0.7, .2),.7))
+      } else {
+        return(scales::extended_breaks()(limits))
+      }
     }
   ) +
 
@@ -212,5 +241,4 @@ ggplot(plot_data, aes(x = obs_rate, y = value)) +
   ) -> diff_plot; diff_plot
 
 ggsave("./article/simulation/data/sim2_plot2.png", diff_plot, width = 320/25.4, height = 150/25.4, dpi = 600)
-
 

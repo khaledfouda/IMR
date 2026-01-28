@@ -205,6 +205,14 @@ results2 %>%
   summarise_all(mean) %>%
   ungroup() -> best_hparams
 
+results2 %>%
+  filter(model == "SI", metric == "RMSE") %>%
+  dplyr::select(rank, miss_pct) %>%
+  mutate(miss_pct = round(miss_pct, 2)) %>%
+  filter(miss_pct != .95) %>%
+  summarise_all(mean) %>%
+  round() -> simpute_rank
+
 n = m = 1000
 p = 5;
 q = 5;
@@ -212,7 +220,7 @@ r = 5;
 missing_pct = seq(.7, .98, .05)
 models <- c("IMR", "SImpute")
 all_res <- res <- data.frame()
-simpute_ranks <- c(13, 12, 12, 12, 11, 10)
+#simpute_ranks <- c(13, 12, 12, 12, 11, 10)
 # b = 1; pct=0.9
 for(b in 1:500){
   seed = 2025 + b
@@ -235,7 +243,7 @@ for(b in 1:500){
 
     start = Sys.time()
     fitsi <- softImpute::softImpute(dat$Y,
-                                    rank.max = simpute_ranks[pct],
+                                    rank.max = simpute_rank$rank,
                                     lambda = best_hparams$lambda_laplace,
                                     thresh = 1e-6,
                                     maxit = 1000,
