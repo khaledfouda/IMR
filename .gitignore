@@ -10,6 +10,7 @@ src/*.dll
 !article_results/bixi/data/splits/*.rds
 !article_results/bixi/data/bktrfit*.rds
 !article/simulation/data/*.rds
+!article/movielens/data/*
 *.Rdata
 article_results/movielens/data/saved_models/IMR_fit
 /article_results/movielens/.ipynb_checkpoints
