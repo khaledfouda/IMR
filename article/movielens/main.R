@@ -7,15 +7,15 @@ require(magrittr)
 #=============================================================
 
 load("article/movielens/data/Movie_X.Rdata") #X
-load("article_results/movielens/data/Movie_Y.Rdata",verbose = T)
+load("article/movielens/data/Movie_Y.Rdata",verbose = T)
 X <- X[,1:4] # keep only main-effects
 input_tag = "_c_0_"
-#Y <-     readRDS(paste0("article_results/movielens/data/Movie_Y",input_tag,".Rdata"))
-query <- readRDS(paste0("article_results/movielens/data/Movie_Q",input_tag,".Rdata"))
+#Y <-     readRDS(paste0("article/movielens/data/Movie_Y",input_tag,".Rdata"))
+query <- readRDS(paste0("article/movielens/data/Movie_Q",input_tag,".Rdata"))
 source("other_models/Ma25.R")
 source("other_models/SoftImpute_cv.R")
-source("article_results/movielens/preprocess.R")
-source("article_results/movielens/Ma25_fit.R")
+source("article/movielens/preprocess.R")
+source("article/movielens/Ma25_fit.R")
 #========================================================
 # prepare test set and X-QR
 test.idx   <- cbind(query[, 1], query[, 2])
@@ -27,7 +27,7 @@ mean(obs_mask==0)
 # ====================================================
 # prepare Z < genres >
 Z <- data.table::fread(
-  file = "article_results/movielens/data/movies_Z.dat",
+  file = "article/movielens/data/movies_Z.dat",
   sep = NULL,
   encoding = "Latin-1",
   header = FALSE
@@ -73,12 +73,18 @@ rbind(Z, extra.rows) %>%
 #============================================================
 
 # fit IMR
-hpar <- IMR::get_imr_default_hparams()
+hpar_int <- IMR::get_imr_default_hparams()
+hpar_int$beta$value = hpar_int$beta$max = 0; hpar$beta$length = 1
+hpar_int$gamma$value = hpar_int$gamma$max = 0; hpar$gamma$length = 1
+hpar_int$laplace$max = 10;
+hpar_int$laplace$step_sizes = c(1, .1)
+
 hpar$beta$lambda_max <- .3
 hpar$gamma$lambda_max <- 1
 hpar$M$n.lambda <- 20
 hpar$beta$n.lambda <- 20
 hpar$gamma$n.lambda <- 20
+
 
 IMR:::initialize_parallel_workers(9)
 
@@ -88,24 +94,51 @@ if(run_training){
 # fit all model variations: [imr+x, imr+xz, imr+intercept, ma, si]
 #----------------------
 # 1. intercept only >
-dat <- IMR::prepare_data(Y, NULL, NULL, 0.2, seed = 2025)
+dat <- IMR::prepare_data(Y, NULL, NULL,val_prop =  0.2, seed = 2025)
 
 
 
-bench::bench_time(fit.imr1 <- IMR:::imr.cv(
-  dat$model,
+bench::bench_time(fit.imr1 <- IMR::imr.cv_laplace(dat, intercept_row = TRUE, intercept_col = TRUE,
+                             hpar = hpar_int, thresh = 1e-6, maxit = 1000,
+                             trace = 1, ls_initial = TRUE, shared_information = FALSE,
+                             seed = seed, num_cores = 7,final_fit = TRUE)) -> time.imr
+
+
+#-- tmp start
+time.imr
+i=1
+out = list(IMR::reconstruct(fit.imr1$best_fit, dat))
+fits = list(fit.imr1)
+prepare_output_movielens(
+  "IMR",
+  time = fits[[i]]$time,
+  X = dat$X,
+  Z = dat$Z,
+  beta.estim  = out[[i]]$beta,
+  gamma.estim = out[[i]]$gamma,
+  estim.test = out[[i]]$estimates[test.idx],
+  estim.train = as.Incomplete(out[[i]]$estimates * obs_mask)@x,
+  obs.test = test.truths,
+  obs.train = dat$Y[dat$Y!=0],
+  M.estim = out[[i]]$M,test_error = IMR:::error_metric$rmse,
+  rank.M = fits[[i]]$rank_M
+)
+fit.imr1$best_fit$lambda_laplace
+fit.imr1$best_fit$r
+#-- tmp end
+bench::bench_time(fit.imr1 <- IMR:::imr.cv_3(
+  dat,
   intercept_row = T,
   intercept_col = T,
-  hpar = hpar,
-  verbose = 1,
-  fast.cv = T,
-  separate_tuning = TRUE,
+  hpar = hpar_int,
+  trace = 1,
+  num_cores = 7,
   seed = 2025
 )) -> time.imr
 
 fit.imr1$time <- round(lubridate::time_length(time.imr[2],  "minute"),2)
 
-saveRDS(fit.imr1, paste0("article_results/movielens/data/saved_models/",
+saveRDS(fit.imr1, paste0("article/movielens/data/saved_models/",
                         "IMR_fit_intercept.rds"))
 
 # 2. row covariates >
@@ -122,7 +155,7 @@ bench::bench_time(fit.imr2 <- IMR:::imr.cv(
 
 fit.imr2$time <- round(lubridate::time_length(time.imr[2],  "minute"),2)
 
-saveRDS(fit.imr2, paste0("article_results/movielens/data/saved_models/",
+saveRDS(fit.imr2, paste0("article/movielens/data/saved_models/",
                         "IMR_fit_rows_nonsp.rds"))
 
 
@@ -140,7 +173,7 @@ bench::bench_time(fit.imr3 <- IMR::imr.cv(
 
 fit.imr3$time <- round(lubridate::time_length(time.imr[2],  "minute"),2)
 
-saveRDS(fit.imr3, paste0("article_results/movielens/data/saved_models/",
+saveRDS(fit.imr3, paste0("article/movielens/data/saved_models/",
                         "IMR_fit_rows_cols.rds"))
 
 #--- soft-Impute
@@ -153,7 +186,7 @@ bench::bench_time(fit.si <-
                                n.lambda = hpar$M$n.lambda,
                                trace = T)) -> time.si
 fit.si$time <- round(lubridate::time_length(time.si[2],  "minute"),2)
-saveRDS(fit.si, "article_results/movielens/data/saved_models/SI_fit.rds")
+saveRDS(fit.si, "article/movielens/data/saved_models/SI_fit.rds")
 #------------ Ma
 M = fit_MA25_movielens("", 2025)
 }
@@ -162,11 +195,11 @@ M = fit_MA25_movielens("", 2025)
 #================ part 3 - load the models and show the results
 #==============================================================
 dat <- IMR::prepare_data(Y, X, Z, 0.2, seed = 2025)
-fit.imr1 <- readRDS("article_results/movielens/data/saved_models/IMR_fit_intercept.rds")
-fit.imr2 <- readRDS("article_results/movielens/data/saved_models/IMR_fit_rows_nonsp.rds")
-fit.imr3 <- readRDS("article_results/movielens/data/saved_models/IMR_fit_rows_cols.rds")
-fit.si   <- readRDS("article_results/movielens/data/saved_models/SI_fit.rds")
-fit.ma   <- readRDS("article_results/movielens/data/saved_models/Ma_fit.rds")
+fit.imr1 <- readRDS("article/movielens/data/saved_models/IMR_fit_intercept.rds")
+fit.imr2 <- readRDS("article/movielens/data/saved_models/IMR_fit_rows_nonsp.rds")
+fit.imr3 <- readRDS("article/movielens/data/saved_models/IMR_fit_rows_cols.rds")
+fit.si   <- readRDS("article/movielens/data/saved_models/SI_fit.rds")
+fit.ma   <- readRDS("article/movielens/data/saved_models/Ma_fit.rds")
 
 
 
@@ -204,7 +237,7 @@ for(i in 1:5){
     estim.train = as.Incomplete(out[[i]]$estimates * obs_mask)@x,
     obs.test = test.truths,
     obs.train = dat$Y[dat$Y!=0],
-    M.estim = out[[i]]$M,
+    M.estim = out[[i]]$M,test_error = IMR:::error_metric$rmse,
     rank.M = fits[[i]]$rank_M
   )
 }
@@ -234,7 +267,7 @@ do.call(rbind, lapply(res, function(x) if(length(x)==14) x[c(1:2,5:12)] else x))
 require(tidyverse)
 devtools::load_all()
 require(magrittr)
-source("article_results/movielens/preprocess.R")
+source("article/movielens/preprocess.R")
 #===== part 1: loading and preparing the data ===============
 
 out <- prepare_results_for_analysis()
@@ -410,7 +443,7 @@ tibble(
                         "titles may carry multiple genres, so counts sum to more than 3,952.")) +
   theme_minimal(base_size = 12) +
   theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) ->pg;pg
-ggsave("./article_results/movielens/data/plot_genres.png",
+ggsave("./article/movielens/data/plot_genres.png",
        pg, width = 320/25.4, height = 150/25.4, dpi = 600)
 
 
@@ -784,7 +817,7 @@ fplot_df %>%
         text = element_text(size = 8), panel.grid = element_blank(),
         axis.text.y = element_blank()) -> p; p
 
-ragg::agg_png("article_results/fig.png", width = 2200, height = 1500, res = 300);print(p); dev.off()
+ragg::agg_png("article/fig.png", width = 2200, height = 1500, res = 300);print(p); dev.off()
 
 
 # ggplot( aes(x = group, y = genre, fill = mean)) +
