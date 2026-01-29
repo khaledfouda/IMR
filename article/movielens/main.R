@@ -6,7 +6,7 @@ require(magrittr)
 #===== out:   X, Z, Y, query, test.idx, test.truths, obs_mask
 #=============================================================
 
-load("article_results/movielens/data/Movie_X.Rdata") #X
+load("article/movielens/data/Movie_X.Rdata") #X
 load("article_results/movielens/data/Movie_Y.Rdata",verbose = T)
 X <- X[,1:4] # keep only main-effects
 input_tag = "_c_0_"
