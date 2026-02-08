@@ -1,6 +1,6 @@
 #' @importFrom foreach foreach %dopar% %:%
 #' @export
-imr.cv_2 <- function(
+imr.cv_21 <- function(
   data,
   intercept_row = FALSE,
   intercept_col = FALSE,
@@ -15,7 +15,11 @@ imr.cv_2 <- function(
   warm_start = NULL,
   final_thresh = 1e-6,
   final_maxit = 1000,
-  seed = NULL
+  init_thresh = 1e-4,
+  init_maxit = 500,
+  seed = NULL,
+
+  separate = FALSE
 ) {
   #-------------------
   stopifnot(is.Incomplete(data$Y))
@@ -42,6 +46,11 @@ imr.cv_2 <- function(
       maxit = maxit,
       ls_initial = ls_initial,
       seed = seed,
+      shared_information = shared_information,
+      warm_start = warm_start,
+      final_fit = TRUE,
+      final_thresh = final_thresh,
+      final_maxit = final_maxit,
       num_cores = num_cores
     ))
   }
@@ -55,6 +64,10 @@ imr.cv_2 <- function(
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       maxit = 50,
+      thresh = 1e-3,
+      init_maxit = 100,
+      init_thresh = 1e-4,
+      r = 5,
       verbose = trace
     )
   }
@@ -67,6 +80,10 @@ imr.cv_2 <- function(
       intercept_col = intercept_col,
       maxit = 50,
       verbose = trace,
+      thresh = 1e-3,
+      init_maxit = 100,
+      init_thresh = 1e-4,
+      r = 5,
       tol = thresh
     )
   }
@@ -121,7 +138,7 @@ imr.cv_2 <- function(
                          data, intercept_row, intercept_col,
                          shared_information,
                          hpar, error_function, thresh, trace, maxit, ls_initial,
-                         seed, fit = NULL, warm_start = NULL) {
+                         seed, fit = NULL, warm_start = NULL, return_fit = FALSE) {
     hpar$beta$value <- lambda_beta
     hpar$gamma$value <- lambda_gamma
     if (!is.null(data$similarity_rows) && lambda_laplace > 0) {
@@ -169,9 +186,27 @@ imr.cv_2 <- function(
       lambda_laplace = lambda_laplace,
       rank = results$best_parameter,
       error = results$best_error
-    )
+    ) -> res
+    if(return_fit)
+      return(list(res = res, fit = results$best_fit))
+    return(res)
   }
-  # ===============================================================================
+
+  #================================================================================
+  initial_fit <- IMR::imr.fit_no_low_rank(data$y_train, data$Xq, data$Zq,
+                                          hpar$beta$value,
+                                          hpar$gamma$value,
+                                          intercept_row = intercept_row,
+                                          intercept_col = intercept_col,
+                                          shared_information = shared_information,
+                                          maxit = init_maxit,
+                                          thresh = init_thresh)
+  init <- IMR::opt_svd(initial_fit$resid, hpar$rank$default, rthin =  FALSE, cthin =  FALSE)
+  initial_fit$u <- init$u
+  initial_fit$d <- init$d
+  initial_fit$v <- init$v
+  initial_fit$resid = NULL
+  #================================================================================
   # what we have >> beta$min -> beta$max with length
   #                 gamma$min -> gamma$max with length
   #                 laplace$min -> laplace$max  with step_sizes[1]
@@ -179,22 +214,29 @@ imr.cv_2 <- function(
   cl <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(cl)
   #parallel::clusterExport(cl, varlist = c("imr.fit"))
+
+  beta_seq = seq(hpar$beta$min, hpar$beta$max, length.out = hpar$beta$length)
+  gamma_seq = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length)
+
+  if(separate){
+    gamma_seq_old = gamma_seq
+    gamma_seq = c(hpar$gamma$value)
+  }
   results <-
     foreach::foreach(
-      lambda_laplace = seq(hpar$laplace$min, hpar$laplace$max, hpar$laplace$step_sizes[1]),
+      lambda_beta = beta_seq,
       .combine = rbind
     ) %:%
     foreach::foreach(
-      lambda_beta = seq(hpar$beta$min, hpar$beta$max, length.out = hpar$beta$length),
-      .combine = rbind
-    ) %:%
-    foreach::foreach(
-      lambda_gamma = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length),
+      lambda_gamma = gamma_seq,
       .combine = rbind
     ) %dopar% {
-      #RhpcBLASctl::blas_set_num_threads(1)
-      #RhpcBLASctl::omp_set_num_threads(1)
-      single_fit(
+      lamseq = seq(hpar$laplace$max, hpar$laplace$min, -hpar$laplace$step_sizes[1])
+      warm_start = initial_fit
+      results = data.frame()
+      for(lambda_laplace in lamseq){
+
+      res <- single_fit(
         lambda_laplace = lambda_laplace,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
@@ -209,17 +251,89 @@ imr.cv_2 <- function(
         maxit = maxit,
         ls_initial = ls_initial,
         seed = seed,
+        return_fit = TRUE,
         warm_start = warm_start
       )
+      warm_start = res$fit
+      results <- rbind(results, res$res)
+      }
+      results
     }
 
-  # ============================================================================
 
+  # ============================================================================
   dplyr::arrange(results, error, desc(lambda_laplace), desc(lambda_beta), desc(lambda_gamma)) ->
   results
-
   hpar$beta$value <- results[1, ]$lambda_beta
   hpar$gamma$value <- results[1, ]$lambda_gamma
+  if (trace >= 1) {
+    message(sprintf(
+      paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+              "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+      hpar$beta$value,
+      hpar$gamma$value,
+      results[1,]$lambda_laplace,
+      results[1,]$rank,
+      results[1,]$error
+    ))
+  }
+  # ===========================================================================
+  if(separate){
+    gamma_seq = gamma_seq_old
+    lambda_beta = hpar$beta$value
+    results <-
+      foreach::foreach(
+        lambda_gamma = gamma_seq,
+        .combine = rbind
+      ) %dopar% {
+        lamseq = seq(hpar$laplace$min, hpar$laplace$max, hpar$laplace$step_sizes[1])
+        warm_start = initial_fit
+        results = data.frame()
+        for(lambda_laplace in lamseq){
+
+          res <- single_fit(
+            lambda_laplace = lambda_laplace,
+            lambda_beta = lambda_beta,
+            lambda_gamma = lambda_gamma,
+            data = data,
+            intercept_row = intercept_row,
+            intercept_col = intercept_col,
+            hpar = hpar,
+            shared_information = shared_information,
+            error_function = error_function,
+            thresh = thresh,
+            trace = trace,
+            maxit = maxit,
+            ls_initial = ls_initial,
+            seed = seed,
+            return_fit = TRUE,
+            warm_start = warm_start
+          )
+          warm_start = res$fit
+          results <- rbind(results, res$res)
+        }
+        results
+      }
+    # ============================================================================
+    dplyr::arrange(results, error, desc(lambda_laplace), desc(lambda_beta), desc(lambda_gamma)) ->
+      results
+    hpar$beta$value <- results[1, ]$lambda_beta
+    hpar$gamma$value <- results[1, ]$lambda_gamma
+    # ===========================================================================
+    if (trace >= 1) {
+      message(sprintf(
+        paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+                "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+        hpar$beta$value,
+        hpar$gamma$value,
+        results[1,]$lambda_laplace,
+        results[1,]$rank,
+        results[1,]$error
+      ))
+    }
+  }
+
+
   # ========================== if there's a second loop for lambda_m go for it
   nsteps <- length(hpar$laplace$step_sizes)
   if (nsteps > 1) {
@@ -251,7 +365,7 @@ imr.cv_2 <- function(
             maxit = maxit,
             ls_initial = ls_initial,
             seed = seed,
-            warm_start = warm_start
+            warm_start = initial_fit
           )
         }
       )
@@ -297,10 +411,10 @@ imr.cv_2 <- function(
       dr = hpar$laplacian_row$d,
       Uc = hpar$laplacian_col$U,
       dc = hpar$laplacian_col$d,
-      warm_start = NULL,
+      warm_start = initial_fit,
       trace = trace >= 3,
-      thresh = 1e-6,
-      maxit = 1000,
+      thresh = final_thresh,
+      maxit = final_maxit,
       ls_initial = ls_initial
     )
 

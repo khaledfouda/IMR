@@ -6,14 +6,16 @@ imr.cv_laplace <- function(
   intercept_col = FALSE,
   hpar = IMR::get_imr_default_hparams(),
   error_function = IMR:::error_metric$rmse,
-  thresh = 1e-6,
+  thresh = 1e-4,
   maxit = 300,
   trace = 1,
   warm_start = NULL,
-  ls_initial = FALSE,
+  ls_initial = TRUE,
   shared_information = FALSE,
-  num_cores = 4,
+  num_cores = 6,
   final_fit = TRUE,
+  final_thresh = 1e-6,
+  final_maxit = 1000,
   seed = NULL
 ) {
   stopifnot(is.Incomplete(data$Y))
@@ -169,8 +171,8 @@ imr.cv_laplace <- function(
       dc = hpar$laplacian_col$d,
       warm_start = results$best_fit,
       trace = trace >= 3,
-      thresh = thresh,
-      maxit = maxit,
+      thresh = final_thresh,
+      maxit = final_maxit,
       ls_initial = ls_initial
     )
     results$best_fit[names(fit)] = fit

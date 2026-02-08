@@ -74,41 +74,101 @@ rbind(Z, extra.rows) %>%
 
 # fit IMR
 hpar_int <- IMR::get_imr_default_hparams()
-hpar_int$beta$value = hpar_int$beta$max = 0; hpar$beta$length = 1
-hpar_int$gamma$value = hpar_int$gamma$max = 0; hpar$gamma$length = 1
-hpar_int$laplace$max = 10;
+hpar_int$beta$value = hpar_int$beta$max = 0; hpar_int$beta$length = 1
+hpar_int$gamma$value = hpar_int$gamma$max = 0; hpar_int$gamma$length = 1
+hpar_int$laplace$max = 10; hpar_int$laplace$min = 10; hpar$laplace$step_sizes = c(1)
 hpar_int$laplace$step_sizes = c(1, .1)
 
-hpar$beta$lambda_max <- .3
-hpar$gamma$lambda_max <- 1
-hpar$M$n.lambda <- 20
-hpar$beta$n.lambda <- 20
-hpar$gamma$n.lambda <- 20
 
+hparam <- IMR::get_imr_default_hparams()
+hparam$beta$length <- 20
+hparam$gamma$length <- 20
+hparam$laplace$max <- 20
+hparam$laplace$min <- 10
+hparam$laplace$step_sizes <- c(1, .1)
+hparam$beta$max = 1.8 #4.2 #.706
+hparam$gamma$max = .6 #12 # 1.55
 
-IMR:::initialize_parallel_workers(9)
+hparam$rank$default = 12
+hparam$gamma$value = .5
 
+#IMR:::initialize_parallel_workers(9)
+seed=2025
 run_training = FALSE
 if(run_training){
 
 # fit all model variations: [imr+x, imr+xz, imr+intercept, ma, si]
 #----------------------
 # 1. intercept only >
-dat <- IMR::prepare_data(Y, NULL, NULL,val_prop =  0.2, seed = 2025)
+dat <- IMR::prepare_data(Y, X, Z,val_prop =  0.2, seed = 2025)
 
+# get maximum lambda_beta
+hpar$beta$max <- IMR::get_lambda_lasso_max(
+  y_train = data$y_train,
+  X = data$Xq,
+  intercept_row = intercept_row,
+  intercept_col = intercept_col,
+  maxit = 50,
+  thresh = 1e-3,
+  init_maxit = 100,
+  shared_information = TRUE,
+  init_thresh = 1e-4,
+  r = 5,
+  verbose = 100
+)
+hpar$gamma$max <- IMR::get_lambda_lasso_max(
+  y_train = data$y_train,
+  Z = data$Zq,
+  intercept_row = intercept_row,
+  intercept_col = intercept_col,
+  maxit = 50,
+  thresh = 1e-3,
+  shared_information = TRUE,
+  init_maxit = 100,
+  init_thresh = 1e-4,
+  r = 5,
+  verbose = 100
+)
 
+# models to test:
+# 1. intercept
+# 2. X
+# 3. XZ
+# 4. X shared
+# 5. XZ shared [ need to find an upper-bound on these]
 
 bench::bench_time(fit.imr1 <- IMR::imr.cv_laplace(dat, intercept_row = TRUE, intercept_col = TRUE,
-                             hpar = hpar_int, thresh = 1e-6, maxit = 1000,
+                             hpar = hpar_int, thresh = 1e-3, maxit = 300,
                              trace = 1, ls_initial = TRUE, shared_information = FALSE,
-                             seed = seed, num_cores = 7,final_fit = TRUE)) -> time.imr
+                             seed = seed, num_cores = 9,final_fit = FALSE,
+                             final_thresh = 1e-6, final_maxit = 1000)) -> time.imr
 
+bench::bench_time(fit.imr2 <- IMR:::imr.cv_21(dat, intercept_row = TRUE, intercept_col = TRUE,
+                                                  hpar = hparam, thresh = 1e-3, maxit = 600,
+                                                  trace = 1, ls_initial = TRUE,
+                                              shared_information = FALSE,
+                                                  seed = seed, num_cores = 9,
+                                                  final_thresh = 1e-6, separate = TRUE,
+                                              final_maxit = 1000)) -> time.imr
+
+
+fit.imr2$time <- round(lubridate::time_length(time.imr[2],  "minute"),2)
+saveRDS(fit.imr2, paste0("article/movielens/data/saved_models/",
+                         "IMR_fit_Feb2.rds"))
+
+
+
+
+
+
+fit.imr2$fit$params
+fit.imr2$best_fit$lambda_laplace
 
 #-- tmp start
 time.imr
 i=1
-out = list(IMR::reconstruct(fit.imr1$best_fit, dat))
-fits = list(fit.imr1)
+out = list(IMR::reconstruct(fit.imr2$fit, dat,shared_information = F))
+fits = list(fit.imr2)
 prepare_output_movielens(
   "IMR",
   time = fits[[i]]$time,
@@ -117,11 +177,11 @@ prepare_output_movielens(
   beta.estim  = out[[i]]$beta,
   gamma.estim = out[[i]]$gamma,
   estim.test = out[[i]]$estimates[test.idx],
-  estim.train = as.Incomplete(out[[i]]$estimates * obs_mask)@x,
+  estim.train = as.Incomplete(out[[i]]$estimates * dat$obs_mask)@x,
   obs.test = test.truths,
   obs.train = dat$Y[dat$Y!=0],
   M.estim = out[[i]]$M,test_error = IMR:::error_metric$rmse,
-  rank.M = fits[[i]]$rank_M
+  rank.M = fits[[i]]$fit$params$rank
 )
 fit.imr1$best_fit$lambda_laplace
 fit.imr1$best_fit$r

@@ -38,6 +38,7 @@ get_imr_default_hparams <- function(similarity_row = NULL,
     rank = list(
       min = 2,
       max = 30,
+      default = 2,
       step_sizes = c(1),
       n_streaks = 2
     ),
@@ -69,6 +70,7 @@ get_lambda_M_max <-
            intercept_col = FALSE,
            lambda_beta = NULL,
            lambda_gamma = NULL,
+
            maxit = 30) {
     need_fit <- any(!is.null(X), !is.null(Z), intercept_row, intercept_col)
 
@@ -109,8 +111,12 @@ get_lambda_lasso_max <- function(
   intercept_col = TRUE,
   shared_information = FALSE,
   hpar = get_imr_default_hparams(),
+  r = 5,
   interior_loop_length = 20,
   maxit = 100,
+  thresh = 1e-3,
+  init_maxit = 100,
+  init_thresh = 1e-4,
   verbose = 0,
   tol = 1
 ) {
@@ -121,6 +127,19 @@ get_lambda_lasso_max <- function(
   row_cov <- is.null(Z)
   nr <- nrow(y_train)
   nc <- ncol(y_train)
+  #-------
+  # step 0: get initial values for all fits.
+  initial_fit <- IMR::imr.fit_no_low_rank(y_train, X, Z, 0, 0,
+                                          intercept_row = intercept_row,
+                                          intercept_col = intercept_col,
+                                          shared_information = shared_information,
+                                          maxit = init_maxit,
+                                          thresh = init_thresh)
+  init <- IMR::opt_svd(initial_fit$resid, r, nr, nc, FALSE, FALSE)
+  initial_fit$u <- init$u
+  initial_fit$d <- init$d
+  initial_fit$v <- init$v
+  initial_fit$resid =NULL
   # step 1: get an initial fit and find suitable lambda_M and rank before starting:
   if (is.null(y_valid)) {
     mfit <- list()
@@ -129,14 +148,16 @@ get_lambda_lasso_max <- function(
       Y = y_train,
       X = X,
       Z = Z,
-      r = 5,
+      r = r,
       lambda_M = 0,
       lambda_beta = 0,
       lambda_gamma = 0,
       intercept_row = intercept_row,
       intercept_col = intercept_col,
       shared_information = shared_information,
+      warm_start = initial_fit,
       maxit = maxit,
+      thresh = thresh,
       trace = F
     )
     lambda_M <- 0
@@ -154,6 +175,7 @@ get_lambda_lasso_max <- function(
       intercept_col = intercept_col,
       trace = F,
       maxit = maxit,
+      thresh = thresh,
       hpar = hpar
     )
     lambda_M <- mfit$lambda_M
@@ -187,7 +209,8 @@ get_lambda_lasso_max <- function(
       intercept_col = intercept_col,
       shared_information = shared_information,
       maxit         = maxit,
-      trace         = FALSE
+      warm_start    = initial_fit,
+      trace         = F
     )
   }
 
