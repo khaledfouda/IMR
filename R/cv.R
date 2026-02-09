@@ -181,6 +181,14 @@ imr.cv_laplace <- function(
   # record final hyper-parameters and return
   results$lambda_beta <- hpar$beta$value
   results$lambda_gamma <- hpar$gamma$value
+  results$fit <- results$best_fit
+  results$fit$params <-
+    list(
+      lambda_beta = results$lambda_beta,
+      lambda_gamma = results$lambda_gamma,
+      lambda_laplace = results$fit$lambda_laplace,
+      rank = results$fit$r
+    )
   return(results)
 }
 
