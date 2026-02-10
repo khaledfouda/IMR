@@ -7,6 +7,8 @@
 fit_BKTR_to_Bixi <- function(miss      = 0.8,
                              timestamp = format(Sys.Date(), "%d%b"),
                              prefix    = "",
+                             train_prefix = "",
+                             file_dir = "./article/bixi/data/splits/",
                              seed = 2025,
                              burn_in_iter = 1000,
                              sampling_iter = 500){
@@ -17,17 +19,12 @@ fit_BKTR_to_Bixi <- function(miss      = 0.8,
   TSR$set_params(seed = seed, fp_type = "float32", fp_device = 'cpu')
 
     bixi.dat <- BixiData$new()
-  file_prefix <- paste0(
-    "./article_results/bixi/data/splits/",
-    round(100*miss),
-    "percent_",
-    timestamp,
-    "_"
-  )
-  if(prefix != "")
-    file_prefix <- paste0(file_prefix, prefix, "_")
 
-  train.df <- readRDS(paste0(file_prefix, "train.rds"))
+  if(train_prefix != "")
+    train_prefix <- paste0(prefix, "_train", train_prefix)
+  train.df <- mutate_bixi_file(NULL, "train", miss, timestamp, train_prefix,
+                               out_dir = file_dir, read=TRUE)
+
   train.df %<>% rename(location=column, time = row)
   train.df <- setkey(as.data.table(train.df), location, time)
 
@@ -63,12 +60,14 @@ fit_BKTR_to_Bixi <- function(miss      = 0.8,
 
 
   file_prefix <- paste0(
-    "./article_results/bixi/data/bktrfit_",
+    "./article/bixi/data/bktr_fits/bktrfit_",
     round(100*miss),
     "percent_",
     timestamp,
     "_"
   )
+  if(train_prefix != "")
+    prefix <- paste0(prefix, "_train", train_prefix)
   if(prefix != "")
     file_prefix <- paste0(file_prefix, prefix, "_")
 

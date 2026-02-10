@@ -78,6 +78,8 @@ BKTR_Bixi_Wrapper <- function(
 generate_similarity_bixi <- function(miss      = 0.8,
                                      timestamp = "25Sep",
                                      prefix    = "",
+                                     train_prefix = "",
+                                     file_dir = "./article/bixi/data/splits/",
                                      spatial = "simulated",
                                      temporal = "simulated",
                                      spatial_jitter = FALSE,
@@ -94,17 +96,12 @@ generate_similarity_bixi <- function(miss      = 0.8,
   stopifnot(temporal %in% c("Matern", "original", "RBF", "none", "simulated"))
   stopifnot(spatial %in% c("Matern", "original", "none", "RBF", "simulated"))
 
-  file_prefix <- paste0(
-    "./article_results/bixi/data/splits/",
-    round(100*miss),
-    "percent_",
-    timestamp,
-    "_"
-  )
-  if(prefix != "")
-    file_prefix <- paste0(file_prefix, prefix, "_")
+  if(train_prefix != "")
+    train_prefix <- paste0(prefix, "_train", train_prefix)
+  train.df <- mutate_bixi_file(NULL, "train", miss, timestamp, train_prefix,
+                               out_dir = file_dir, read=TRUE)
 
-  train.df <- readRDS(paste0(file_prefix, "train.rds"))
+
   train.df %<>% rename(location=column, time = row)
 
   bkdat$temporal_positions_df %<>%
