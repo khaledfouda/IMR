@@ -91,8 +91,8 @@ generate_similarity_bixi <- function(miss      = 0.8,
                                      matern_scale = NULL){
   require(BKTR)
   bkdat <- BixiData$new()
-  stopifnot(temporal %in% c("Matern", "original", "RBF", "none", "simulated"))
-  stopifnot(spatial %in% c("Matern", "original", "none", "RBF", "simulated"))
+  stopifnot(temporal %in% c("Matern", "original", "RBF", "none"))
+  stopifnot(spatial %in% c("Matern", "original", "none", "RBF"))
 
   file_prefix <- paste0(
     "./article_results/bixi/data/splits/",
@@ -110,16 +110,9 @@ generate_similarity_bixi <- function(miss      = 0.8,
   bkdat$temporal_positions_df %<>%
     filter(time %in% train.df$time)
 
-
   p_lgth <- KernelParameter$new(value = 7, is_fixed = TRUE)
-
-  if(temporal == "simulated"){
-    se_lgth <- KernelParameter$new(value = 6.427, is_fixed = TRUE)
-    per_lgth <- KernelParameter$new(value = 1.039, is_fixed = TRUE)
-  }else{
-    se_lgth <- KernelParameter$new(value = 6.448, is_fixed = TRUE)
-    per_lgth <- KernelParameter$new(value = 0.941, is_fixed = TRUE)
-  }
+  se_lgth <- KernelParameter$new(value = 6.448, is_fixed = TRUE)
+  per_lgth <- KernelParameter$new(value = 0.941, is_fixed = TRUE)
   temporal_kernel <- KernelSE$new(lengthscale = se_lgth) *
     KernelPeriodic$new(lengthscale = per_lgth, period_length = p_lgth)
   #temporal_kernel = BKTR::KernelSE$new()
@@ -127,11 +120,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
 
   bkdat$spatial_positions_df %<>%
     filter(location %in% train.df$location)
-  if(spatial == "simulated"){
-    sp_lgth <- KernelParameter$new(value = 0.018, is_fixed = TRUE)
-  }else
-    sp_lgth <- KernelParameter$new(value = 21.128, is_fixed = TRUE)
-
+  sp_lgth <- KernelParameter$new(value = 21.128, is_fixed = TRUE)
   spatial_kernel = BKTR::KernelMatern$new(smoothness_factor = 5,lengthscale = sp_lgth)
   spatial_kernel$set_positions(bkdat$spatial_positions_df)
 
@@ -163,7 +152,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
     d = temporal_kernel$distance_matrix %>% as.matrix()
     temporal_kernel <- exp(-(d^2) / (2 * ell_t^2))
 
-  }else if (temporal %in% c("original", "simulated")) {
+  }else if (temporal == "original"){
 
     temporal_kernel <- temporal_kernel$kernel_gen() %>% as.matrix()
   }
@@ -181,7 +170,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
   }else if (spatial == "none"){
     n = train.df$location %>% unique() %>% length()
     spatial_kernel = diag(1, n, n)
-  }else if (spatial %in% c("original", "simulated")){
+  }else if (spatial == "original"){
     spatial_kernel = spatial_kernel$kernel_gen() %>% as.matrix()
   }else if (spatial == "RBF"){
     d = spatial_kernel$distance_matrix %>% as.matrix()
