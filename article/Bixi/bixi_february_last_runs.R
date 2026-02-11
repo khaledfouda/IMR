@@ -18,13 +18,16 @@ total_miss <- 0.25
 test_pct <- total_miss - original_missing_pct
 test_pct
 
-for (prefix in 1:10) {
-  preprocess_bixi_data(total_miss, "Feb_last", 2025, prefix,
-    file_override = F,
-    decreasing_train = TRUE, create_folder = TRUE,
-    train_n_steps = 5, train_stepsize = .05,
-    out_dir = "./article/bixi/data/splits2/"
-  )
+generate_data <- FALSE
+if(generate_data){
+  for (prefix in 1:10) {
+    preprocess_bixi_data(total_miss, "Feb_last", 2025, prefix,
+      file_override = F,
+      decreasing_train = TRUE, create_folder = TRUE,
+      train_n_steps = 5, train_stepsize = .05,
+      out_dir = "./article/bixi/data/splits2/"
+    )
+  }
 }
 
 
