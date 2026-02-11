@@ -14,14 +14,13 @@ source("./article/bixi/helpers_bixi.R")
 # we generate 10 test sets of 30%
 # or just keep the original 20% missing as it's convenient
 original_missing_pct <- 0.1163287
-test_pct <- 0.2
-total_miss <- test_pct + original_missing_pct -> miss_p
-total_miss <- 0.35
+total_miss <- 0.25
 test_pct <- total_miss - original_missing_pct
+test_pct
 
 for (prefix in 1:10) {
   preprocess_bixi_data(total_miss, "Feb_last", 2025, prefix,
-    file_override = FALSE,
+    file_override = F,
     decreasing_train = TRUE, create_folder = TRUE,
     train_n_steps = 5, train_stepsize = .05,
     out_dir = "./article/bixi/data/splits2/"
@@ -158,7 +157,7 @@ for (rep in 1:10) {
         print(res)
         total_results <- rbind(total_results, res)
       }
-      saveRDS(total_results, "./article/Bixi/data/IMR_results_final2.rds")
+      saveRDS(total_results, "./article/Bixi/data/IMR_results_final_25pct.rds")
     }
   }
 }
@@ -175,7 +174,7 @@ total_results %>%
 # =================================================================
 # we now fit the same on BKTR
   seed <- 4000
-  for (prefix in 5:10) {
+  for (prefix in 1:10) {
     for (train_size in train_seq) {
       bktr_out <- fit_BKTR_to_Bixi(total_miss,
                                    "Feb_last",

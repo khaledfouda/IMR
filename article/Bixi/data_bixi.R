@@ -249,7 +249,7 @@ preprocess_bixi_data <- function(miss_pct = 0.5,
       n_total <- nrow(current_train)
       n_orig_na <- sum(is.na(current_train$y))
       n_to_mask <- floor(0.05 * n_total)
-      mean(is.na(new_train$y))
+      #mean(is.na(new_train$y))
 
 
       mask_ids <-

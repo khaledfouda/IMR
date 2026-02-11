@@ -5,6 +5,9 @@ BKTR_Bixi_Wrapper <- function(
     miss = .8,
     return_fit = FALSE,
     prefix = "",
+    train_prefix = "",
+    file_dir = "./article/bixi/data/splits/",
+    test_error = IMR:::error_metric$rmse,
     ...
 ){
   if(!is.null(seed)) set.seed(seed)
@@ -15,22 +18,29 @@ BKTR_Bixi_Wrapper <- function(
     timestamp,
     "_"
   )
-  if(prefix != "")
-    file_prefix <- paste0(file_prefix, prefix, "_")
 
-  bktr_fit <- readRDS(paste0(file_prefix,'.rds'))
+    file_prefix <- paste0(
+      "./article/Bixi/data/bktr_fits/bktrfit_",
+      round(100*miss),
+      "percent_",
+      timestamp,
+      "_",
+      prefix,
+      "_train",
+      prefix,
+      "_train",
+      train_prefix,
+      "_.rds")
 
-  file_prefix <- paste0(
-    "./article_results/bixi/data/splits/",
-    round(100*miss),
-    "percent_",
-    timestamp,
-    "_"
-  )
-  if(prefix != "")
-    file_prefix <- paste0(file_prefix, prefix, "_")
-  train <- readRDS(paste0(file_prefix, "train.rds"))
-  test  <- readRDS(paste0(file_prefix, "test.rds"))
+  bktr_fit <- readRDS(file_prefix)
+
+
+  if(train_prefix != "")
+    train_prefix <- paste0(prefix, "_train", train_prefix)
+  train <- mutate_bixi_file(NULL, "train", miss, timestamp, train_prefix,
+                               out_dir = file_dir, read=TRUE)
+  test <- mutate_bixi_file(NULL, "test", miss, timestamp, prefix,
+                            out_dir = file_dir, read=TRUE)
 
 
     train  %<>% rename(location=column, time=row)
@@ -62,10 +72,13 @@ BKTR_Bixi_Wrapper <- function(
                                    estim.test = test.estimates$y_est,
                                    estim.train = train.estimates$y_est,
                                    obs.test = test.estimates$y,
-                                   obs.train = train.estimates$y))
+                                   obs.train = train.estimates$y,
+                                   test_error = test_error))
 
   # results$total_num_fits = 1000
-  results$time = c(bktr_fit$time, bktr_fit$time1, bktr_fit$time2)
+  results$time0 = bktr_fit$time
+  results$time1 = bktr_fit$time1
+  results$time2 = bktr_fit$time2
   # results$time_per_fit = results$time  / results$total_num_fits
   results$cov_summaries = bktr_fit$fit$beta_covariates_summary
   results$sparsity = 0
