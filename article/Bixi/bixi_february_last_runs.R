@@ -19,18 +19,16 @@ test_pct <- total_miss - original_missing_pct
 test_pct
 
 generate_data <- FALSE
-if(generate_data){
+if (generate_data) {
   for (prefix in 1:10) {
-    preprocess_bixi_data(total_miss, "Feb_last", 2025, prefix,
-      file_override = F,
+    preprocess_bixi_data(total_miss, "Feb_last", 2025+prefix, prefix,
+      file_override = T,
       decreasing_train = TRUE, create_folder = TRUE,
       train_n_steps = 5, train_stepsize = .05,
       out_dir = "./article/bixi/data/splits2/"
     )
   }
 }
-
-
 
 
 # ================================================================
@@ -46,7 +44,7 @@ model_combn <- model_combn[c(7, 8), ]
 
 total_results <- data.frame()
 train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
-#====================================================================
+# ====================================================================
 
 for (rep in 1:10) {
   seed <- 4000 + rep
@@ -111,15 +109,15 @@ for (rep in 1:10) {
           total_miss = total_miss,
           prefix = prefix,
           test_pct = test_pct,
-          #lambda_beta = fitimr$fit$params$lambda_beta,
-          #lambda_gamma = fitimr$fit$params$lambda_gamma,
+          # lambda_beta = fitimr$fit$params$lambda_beta,
+          # lambda_gamma = fitimr$fit$params$lambda_gamma,
           lambda_laplace = fitimr$fit$params$lambda_laplace,
           rank_estim = fitimr$fit$params$rank,
           rank_M = s0$res$rank_M,
-          #rank_beta = s0$res$rank_beta,
-          #rank_gamma = s0$res$rank_gamma,
-          #sparsity_beta = s0$res$sparsity_beta,
-          #sparsity_gamma = s0$res$sparsity_gamma,
+          # rank_beta = s0$res$rank_beta,
+          # rank_gamma = s0$res$rank_gamma,
+          # sparsity_beta = s0$res$sparsity_beta,
+          # sparsity_gamma = s0$res$sparsity_gamma,
           time2.1 = as.numeric(time.imr[1]),
           time2.2 = as.numeric(time.imr[2]),
           metric = "RMSE",
@@ -142,15 +140,15 @@ for (rep in 1:10) {
             total_miss = total_miss,
             prefix = prefix,
             test_pct = test_pct,
-            #lambda_beta = fitimr$fit$params$lambda_beta,
-            #lambda_gamma = fitimr$fit$params$lambda_gamma,
+            # lambda_beta = fitimr$fit$params$lambda_beta,
+            # lambda_gamma = fitimr$fit$params$lambda_gamma,
             lambda_laplace = fitimr$fit$params$lambda_laplace,
             rank_estim = fitimr$fit$params$rank,
             rank_M = s0$res$rank_M,
-            #rank_beta = s0$res$rank_beta,
-            #rank_gamma = s0$res$rank_gamma,
-            #sparsity_beta = s0$res$sparsity_beta,
-            #sparsity_gamma = s0$res$sparsity_gamma,
+            # rank_beta = s0$res$rank_beta,
+            # rank_gamma = s0$res$rank_gamma,
+            # sparsity_beta = s0$res$sparsity_beta,
+            # sparsity_gamma = s0$res$sparsity_gamma,
             time2.1 = as.numeric(time.imr[1]),
             time2.2 = as.numeric(time.imr[2]),
             metric = "RRMSE",
@@ -160,7 +158,7 @@ for (rep in 1:10) {
         print(res)
         total_results <- rbind(total_results, res)
       }
-      saveRDS(total_results, "./article/Bixi/data/IMR_results_final_25pct.rds")
+      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds")
     }
   }
 }
@@ -176,19 +174,143 @@ total_results %>%
 
 # =================================================================
 # we now fit the same on BKTR
-  seed <- 4000
-  for (prefix in 1:10) {
-    for (train_size in train_seq) {
-      bktr_out <- fit_BKTR_to_Bixi(total_miss,
-                                   "Feb_last",
-                                   prefix = prefix,
-                                   train_prefix = train_size,
-                                   file_dir = "./article/bixi/data/splits2/",
-                                   seed = seed,
-                                   burn_in_iter = 1000,
-                                   sampling_iter = 500)
-      print(train_size)
-    }
-    print(paste0("prefix=",prefix))
+seed <- 4000
+for (prefix in 1:10) {
+  for (train_size in train_seq) {
+    bktr_out <- fit_BKTR_to_Bixi(total_miss,
+      "Feb_last",
+      prefix = prefix,
+      train_prefix = train_size,
+      file_dir = "./article/bixi/data/splits2/",
+      seed = seed,
+      burn_in_iter = 1000,
+      sampling_iter = 500
+    )
+    print(train_size)
   }
-#==============================================================
+  print(paste0("prefix=", prefix))
+}
+# ==============================================================
+# we now fit IMR with fixed hyperparameters >>
+seed <- 4000
+
+model_combn %<>%
+  mutate(
+    lambda = if_else(kernels == "simulated", 0.6, 0.7),
+    rank = if_else(kernels == "simulated", 19, 10)
+  )
+
+for (prefix in 1:10) {
+  for (train_size in train_seq) {
+    for (i in 1:nrow(model_combn)) {
+      dat <- prepare_bixi_data(total_miss, "Feb_last", seed,
+        prefix = prefix,
+        train_prefix = train_size,
+        val_prop = 0.2,
+        bktr_variables = TRUE,
+        file_dir = "./article/bixi/data/splits2/",
+        temporal = model_combn$kernels[i],
+        spatial = model_combn$kernels[i],
+        temporal_jitter = TRUE,
+        spatial_jitter = TRUE,
+        jitter_kappa_max = 1e3,
+        jitter_tau_max = 1e-2
+      )
+
+      if (!model_combn$covariates[i]) {
+        dat$X <- dat$Z <- dat$modd$Xq <- dat$modd$Xr <-
+          dat$modd$Zq <- dat$modd$Zr <- NULL
+      }
+      if (!is.null(dat$modd$similarity_rows)) {
+        laplacian_row <- IMR::decompose_symmetric_matrix(
+          dat$modd$similarity_rows,
+          model_combn$lambda[i]
+        )
+      }
+      if (!is.null(dat$modd$similarity_cols)) {
+        laplacian_col <- IMR::decompose_symmetric_matrix(
+          dat$modd$similarity_cols,
+          model_combn$lambda[i]
+        )
+      }
+
+
+      start <- Sys.time()
+
+      bench::bench_time(fitimr <- IMR::imr.fit(
+        Y = dat$modd$Y,
+        X = NULL,
+        Z = NULL,
+        r = model_combn$rank[i],
+        lambda_M = model_combn$lambda[i],
+        lambda_beta = 0,
+        lambda_gamma = 0,
+        intercept_row = FALSE,
+        intercept_col = FALSE,
+        Ur = laplacian_row$U,
+        dr = laplacian_row$d,
+        Uc = laplacian_col$U,
+        dc = laplacian_col$d,
+        warm_start = NULL,
+        trace = FALSE,
+        thresh = 1e-6,
+        maxit = 1000,
+        ls_initial = TRUE
+      )) -> time.imr
+
+      time <- Sys.time() - start
+
+      s0 <- output_wrapper_bixi(fitimr, dat, shared_information = T)
+      # s0$res
+
+      res <- data.frame(
+        test = s0$res$error.test,
+        time = time,
+        model = paste0(
+          model_combn$kernels[i],
+          ifelse(model_combn$covariates[i], "+covariates", ""),
+          ifelse(model_combn$Intercepts[i], "+Intercept", "")
+        ),
+        total_miss = total_miss,
+        prefix = prefix,
+        test_pct = test_pct,
+        lambda_laplace = model_combn$lambda[i],
+        rank_estim = length(fitimr$d > 0),
+        rank_M = length(fitimr$d > 0),
+        time2.1 = as.numeric(time.imr[1]),
+        time2.2 = as.numeric(time.imr[2]),
+        metric = "RMSE",
+        train_size = train_size
+      )
+
+      s0 <- output_wrapper_bixi(fitimr, dat,
+        shared_information = T,
+        test_error = IMR:::error_metric$rel.rmse
+      )
+      res <- rbind(
+        res, data.frame(
+          test = s0$res$error.test,
+          time = time,
+          model = paste0(
+            model_combn$kernels[i],
+            ifelse(model_combn$covariates[i], "+covariates", ""),
+            ifelse(model_combn$Intercepts[i], "+Intercept", "")
+          ),
+          total_miss = total_miss,
+          prefix = prefix,
+          test_pct = test_pct,
+          lambda_laplace = model_combn$lambda[i],
+          rank_estim = length(fitimr$d > 0),
+          rank_M = length(fitimr$d > 0),
+          time2.1 = as.numeric(time.imr[1]),
+          time2.2 = as.numeric(time.imr[2]),
+          metric = "RRMSE",
+          train_size = train_size
+        )
+      )
+      print(res)
+      total_results <- rbind(total_results, res)
+    }
+    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct.rds")
+  }
+}
