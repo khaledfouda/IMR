@@ -1,19 +1,16 @@
 \begin{table}[t]
-\caption*{
-{\fontsize{20}{25}\selectfont  Comparison of Test RRSME\fontsize{12}{15}\selectfont }
-} 
 \fontsize{12.0pt}{14.0pt}\selectfont
-\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}rrrrrr}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}rrrlrrr}
 \toprule
- & \multicolumn{1}{c}{{\bfseries BKTR}} & \multicolumn{2}{c}{{\bfseries IMR-Similarity}} & \multicolumn{2}{c}{{\bfseries IMR-Identity}} \\ 
-\cmidrule(lr){2-2} \cmidrule(lr){3-4} \cmidrule(lr){5-6}
-Train Size & Time (min) & Time & Speedup & Time & Speedup \\ 
+ & \multicolumn{3}{c}{{\bfseries Test RRMSE}} & \multicolumn{3}{c}{{\bfseries Computation Time}} \\ 
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+{\bfseries Train Size} & {\bfseries BKTR} & {\bfseries IMR-Similarity} & {\bfseries IMR-Identity} & {\bfseries BKTR (min)} & {\bfseries IMR-Similarity (s)} & {\bfseries IMR-Identity (s)} \\
 \midrule\addlinespace[2.5pt]
-55% & 18.93 & 0.55 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,056}} & 0.39 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,931}} \\ 
-60% & 23.39 & 0.60 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,334}} & 0.41 & {\bfseries \textcolor[HTML]{2F4F4F}{×3,447}} \\ 
-65% & 24.44 & 0.65 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,239}} & 0.44 & {\bfseries \textcolor[HTML]{2F4F4F}{×3,328}} \\ 
-70% & 23.48 & 0.67 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,101}} & 0.47 & {\bfseries \textcolor[HTML]{2F4F4F}{×3,020}} \\ 
-75% & 23.39 & 0.70 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,000}} & 0.51 & {\bfseries \textcolor[HTML]{2F4F4F}{×2,762}} \\ 
+{\bfseries 55\%} & {\bfseries 0.1758 (0.0014)} & 0.1772 (0.001) & 0.1779 (9e-04) & 21.73 (2.08) & 0.57 (0.04) & 0.39 (0.02) \\
+{\bfseries 60\%} & {\bfseries 0.175 (0.0014)} & 0.1755 (0.001) & 0.1766 (9e-04) & 22.04 (1.84) & 0.61 (0.04) & 0.41 (0.02) \\
+{\bfseries 65\%} & 0.1746 (0.0014) & {\bfseries 0.1743 (0.001)} & 0.1754 (9e-04) & 23.3 (1.82) & 0.66 (0.06) & 0.46 (0.07) \\
+{\bfseries 70\%} & 0.1737 (0.0016) & {\bfseries 0.1733 (0.001)} & 0.1745 (0.001) & 24.76 (1.15) & 0.69 (0.05) & 0.47 (0.03) \\
+{\bfseries 75\%} & 0.1734 (0.0013) & {\bfseries 0.1724 (0.001)} & 0.1738 (0.001) & 25.05 (0.78) & 0.72 (0.03) & 0.5 (0.05) \\
 \bottomrule
 \end{tabular*}
 \end{table}

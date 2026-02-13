@@ -41,7 +41,7 @@ seed <- 4000
 results <- data.frame()
 # prefix=1
 # train_size = train_seq[1]
-for (prefix in 1:6) {
+for (prefix in 1:10) {
   for (train_size in train_seq) {
     dat <- prepare_bixi_data(total_miss, "Feb_last", seed,
       prefix = prefix,
@@ -103,9 +103,12 @@ for (prefix in 1:6) {
   }
   print(paste0("prefix=", prefix))
 }
-saveRDS(results, "./article/Bixi/data/final_results/BKTR_results_final_25pct.rds")
+saveRDS(results, "./article/Bixi/data/final_results/BKTR_results_final_25pct_2.rds")
 # ====================================================================
+results <- readRDS("./article/Bixi/data/final_results/BKTR_results_final_25pct_2.rds")
 
+
+#=====================================================================
 results2 <- readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds") %>%
   rename(
     time0 = time,
@@ -144,7 +147,7 @@ readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds") %>%
   view()
 
 # =========================================================
-results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct.rds") %>%
+results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2.rds") %>%
   rename(
     time0 = time,
     time1 = time2.1,
@@ -170,18 +173,18 @@ results3 %>%
   select(model, train_size, test, time0)
 # =============================================
 # article table >
-
+require(gt)
 results3 |>
   filter(metric == "RRMSE") %>%
+  mutate(time0 = if_else(model=="BKTR", time0/60, time0))%>%
   group_by(model, train_size, metric) %>%
-  summarise_all(mean) %>%
+  summarise_all(c(mean=mean, sd=sd)) %>%
   as.data.frame() %>%
-  arrange(train_size, test) %>%
+  arrange(train_size, test_mean) %>%
   mutate(across(where(is.numeric), \(x) round(x, 4))) %>%
-  mutate(time0 = time0/60)%>%#round(time0, 2)) %>%
-  select(model, train_size, test, time0) %>%
+  select(model, train_size, contains("test"), contains("time0")) %>%
   mutate(
-    time = as.numeric(time0),
+    time_mean = as.numeric(time0_mean),
     model = case_match(
       model,
       "simulated" ~ "IMR-Sim",
@@ -189,133 +192,131 @@ results3 |>
       .default = model
     )
   ) |>
-  select(-time0) %>%
-
+  select(-time0_mean) %>%
+  mutate(time = paste0(round(time_mean,2)," (",round(time0_sd,2),")")) %>%
+  mutate(test = paste0(round(test_mean,4)," (",round(test_sd,4),")")) %>%
+  select(-time0_sd, -test_sd) %>%
   pivot_wider(
     names_from = model,
-    values_from = c(test, time)
+    values_from = c(test, time, time_mean, test_mean)
   ) |>
   mutate(
-    speedup_sim = time_BKTR / `time_IMR-Sim`,
-    speedup_ident = time_BKTR / `time_IMR-Identity`,
-    diff_sim = (`test_IMR-Sim` - test_BKTR) / test_BKTR,
-    diff_ident = (`test_IMR-Identity` - test_BKTR) / test_BKTR
+    speedup_sim = (time_mean_BKTR*60) / `time_mean_IMR-Sim`,
+    speedup_ident = (time_mean_BKTR*60) / `time_mean_IMR-Identity`,
+    diff_sim = (`test_mean_IMR-Sim` - test_mean_BKTR) / test_mean_BKTR,
+    diff_ident = (`test_mean_IMR-Identity` - test_mean_BKTR) / test_mean_BKTR
   ) |>
   select(
     train_size,
     test_BKTR, time_BKTR,
-    `test_IMR-Sim`, `time_IMR-Sim`, speedup_sim, diff_sim,
-    `test_IMR-Identity`, `time_IMR-Identity`, speedup_ident, diff_ident
+    test_mean_BKTR, time_mean_BKTR,
+    `test_mean_IMR-Sim`, `time_mean_IMR-Sim`,
+    `test_mean_IMR-Identity`, `time_mean_IMR-Identity`,
+    `test_IMR-Sim`, `time_IMR-Sim`, speedup_sim, #diff_sim,
+    `test_IMR-Identity`, `time_IMR-Identity`, speedup_ident#, diff_ident
   ) %>%
-  mutate(`time_IMR-Sim` = round(`time_IMR-Sim`*60,2),
-         `time_IMR-Identity` = round(`time_IMR-Identity`*60,2)
-         ) %>%
   arrange(train_size) %>%
   gt() |>
+  # tab_spanner(
+  #   label = "BKTR",
+  #   columns = c(test_BKTR, time_BKTR)
+  # ) |>
+  # tab_spanner(
+  #   label = "IMR-Similarity",
+  #   columns = c(`test_IMR-Sim`, `time_IMR-Sim`, speedup_sim, diff_sim)
+  # ) |>
+  # tab_spanner(
+  #   label = "IMR-Identity",
+  #   columns = c(`test_IMR-Identity`, `time_IMR-Identity`, speedup_ident, diff_ident)
+  # ) |>
   tab_spanner(
-    label = "BKTR",
-    columns = c(test_BKTR, time_BKTR)
-  ) |>
+    "Test RRMSE",
+    c(test_BKTR, `test_IMR-Sim`, `test_IMR-Identity`)
+  ) %>%
   tab_spanner(
-    label = "IMR-Similarity",
-    columns = c(`test_IMR-Sim`, `time_IMR-Sim`, speedup_sim, diff_sim)
-  ) |>
-  tab_spanner(
-    label = "IMR-Identity",
-    columns = c(`test_IMR-Identity`, `time_IMR-Identity`, speedup_ident, diff_ident)
-  ) |>
-  fmt_number(
-    columns = contains("test"),
-    decimals = 4
-  ) |>
-  fmt_number(
-    columns = contains("time"),
-    decimals = 2,
-    pattern = "{x}"
-  ) |>
-  fmt_number(
-    columns = contains("train_size"),
-    decimals = 0,
-    pattern = '{x}%'
+    "Computation Time",
+    c(time_BKTR, `time_IMR-Sim`, speedup_sim, `time_IMR-Identity`, speedup_ident)
+  ) %>%
+  cols_label(
+    train_size = "Train Size",
+    test_BKTR = "BKTR",
+    time_BKTR = "BKTR (min)",
+    `test_IMR-Sim` = "IMR-Similarity",
+    `time_IMR-Sim` = "IMR-Similarity (s)",
+    speedup_sim = "Speedup",
+    #diff_sim = "Diff %",
+    `test_IMR-Identity` = "IMR-Identity",
+    `time_IMR-Identity` = "IMR-Identity (s)",
+    speedup_ident = "Speedup",
+    #diff_ident = "Diff %"
   ) |>
   fmt_number(
     columns = starts_with("speedup"),
     decimals = 0,
     pattern = "×{x}"
   ) |>
-  fmt_percent(
-    columns = starts_with("diff"),
-    decimals = 2,
-    force_sign = TRUE
+  fmt_number(
+    columns = contains("train_size"),
+    decimals = 0,
+    pattern = '{x}\\%'
   ) |>
-  cols_label(
-    train_size = "Train Size",
-    test_BKTR = "RRSME",
-    time_BKTR = "Time (min)",
-    `test_IMR-Sim` = "RRSME",
-    `time_IMR-Sim` = "Time (s)",
-    speedup_sim = "Speedup",
-    diff_sim = "Diff %",
-    `test_IMR-Identity` = "RRSME",
-    `time_IMR-Identity` = "Time (s)",
-    speedup_ident = "Speedup",
-    diff_ident = "Diff %"
+  tab_style(
+   style = cell_text(weight = "bold"),
+   locations = list(cells_column_labels(),cells_column_spanners(),
+                    cells_body(train_size))
   ) |>
-  #tab_style(
-  #  style = cell_text(weight = "bold"),
-  #  locations = cells_column_labels()
-  #) |>
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_column_spanners(spanners = everything())
   ) %>%
   tab_style(
-    style = cell_text(weight = "bold", color = "#2f4f4f"),
+    style = cell_text(weight = "bold"),
     locations = cells_body(
       columns = test_BKTR,
-      rows = test_BKTR <= `test_IMR-Sim` & test_BKTR <= `test_IMR-Identity`
+      rows = test_mean_BKTR <= `test_mean_IMR-Sim` & test_mean_BKTR <= `test_mean_IMR-Identity`
     )
   ) |>
   tab_style(
-    style = cell_text(weight = "bold", color = "#2f4f4f"),
+    style = cell_text(weight = "bold"),
     locations = cells_body(
       columns = `test_IMR-Sim`,
-      rows = `test_IMR-Sim` <= test_BKTR & `test_IMR-Sim` <= `test_IMR-Identity`
+      rows = `test_mean_IMR-Sim` <= test_mean_BKTR & `test_mean_IMR-Sim` <= `test_mean_IMR-Identity`
     )
   ) |>
   tab_style(
-    style = cell_text(weight = "bold", color = "#2f4f4f"),
+    style = cell_text(weight = "bold"),
     locations = cells_body(
       columns = `test_IMR-Identity`,
-      rows = `test_IMR-Identity` <= test_BKTR & `test_IMR-Identity` <= `test_IMR-Sim`
+      rows = `test_mean_IMR-Identity` <= test_mean_BKTR & `test_mean_IMR-Identity` <= `test_mean_IMR-Sim`
     )
   ) %>%
   tab_style(
-    style = cell_text(weight = "bold", color = "#2f4f4f"),
+    style = cell_text(weight = "bold"),
     locations = cells_body(
       columns = `speedup_sim`,
-      rows = `time_IMR-Sim` <= time_BKTR
+      rows = `time_mean_IMR-Sim` <= time_mean_BKTR
     )
   ) |>
   tab_style(
-    style = cell_text(weight = "bold", color = "#2f4f4f"),
+    style = cell_text(weight = "bold"),
     locations = cells_body(
       columns = `speedup_ident`,
-      rows = `time_IMR-Identity` <= time_BKTR
-    )
-  )-> table
+      rows = `time_mean_IMR-Identity` <= time_mean_BKTR
+    )) |>
+  cols_hide(contains("Speed")) %>%
+      cols_hide(columns = c(contains("_mean"), contains("_sd"))) %T>%
+  gtsave("article/Bixi/data/final_results/table1.tex")
+
 table %>%
   tab_header(
-    title = "Comparsion of Training Time"
-    # subtitle = "Comparison of Test RRSME and Training Time vs BKTR Baseline"
+    title ="Comparison of Test RRSME"
   ) %>%
   cols_hide(columns = c(contains("time"), contains("speed"))) %T>%
   gtsave("article/Bixi/data/final_results/table1.tex")
 
 table %>%
   tab_header(
-    title = "Comparison of Test RRSME"
-    # subtitle = "Comparison of Test RRSME and Training Time vs BKTR Baseline"
+    title =  "Comparsion of Training Time"
   ) |>
   cols_hide(columns = c(contains("test"), contains("Diff"))) %T>%
-  gtsave("article/Bixi/data/final_results/table1.tex")
+  gtsave("article/Bixi/data/final_results/table2.tex")

@@ -196,7 +196,7 @@ seed <- 4000
 
 model_combn %<>%
   mutate(
-    lambda = if_else(kernels == "simulated", 0.6, 0.7),
+    lambda = if_else(kernels == "simulated", 0.6, 0.8),
     rank = if_else(kernels == "simulated", 19, 10)
   )
 
@@ -311,6 +311,6 @@ for (prefix in 1:10) {
       print(res)
       total_results <- rbind(total_results, res)
     }
-    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct.rds")
+    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct_2.rds")
   }
 }
