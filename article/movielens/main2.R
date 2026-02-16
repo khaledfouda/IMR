@@ -2,11 +2,13 @@
 require(tidyverse)
 devtools::load_all()
 require(magrittr)
-source("article_results/movielens/preprocess.R")
+source("article/movielens/preprocess.R")
 out <- prepare_results_for_analysis()
 dat = out$dat; fits=out$fits; res.df=dat$res
 
 
+#f$lambda_gamma
+#f <- fit.imr3;f$fit <- NULL; f
 # --- movie→genre map for the 5 genres ------------------------------------
 genres <- c("Documentary", "Musical", "Drama", "Fantasy", "Children's",
             "War", "Action", "Sci-Fi", "Horror", "Animation")
@@ -35,7 +37,7 @@ mapx <- as.data.frame(dat$X) %>%
   dplyr::select(user, group)
 
 
-IMR::initialize_parallel_workers()
+IMR::initialize_parallel_workers(1)
 
 mapz %<>%
   group_by(movie) %>%
@@ -48,9 +50,9 @@ mapz %<>%
 
 
 movies <- unique(arr[, 1])
-subYh <- (out$out[[3]]$xbeta+out$out[[3]]$gammaz)[,movies]
-subYh <- out$out[[3]]$estimates[,movies] - subYh
-subYh  <- out$out[[3]]$estimates[,movies]
+subYh <- (out$out[[1]]$xbeta+out$out[[1]]$gammaz)[,movies]
+subYh <- out$out[[1]]$estimates[,movies] - subYh
+subYh  <- out$out[[1]]$estimates[,movies]
 colnames(subYh) = movies
 as.data.frame(subYh) %>%
   rownames_to_column("row") %>%
@@ -220,8 +222,8 @@ ggplot(ume_sel, aes(x = age, y = estimate, fill = age)) +
 #        g, width = 320/25.4, height = 150/25.4, dpi = 600)
 
 
-ggsave("./article_results/movielens/data/plot_full_model.png",
-       g, width = 320/25.4, height = 150/25.4, dpi = 600)
+ggsave("./article/movielens/data/plot_full_model.png",
+       g, width = 9, height = 4, scale=1.2, dpi = 300)
 
 
 #===============================================================================

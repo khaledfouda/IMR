@@ -9,9 +9,9 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
   require(dplyr)
   require(magrittr)
 
-  load("article_results/movielens/data/Movie_Y.Rdata") # Y
-  load("article_results/movielens/data/Movie_X.Rdata") # X
-  load("article_results/movielens/data/Movie_Q.Rdata") # Query (testing set for evaluating the performance)
+  load("article/movielens/data/Movie_Y.Rdata") # Y
+  load("article/movielens/data/Movie_X.Rdata") # X
+  load("article/movielens/data/Movie_Q.Rdata") # Query (testing set for evaluating the performance)
   query <- as.data.frame(query)
   colnames(query) <- c("row_id", "column_id", "value")
   # remove interactions from data
@@ -65,8 +65,8 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
   summ_Y(Y)
   keyword = paste0("_c_",min_obs_per_col,"_")
   message("Saving data with keyword: ", keyword)
-  saveRDS(Y, paste0("article_results/movielens/data/Movie_Y",keyword,".Rdata"))
-  saveRDS(query, paste0("article_results/movielens/data/Movie_Q",keyword,".Rdata"))
+  saveRDS(Y, paste0("article/movielens/data/Movie_Y",keyword,".Rdata"))
+  saveRDS(query, paste0("article/movielens/data/Movie_Q",keyword,".Rdata"))
   #=========
   if(increase_missing)
   {
@@ -128,8 +128,8 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
     summ_Y(Y)
     keyword = paste0("_c_",min_obs_per_col,"_", round(100*prop_miss),"_")
     message("Saving data with keyword: ", keyword)
-    saveRDS(Y, paste0("article_results/movielens/data/Movie_Y", keyword, ".Rdata"))
-    saveRDS(query, paste0("article_results/movielens/data/Movie_Q",keyword,".Rdata"))
+    saveRDS(Y, paste0("article/movielens/data/Movie_Y", keyword, ".Rdata"))
+    saveRDS(query, paste0("article/movielens/data/Movie_Q",keyword,".Rdata"))
     #=========
   }
   message("Finally, we save the data as .dat for Python fit")
@@ -137,13 +137,13 @@ prepare_ml_1m_data <- function(min_obs_per_col = 10,
   py.Y <- data.frame(userID=obs_ind[,1], movieID=obs_ind[,2], rating=Y[obs_ind])
   colnames(query) <- c("userID", "movieID", "rating")
   write.table(py.Y,
-              paste0("article_results/movielens/data/Movie_Y",keyword, ".dat"),
+              paste0("article/movielens/data/Movie_Y",keyword, ".dat"),
               sep       = "::",
               row.names = FALSE,
               col.names = FALSE,
               quote     = FALSE)
   write.table(query,
-              paste0("article_results/movielens/data/Movie_test",keyword,".dat"),
+              paste0("article/movielens/data/Movie_test",keyword,".dat"),
               sep       = "::",
               row.names = FALSE,
               col.names = FALSE,
@@ -242,16 +242,16 @@ prepare_results_for_analysis <- function(){
   #===== out:   X, Z, Y, query, test.idx, test.truths, obs_mask
   #=============================================================
 
-  load("article_results/movielens/data/Movie_X.Rdata") #X
-  load("article_results/movielens/data/Movie_Y.Rdata",verbose = T)
+  load("article/movielens/data/Movie_X.Rdata") #X
+  load("article/movielens/data/Movie_Y.Rdata",verbose = T)
   X <- X[,1:4] # keep only main-effects
   input_tag = "_c_0_"
-  #Y <-     readRDS(paste0("article_results/movielens/data/Movie_Y",input_tag,".Rdata"))
-  query <- readRDS(paste0("article_results/movielens/data/Movie_Q",input_tag,".Rdata"))
+  #Y <-     readRDS(paste0("article/movielens/data/Movie_Y",input_tag,".Rdata"))
+  query <- readRDS(paste0("article/movielens/data/Movie_Q",input_tag,".Rdata"))
   source("other_models/Ma25.R")
   source("other_models/SoftImpute_cv.R")
-  source("article_results/movielens/preprocess.R")
-  source("article_results/movielens/Ma25_fit.R")
+  source("article/movielens/preprocess.R")
+  source("article/movielens/Ma25_fit.R")
   #========================================================
   # prepare test set and X-QR
   test.idx   <- cbind(query[, 1], query[, 2])
@@ -263,7 +263,7 @@ prepare_results_for_analysis <- function(){
   # ====================================================
   # prepare Z < genres >
   Z <- data.table::fread(
-    file = "article_results/movielens/data/movies_Z.dat",
+    file = "article/movielens/data/movies_Z.dat",
     sep = NULL,
     encoding = "Latin-1",
     header = FALSE
@@ -305,12 +305,12 @@ prepare_results_for_analysis <- function(){
     as.matrix() ->
     Z
   #=========
-  dat <- IMR::prepare_data(Y, X, Z, 0.2, seed = 2025)
-  fit.imr1 <- readRDS("article_results/movielens/data/saved_models/IMR_fit_intercept.rds")
-  fit.imr2 <- readRDS("article_results/movielens/data/saved_models/IMR_fit_rows_nonsp.rds")
-  fit.imr3 <- readRDS("article_results/movielens/data/saved_models/IMR_fit_rows_cols.rds")
-  fit.si   <- readRDS("article_results/movielens/data/saved_models/SI_fit.rds")
-  fit.ma   <- readRDS("article_results/movielens/data/saved_models/Ma_fit.rds")
+  dat <- IMR::prepare_data(Y, X, Z, val_prop = 0.2, seed = 2025)
+  fit.imr1 <- readRDS("article/movielens/data/saved_models/IMR_fit_intercept.rds")
+  fit.imr2 <- readRDS("article/movielens/data/saved_models/IMR_fit_rows_nonsp.rds")
+  fit.imr3 <- readRDS("article/movielens/data/saved_models/IMR_fit_rows_cols.rds")
+  fit.si   <- readRDS("article/movielens/data/saved_models/SI_fit.rds")
+  fit.ma   <- readRDS("article/movielens/data/saved_models/Ma_fit.rds")
 
 
 
@@ -347,6 +347,7 @@ prepare_results_for_analysis <- function(){
       estim.test = out[[i]]$estimates[test.idx],
       estim.train = as.Incomplete(out[[i]]$estimates * obs_mask)@x,
       obs.test = test.truths,
+      test_error = IMR:::error_metric$rmse,
       obs.train = dat$Y[dat$Y!=0],
       M.estim = out[[i]]$M,
       rank.M = fits[[i]]$rank_M
@@ -377,4 +378,5 @@ prepare_results_for_analysis <- function(){
 
   return(list(dat=dat, fits=fits, res=res.df, res.list=res, out=out))
 }
+
 
