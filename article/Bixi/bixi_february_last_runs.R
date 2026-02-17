@@ -20,7 +20,7 @@ test_pct
 
 generate_data <- FALSE
 if (generate_data) {
-  for (prefix in 1:10) {
+  for (prefix in 11:50) {
     preprocess_bixi_data(total_miss, "Feb_last", 2025+prefix, prefix,
       file_override = T,
       decreasing_train = TRUE, create_folder = TRUE,
@@ -41,14 +41,13 @@ model_combn <- expand.grid(
   stringsAsFactors = FALSE
 )
 model_combn <- model_combn[c(7, 8), ]
-
-total_results <- data.frame()
 train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
 # ====================================================================
 
+total_results <- data.frame()
 for (rep in 1:10) {
   seed <- 4000 + rep
-  for (prefix in 1:10) {
+  for (prefix in 11:50) {
     for (train_size in train_seq) {
       for (i in 1:nrow(model_combn)) {
         dat <- prepare_bixi_data(total_miss, "Feb_last", seed,
@@ -158,7 +157,7 @@ for (rep in 1:10) {
         print(res)
         total_results <- rbind(total_results, res)
       }
-      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds")
+      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2_2.rds")
     }
   }
 }
@@ -175,7 +174,7 @@ total_results %>%
 # =================================================================
 # we now fit the same on BKTR
 seed <- 4000
-for (prefix in 1:10) {
+for (prefix in 11:50) {
   for (train_size in train_seq) {
     bktr_out <- fit_BKTR_to_Bixi(total_miss,
       "Feb_last",
@@ -200,7 +199,7 @@ model_combn %<>%
     rank = if_else(kernels == "simulated", 19, 10)
   )
 
-for (prefix in 1:10) {
+for (prefix in 11:50) {
   for (train_size in train_seq) {
     for (i in 1:nrow(model_combn)) {
       dat <- prepare_bixi_data(total_miss, "Feb_last", seed,
@@ -311,6 +310,6 @@ for (prefix in 1:10) {
       print(res)
       total_results <- rbind(total_results, res)
     }
-    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct_2.rds")
+    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_2.rds")
   }
 }
