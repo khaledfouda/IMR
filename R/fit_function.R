@@ -1,87 +1,129 @@
+#' @export
+imr_control <- function(maxit = 300,
+                        thresh = 1e-5,
+                        trace = FALSE,
+                        ls_initial = TRUE) {
+  structure(
+    list(maxit = maxit,
+         thresh = thresh,
+         trace = trace,
+         ls_initial = ls_initial),
+    class = "imr_control"
+  )
+}
+
+#' @export
+fit_imr <- function(
+    data,
+    rank = 2,
+    lambda_M = 0,
+    lambda_beta = 0,
+    lambda_gamma = 0,
+    intercept_row = FALSE,
+    intercept_col = FALSE,
+    shared_beta = FALSE,
+    shared_gamma = FALSE,
+    control = imr_control(),
+    warm_start = NULL){
+
+  # validation
+  if (!inherits(data, "imr_data")) stop("Data must be an 'imr_data' object.")
+  if (!inherits(control, "imr_control")) control <- imr_control()
+
+
+  if (inherits(warm_start, "imr_fit")) {
+    warm_start <- warm_start$coefficients
+  }
+
+
+
+  result_list <- imr_solver(
+    Y = data$Y,
+    X = data$X,
+    Z = data$Z,
+    r = rank,
+    lambda_M = lambda_M,
+    lambda_beta = lambda_beta,
+    lambda_gamma = lambda_gamma,
+    Ur = data$similarity_row$U,
+    dr = data$similarity_row$d,
+    Uc = data$similarity_col$U,
+    dc = data$similarity_col$d,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
+    shared_beta = shared_beta,
+    shared_gamma = shared_gamma,
+    control = control,
+    warm_start = warm_start
+  )
+
+  # 5. Construct Final Object
+  structure(
+    list(
+      coefficients = list(
+        u = result_list$u,
+        d = result_list$d,
+        v = result_list$v,
+        beta = result_list$beta,
+        gamma = result_list$gamma,
+        beta0 = result_list$beta0,
+        gamma0 = result_list$gamma0
+      ),
+      residuals = result_list$residuals,
+      meta = list(
+        rank = rank,
+        lambdas = c(M=lambda_M, beta=lambda_beta, gamma=lambda_gamma),
+        intercepts = c(row = intercept_row, col = intercept_col),
+        shared_effects = c(beta=shared_beta, gamma=shared_gamma),
+        n_iter = result_list$n_iter,
+        converged = result_list$n_iter < control$maxit,
+        # statistic for print function
+        tss = sum((data$Y@x - mean(data$Y@x))^2)
+      ),
+      control = control
+    ),
+    class = "imr_fit"
+  )
+}
+
+
 #' Fit Incomplete Matrix Regression (IMR) Model
 #'
-#' \code{imr.fit} fits the model to the given data and hyper-parameters until
-#' convergence is achieved.
-#'
-#' @param Y An incomplete matrix (class \code{Incomplete}; see \code{\link{as.incomplete}}).
-#'   The target matrix to be completed (n by m).
-#' @param X Optional matrix of row covariates (n by p). Default is \code{NULL}.
-#' @param Z Optional matrix of column covariates (m by q). Default is \code{NULL}.
-#' @param intercept_row Logical. Include row-level intercepts? Default is \code{FALSE}.
-#' @param intercept_col Logical. Include column-level intercepts? Default is \code{FALSE}.
-#' @param r Integer. The rank (number of latent factors/columns in A and B).
-#'   Default is 2.
-#' @param lambda_M Numeric scalar. Controls the nuclear penalty. Default is 0.
-#' @param lambda_beta Numeric scalar. Controls the Lasso penalty on the row
-#'   covariates. Default is 0.
-#' @param lambda_gamma Numeric scalar. Controls the Lasso penalty on the column
-#'   covariates. Default is 0.
-#' @param Ur,dr Optional matrix (Ur) and vector (dr) containing the eigenvectors
-#'   and eigenvalues of the row-level similarity matrix \eqn{S_r}.
-#' @param Vc,dc Optional matrix (Vc) and vector (dc) containing the eigenvectors
-#'   and eigenvalues of the column-level similarity matrix \eqn{S_c}.
-#' @param maxit Integer. Maximum number of iterations. Default is 300.
-#' @param thresh Numeric scalar. Convergence threshold based on the Frobenius
-#'   difference between updates. Default is 1e-5.
-#' @param trace Logical. If \code{TRUE}, prints the objective function value at
-#'   each step. Default is \code{FALSE}.
-#' @param warm_start Optional list. A previous result object from \code{imr.fit}
-#'   to use as initial values. Default is \code{NULL}.
-#' @param ls_initial Logical. Used only if \code{warm_start} is \code{NULL}.
-#'   If \code{TRUE} (default), uses least-squares initialization. If \code{FALSE},
-#'   uses random initialization.
-#'
-#' @return A list containing the learned parameters:
-#' \describe{
-#'   \item{u, d, v}{The SVD decomposition components of the matrix, such that
-#'     \deqn{M = u \cdot \textrm{diag}(d) \cdot v^T}}
-#'   \item{beta}{Matrix of row covariate coefficients. \code{NULL} if \code{X} is \code{NULL}.}
-#'   \item{gamma}{Matrix of column covariate coefficients. \code{NULL} if \code{Z} is \code{NULL}.}
-#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{intercept_row} is \code{FALSE}.}
-#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{intercept_col} is \code{FALSE}.}
-#'   \item{n_iter}{Integer. The number of iterations performed.}
-#' }
-#'
-#' @export
-imr.fit <- function(
-  Y,
-  X = NULL,
-  Z = NULL,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
-  r = 2,
-  lambda_M = 0,
-  lambda_beta = 0,
-  lambda_gamma = 0,
-  Ur = NULL,
-  dr = NULL,
-  Uc = NULL,
-  dc = NULL,
-  maxit = 300,
-  thresh = 1e-5,
-  trace = FALSE,
-  shared_information = FALSE,
-  warm_start = NULL,
-  ls_initial = TRUE
-) {
+#' Not exported
+imr_solver <- function(
+  Y, X, Z,
+  intercept_row, intercept_col,
+  shared_beta, shared_gamma,
+  r, lambda_M, lambda_beta, lambda_gamma,
+  Ur, dr, Uc, dc,
+  control,
+  warm_start) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
   dims <- dim(Y)
   nr <- dims[1]
   nc <- dims[2]
   nz <- Matrix::nnzero(Y, na.counted = TRUE)
-
   irow <- Y@i
   pcol <- Y@p
 
+  # Unpack control ----------------------------------------------------------
+  maxit  <- control$maxit
+  thresh <- control$thresh
+  trace  <- control$trace
+  ls_initial <- control$ls_initial
+  shared_beta <- control$shared_beta
+  shared_gamma <- control$shared_gamma
 
   # Laplacian flags (L_* expected as eigendecompositions) -------------------
   beta_flag <- !(is.null(X))
   gamma_flag <- !(is.null(Z))
-  laplace_r_flag <- !(is.null(Ur) | is.null(dr))
-  laplace_c_flag <- !(is.null(Uc) | is.null(dc))
+  laplace_r_flag <- !(is.null(Ur) || is.null(dr))
+  laplace_c_flag <- !(is.null(Uc) || is.null(dc))
+  low_rank_flag <- !(is.null(r) || is.null(lambda_M) || r <= 0)
+  if(!low_rank_flag) ls_initial = FALSE
   # initial everything to null ------------------------
-  beta <- gamma <- beta0 <- gamma0 <- NULL
+  beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
   warm_start <- verify_warm_start(warm_start, r)
@@ -94,7 +136,7 @@ imr.fit <- function(
 
     if (beta_flag) {
       beta <- warm_start$beta
-      if(shared_information){
+      if(shared_beta){
         xbeta <- X %*% beta
       }else{
         xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -102,7 +144,7 @@ imr.fit <- function(
     }
     if (gamma_flag) {
       gamma <- warm_start$gamma
-      if(shared_information){
+      if(shared_gamma){
         gammaz <- tcrossprod(gamma, Z)
       }else{
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
@@ -121,16 +163,18 @@ imr.fit <- function(
     Dsq <- warm_start$d
   } else {
     if (ls_initial) {
-      mfit <- IMR::imr.fit_no_low_rank(Y, X, Z,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        shared_information = shared_information
-      )
+      mift <- imr_solver(
+        Y = Y, X = X, Z = Z,
+        intercept_row = intercept_row, intercept_col = intercept_col,
+        shared_beta = shared_beta, shared_gamma = shared_gamma,
+        r = 0, lambda_M = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
+        Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
+        control = control,
+        warm_start = NULL)
+
       if (beta_flag) {
         beta <- mfit$beta
-        if(shared_information){
+        if(shared_beta){
           xbeta <- X %*% beta
         }else{
           xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -138,7 +182,7 @@ imr.fit <- function(
       }
       if (gamma_flag) {
         gamma <- mfit$gamma
-        if(shared_information){
+        if(shared_gamma){
           gammaz <- tcrossprod(gamma, Z)
         }else{
           zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
@@ -151,10 +195,10 @@ imr.fit <- function(
         gamma0 <- mfit$gamma0
       }
 
-      init <- IMR::opt_svd(mfit$resid, r, nr, nc, FALSE, FALSE)
+      init <- IMR::opt_svd(mfit$residuals, r, nr, nc, FALSE, FALSE)
     } else {
       if (beta_flag) {
-        if(shared_information){
+        if(shared_beta){
           beta <- rep(0, ncol(X))
           xbeta <- rep(0, nr)
         }else{
@@ -163,7 +207,7 @@ imr.fit <- function(
         }
       }
       if (gamma_flag) {
-        if(shared_information){
+        if(shared_gamma){
           gamma <- rep(0, ncol(Z))
           gammaz <- rep(0, nc)
         }else{
@@ -177,25 +221,29 @@ imr.fit <- function(
       if (intercept_col) {
         gamma0 <- rep(0, nc)
       }
-
-      init <- IMR::opt_svd(Y, r, nr, nc, FALSE, FALSE)
+      if(low_rank_flag)
+        init <- IMR::opt_svd(Y, r, nr, nc, FALSE, FALSE)
     }
 
-    U <- init$u
-    Dsq <- init$d
-    V <- init$v
-    rm(init)
+    if(low_rank_flag){
+      U <- init$u
+      Dsq <- init$d
+      V <- init$v
+      rm(init)
+    }
   }
 
 
   #  Update residuals (first iteration only)  -----------------------------
-  M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
-  Y@x <- Y@x - M_obs
+  if(low_rank_flag){
+    M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
+    Y@x <- Y@x - M_obs
+  }
   if (!is.null(warm_start) || (is.null(warm_start) && ls_initial)) {
-    if (beta_flag && !shared_information) Y@x <- Y@x - xb_obs
-    if (gamma_flag && !shared_information) Y@x <- Y@x - zg_obs
-    if (beta_flag && shared_information) add_to_rows_inplace_cpp(Y@x, Y@i, -xbeta)
-    if (gamma_flag && shared_information) add_to_cols_inplace_cpp(Y@x, Y@p, -gammaz)
+    if (beta_flag && !shared_beta) Y@x <- Y@x - xb_obs
+    if (gamma_flag && !shared_gamma) Y@x <- Y@x - zg_obs
+    if (beta_flag && shared_beta) add_to_rows_inplace_cpp(Y@x, Y@i, -xbeta)
+    if (gamma_flag && shared_gamma) add_to_cols_inplace_cpp(Y@x, Y@p, -gammaz)
     if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
     if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
   }
@@ -212,50 +260,48 @@ imr.fit <- function(
     beta_old <- beta
     gamma_old <- gamma
 
-    #  Update (V, Dsq, U) from the "B" side --------------------------------
-    # B_mat = BD
-    if (laplace_c_flag) {
-      BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
-    } else {
-      BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
+    if(low_rank_flag){
+      #  Update (V, Dsq, U) from the "B" side --------------------------------
+      # B_mat = BD
+      if (laplace_c_flag) {
+        BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
+      } else {
+        BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
+      }
+
+      BD <- IMR:::svd_small_nc_cpp(BD)
+      V <- BD$u
+      Dsq <- tidyr::replace_na(BD$d, 0)
+      U <- U %*% BD$v
+
+      # update Y
+      old_val <- M_obs
+      M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
+      Y@x <- Y@x + old_val - M_obs
+
+
+      # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
+      # A_mat <- AD
+      if (laplace_r_flag) {
+        AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
+      } else {
+        AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
+      }
+
+      AD <- IMR:::svd_small_nc_cpp(AD)
+      U <- AD$u
+      Dsq <- tidyr::replace_na(AD$d, 0)
+      V <- V %*% AD$v
+
+      # update Y
+      old_val <- M_obs
+      M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
+      Y@x <- Y@x + old_val - M_obs
     }
-
-    BD <- IMR:::svd_small_nc_cpp(BD)
-    V <- BD$u
-    Dsq <- tidyr::replace_na(BD$d, 0)
-    U <- U %*% BD$v
-
-    # update Y
-    old_val <- M_obs
-    M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
-    Y@x <- Y@x + old_val - M_obs
-
-
-    # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
-    # A_mat <- AD
-    if (laplace_r_flag) {
-      AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
-    } else {
-      AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
-    }
-
-    AD <- IMR:::svd_small_nc_cpp(AD)
-    U <- AD$u
-    Dsq <- tidyr::replace_na(AD$d, 0)
-    V <- V %*% AD$v
-
-    # update Y
-    old_val <- M_obs
-    M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
-    Y@x <- Y@x + old_val - M_obs
-
-
-
-
 
     #  Update beta via soft-threshold --------------------------------------
     if (beta_flag) {
-      if(shared_information){
+      if(shared_beta){
         beta <- soft_threshold_cpp(
           crossprod(X, row_means_cpp(Y, nc) ) + beta,
           lambda_beta
@@ -278,7 +324,7 @@ imr.fit <- function(
 
     #  Update gamma via soft-threshold -------------------------------------
     if (gamma_flag) {
-      if(shared_information){
+      if(shared_gamma){
         gamma <- soft_threshold_cpp(
           col_means_cpp(Y, nr) %*% Z + gamma,
           lambda_gamma
@@ -317,7 +363,9 @@ imr.fit <- function(
     }
 
     # 4.7 Convergence check ----------------------------------------------------
-    ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
+    ratio <- 0
+    if(low_rank_flag)
+      ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
     if(beta_flag){
       denom = sum(beta_old*beta_old)
       if(denom > 0)
@@ -329,7 +377,8 @@ imr.fit <- function(
         ratio <- ratio + sum((gamma_old-gamma)^2) / denom
     }
     if (trace) {
-      obj <- (0.5 * sum(Y@x^2) + lambda_M * sum(Dsq) +
+      obj <- (0.5 * sum(Y@x^2) +
+        ifelse(low_rank_flag, lambda_M * sum(Dsq), 0) +
         ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
         ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
@@ -341,12 +390,18 @@ imr.fit <- function(
   }
 
   # 5) Trim effective rank and return -----------------------------------------
-  r_eff <- min(max(1, sum(Dsq > 0)), r)
+  if(low_rank_flag){
+    r_eff <- min(max(1, sum(Dsq > 0)), r)
+    U = U[, seq_len(r_eff), drop = FALSE]
+    Dsq = Dsq[seq_len(r_eff)]
+    V = V[, seq_len(r_eff), drop = FALSE]
+  }
 
   list(
-    u = U[, seq_len(r_eff), drop = FALSE],
-    d = Dsq[seq_len(r_eff)],
-    v = V[, seq_len(r_eff), drop = FALSE],
+    residuals = Y,
+    u = u,
+    d = Dsq,
+    v = V,
     beta = beta,
     gamma = gamma,
     beta0 = beta0,
@@ -355,211 +410,66 @@ imr.fit <- function(
   )
 }
 
-#-------------------------------------------------------------------------------------------
-#' Fit Incomplete Matrix Regression (IMR) Model without the low-rank \eqn{M}
-#'
-#' \code{imr.fit_no_low_rank} is similar to \code{imr.fit} except that it does not fit the low-rank matrix structure.
-#'
-#' @inheritParams imr.fit
-#'
-#' @return A list containing the learned parameters:
-#' \describe{
-#'   \item{resid}{An incomplete matrix of the last iteration's residuals (i.e., the model's training errors)}
-#'   \item{beta}{Matrix of row covariate coefficients. \code{NULL} if \code{X} is \code{NULL}.}
-#'   \item{gamma}{Matrix of column covariate coefficients. \code{NULL} if \code{Z} is \code{NULL}.}
-#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{intercept_row} is \code{FALSE}.}
-#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{intercept_col} is \code{FALSE}.}
-#'   \item{n_iter}{Integer. The number of iterations performed.}
-#' }
+
+
 #' @export
-imr.fit_no_low_rank <- function(
-  Y,
-  X = NULL,
-  Z = NULL,
-  lambda_beta = NULL,
-  lambda_gamma = NULL,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
-  shared_information = FALSE,
-  maxit = 300,
-  thresh = 1e-5,
-  warm_start = NULL,
-  trace = FALSE
-) {
-  # Input checks & setup ----------------------------------------------------
-  stopifnot(is.Incomplete(Y))
+print.imr_fit <- function(x, ...) {
 
-  dims <- dim(Y)
-  nr <- dims[1]
-  nc <- dims[2]
-  nz <- Matrix::nnzero(Y, na.counted = TRUE)
+  cat("\n== IMR Fitted Model ==\n")
 
-  irow <- Y@i
-  pcol <- Y@p
+  has_low_rank <- !is.null(x$coefficients$d) && length(x$coefficients$d) > 0
+  has_row_cov  <- !is.null(x$coefficients$beta)
+  has_col_cov  <- !is.null(x$coefficients$gamma)
+  has_row_int  <- !is.null(x$coefficients$beta0)
+  has_col_int  <- !is.null(x$coefficients$gamma0)
 
-
-  # Laplacian flags (L_* expected as eigendecompositions) -------------------
-  beta_flag <- !(is.null(lambda_beta) | is.null(X))
-  gamma_flag <- !(is.null(lambda_gamma) | is.null(Z))
-  # initial everything to null ------------------------
-  beta <- gamma <- beta0 <- gamma0 <- NULL
-
-  # 3) Warm-start or initialize ------------------------------------------------
-  if (!is.null(warm_start)) {
-    if (beta_flag) {
-      beta <- warm_start$beta
-      if(shared_information){
-        xbeta <- X %*% beta
-      }else{
-        xb_obs <- partial_crossprod(X, beta, irow, pcol)
-      }
-    }
-    if (gamma_flag) {
-      gamma <- warm_start$gamma
-      if(shared_information){
-        gammaz <- tcrossprod(gamma, Z)
-      }else{
-        zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
-      }
-    }
-    if (intercept_row) {
-      beta0 <- warm_start$beta0
-    }
-
-    if (intercept_col) {
-      gamma0 <- warm_start$gamma0
-    }
-  } else {
-    if (beta_flag) {
-      if(shared_information){
-        beta <- rep(0, ncol(X))
-        xbeta <- rep(0, nr)
-      }else{
-        beta <- matrix(0, ncol(X), nc)
-        xb_obs <- rep(0, nz)
-      }
-    }
-    if (gamma_flag) {
-      if(shared_information){
-        gamma <- rep(0, ncol(Z))
-        gammaz <- rep(0, nc)
-      }else{
-        gamma <- matrix(0, nr, ncol(Z))
-        zg_obs <- rep(0, nz)
-      }
-    }
-    if (intercept_row) {
-      beta0 <- rep(0, nr)
-    }
-    if (intercept_col) {
-      gamma0 <- rep(0, nc)
-    }
+  terms <- c()
+  if (has_row_cov) {
+    beta_type <- if (x$meta$shared_effects["beta"]) "vec" else "mat"
+    terms <- c(terms, paste0("X\u00b7\u03b2(", beta_type, ")"))
   }
-  if (!is.null(warm_start)) {
-    if (beta_flag && !shared_information) Y@x <- Y@x - xb_obs
-    if (gamma_flag && !shared_information) Y@x <- Y@x - zg_obs
-    if (beta_flag && shared_information) Y@x <- add_to_rows_inplace_cpp(Y@x, Y@i, -xbeta)
-    if (gamma_flag && shared_information) Y@x <- add_to_cols_inplace_cpp(Y@x, Y@p, -gammaz)
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
+  if (has_col_cov) {
+    gamma_type <- if (x$meta$shared_effects["gamma"]) "vec" else "mat"
+    terms <- c(terms, paste0("\u03b3(", gamma_type, ")\u00b7Z'"))
   }
-  #  Main loop ---------------------------------------------------------------
-  ratio <- Inf
-  iter <- 0
-  while (ratio > thresh && iter < maxit) {
-    iter <- iter + 1
-    old_err <- Y@x[]
+  if (has_low_rank) terms <- c(terms, "M(SVD)")
+  if (has_row_int)  terms <- c(terms, "\u03b2\u2080")
+  if (has_col_int)  terms <- c(terms, "\u03b3\u2080")
+  if (length(terms) == 0) terms <- c("0")
 
+  cat(sprintf("Equation:  Y ~ %s\n", paste(terms, collapse = " + ")))
 
+  if (!is.null(x$residuals)) {
+    rss <- sum(x$residuals@x^2)
+    tss <- x$meta$tss
+    n   <- x$meta$n_obs
 
-    #  Update beta via soft-threshold --------------------------------------
-    if (beta_flag) {
-      if(shared_information){
-        beta <- soft_threshold_cpp(
-          (crossprod(X, row_means_cpp(Y, nc) )) + beta,
-          lambda_beta
-        )
-        old_val <- xbeta
-        xbeta <- X %*% beta
-        change <- old_val - xbeta
-        add_to_rows_inplace_cpp(Y@x, Y@i, change)
-      }else{
-        beta <- soft_threshold_cpp(
-          as.matrix((crossprod(X, Y)) + beta),
-          lambda_beta
-        )
-        old_val <- xb_obs
-        xb_obs <- partial_crossprod(X, beta, irow, pcol)
-        Y@x <- Y@x + old_val - xb_obs
-      }
-    }
+    mse  <- rss / n
+    rmse <- sqrt(mse)
+    r2   <- 1 - (rss / tss)
 
+    # Ensure R2 isn't negative (possible in non-OLS or heavy regularization)
+    r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else sprintf("%.4f", r2)
 
-    #  Update gamma via soft-threshold -------------------------------------
-    if (gamma_flag) {
-      if(shared_information){
-        gamma <- soft_threshold_cpp(
-          col_means_cpp(Y, nr) %*% Z + gamma,
-          lambda_gamma
-        )
-        old_val <- gammaz
-        gammaz <- tcrossprod(gamma, Z)
-        change <- old_val - gammaz
-        add_to_cols_inplace_cpp(Y@x, Y@p, change)
-      }else{
-        gamma <- soft_threshold_cpp(
-          as.matrix(Y %*% Z + gamma),
-          lambda_gamma
-        )
-        old_val <- zg_obs
-        zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
-        Y@x <- Y@x + old_val - zg_obs
-      }
-    }
-
-    # Intercepts (row/column) ---------------------------------------------
-    # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
-      old_val <- beta0
-      beta0 <- row_means_cpp(Y, nc) + beta0
-      change <- old_val - beta0
-      add_to_rows_inplace_cpp(Y@x, Y@i, change)
-    }
-
-    # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
-      old_val <- gamma0
-      gamma0 <- col_means_cpp(Y, nr) + gamma0
-      change <- old_val - gamma0
-      add_to_cols_inplace_cpp(Y@x, Y@p, change)
-    }
-
-
-    # 4.7 Convergence check ----------------------------------------------------
-    ratio <- mean((Y@x - old_err)^2)
-
-    if (trace) {
-      obj <- (0.5 * sum(Y@x^2) +
-        ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
-        ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
-      ) / nz
-      cat(iter, " obj=", round(obj, 5), " ratio=", ratio, "\n")
-    }
+    cat("\n-- Fit Statistics --\n")
+    cat(sprintf("RMSE:      %.5f\n", rmse))
+    cat(sprintf("MSE:       %.5f\n", mse))
+    cat(sprintf("R-squared: %s\n", r2_str))
   }
 
-  if (iter == maxit) {
-    warning("[no-low-rank] Did not converge in ", maxit, " iterations.")
+  # --- 4. Hyperparameters ---
+  cat("\n-- Hyperparameters --\n")
+  if (has_low_rank) {
+    cat(sprintf("Rank (r):     %d\n", x$meta$rank))
+    cat(sprintf("Lambda M:     %g\n", x$meta$lambdas["M"]))
   }
+  if (has_row_cov) cat(sprintf("Lambda Beta:  %g\n", x$meta$lambdas["beta"]))
+  if (has_col_cov) cat(sprintf("Lambda Gamma: %g\n", x$meta$lambdas["gamma"]))
 
-  #  return -----------------------------------------
+  # --- 5. Convergence ---
+  status <- if (x$meta$converged) "Converged" else "Did NOT converge"
+  cat(sprintf("\nStatus: %s (in %d iterations)\n", status, x$meta$n_iter))
+  cat("======================\n")
 
-  list(
-    resid = Y,
-    beta = beta,
-    gamma = gamma,
-    beta0 = beta0,
-    gamma0 = gamma0,
-    n_iter = iter
-  )
+  invisible(x)
 }
-
