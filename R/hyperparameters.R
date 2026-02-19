@@ -1,5 +1,189 @@
 #----------------------------------------------------------------
 #' @export
+generate_similarity <- function(x,
+                             d = NULL,
+                             matern_params = list(smoothness = 1.5, range = 1),
+                             rbf_params = list(ell = 1),
+                             jitter = 0,
+                             invert = FALSE) {
+
+    S <- NULL
+    source_type <- "User Matrix"
+    params_used <- list()
+
+    if (is.matrix(x)) {
+      if (nrow(x) != ncol(x)) stop("Input matrix 'x' must be square.")
+      S <- x
+
+    } else if (is.character(x)) {
+      if (is.null(d)) stop("Distance matrix 'd' is required for kernel generation.")
+
+      if (tolower(x) == "matern") {
+
+        source_type <- "Matern Kernel"
+        params_used <- matern_params
+
+        S <- fields::Matern(d,
+                            smoothness = matern_params$smoothness,
+                            range = matern_params$range)
+
+      } else if (tolower(x) == "rbf") {
+        source_type <- "RBF Kernel"
+        params_used <- rbf_params
+        ell <- rbf_params$ell
+        S <- exp(-(d^2) / (2 * ell^2))
+
+      } else {
+        stop("Unknown method. 'x' must be a matrix, 'matern', or 'RBF'.")
+      }
+      if (!invert) {
+        warning(paste("Generated a raw Covariance matrix without inversion.",
+                "fit_imr() expects the inverse."))
+      }
+
+    } else {
+      stop("Input 'x' must be a matrix or a character string ('matern', 'RBF').")
+    }
+
+    if (invert) {
+      S <- tryCatch({
+        chol2inv(S)
+      }, error = function(e) {
+        stop("Matrix inversion failed (matrix might be singular).")
+      })
+      source_type <- paste(source_type, "(Inverted)")
+    }
+    if(is.numeric(jitter) && jitter > 0){
+      S <- S + diag(jitter, nrow(S), ncol(S))
+      #source_type <- paste(source_type, "(With Jitter)")
+    }else jitter = 0
+
+  decomp <- eigen(S, symmetric = TRUE)
+  evals <- abs(decomp$values)
+  cond_num <- max(evals) / min(evals[evals > 0])
+
+    structure(
+      list(
+        U = decomp$vectors,
+        d = decomp$values,
+        meta = list(
+          source = source_type,
+          dim = dim(S),
+          params = params_used,
+          inverted = invert,
+          jitter = jitter,
+          condition_number = cond_num
+        )
+      ),
+      class = "imr_similarity"
+    )
+}
+
+#' @export
+print.imr_similarity <- function(x, ...) {
+  cat("\n== IMR Similarity Decomposition ==\n")
+  cat(sprintf("Source:           %s\n", x$meta$source))
+  cat(sprintf("Dimensions:       %d x %d\n", x$meta$dim[1], x$meta$dim[2]))
+  cat(sprintf("Jitter value:     %s\n", x$meta$jitter))
+
+  if (length(x$meta$params) > 0) {
+    p_names <- names(x$meta$params)
+    p_vals <- unlist(x$meta$params)
+    cat(sprintf("Parameters:       %s\n", paste(p_names, p_vals, sep="=", collapse=", ")))
+  }
+  cond_fmt <- if (x$meta$condition_number > 1e4) "%.2e" else "%.2f"
+  cat(sprintf("Condition Number: %s\n", sprintf(cond_fmt, x$meta$condition_number)))
+
+  cat("Top 5 Eigenvalues:", paste(format(head(x$d, 5), digits = 3), collapse = ", "), "...\n")
+  cat("==================================\n")
+
+  invisible(x)
+}
+
+
+
+#' @export
+imr_hparameters <- function(beta_range = c(0, NA),
+                             beta_default = 0,
+                             gamma_range = c(0, NA),
+                             gamma_default = 0,
+                             rank_range = c(2, 30, 1, 2),
+                             grid_length = 10,
+                             laplace_range = c(0,10),
+                             laplace_steps = c(1, 0.1)
+) {
+
+
+  structure(
+    list(
+      beta = list(
+        min = beta_range[1],
+        max = if (length(beta_range)==1){beta_range[1] }else
+          if(is.na(beta_range[2])) "auto" else beta_range[2],
+        length = if(length(beta_range)==1) 1 else grid_length,
+        default = if(length(beta_range)==1) beta_range[1] else beta_default
+      ),
+      gamma = list(
+        min = gamma_range[1],
+        max = if (length(gamma_range)==1){gamma_range[1] }else
+          if(is.na(gamma_range[2])) "auto" else gamma_range[2],
+        length = if(length(gamma_range)==1) 1 else grid_length,
+        default = if(length(gamma_range)==1) gamma_range[1] else gamma_default
+      ),
+      rank = list(
+        min = rank_range[1],
+        max = rank_range[2],
+        step_sizes = if(length(rank_range)>2) rank_range[3] else 1,
+        n_streaks = if(length(rank_range)>3) rank_range[4] else 2
+      ),
+      laplace = list(
+        min = laplace_range[1],
+        max = laplace_range[2],
+        steps = laplace_steps
+      )
+    ),
+    class = "imr_hparameters"
+  )
+}
+
+#' @export
+print.imr_hparameters <- function(x, ...) {
+  cat("\n== IMR Hyperparameter Configuration ==\n")
+
+  fmt_range <- function(param) {
+    if (param$length == 1) {
+      return(paste0("Fixed at ", param$min))
+    }
+
+    max_val <- if (identical(param$max, "auto")) "Auto" else param$max
+
+    sprintf("Range: %s -> %s (Grid: %d points) | Default: %s",
+            param$min, max_val, param$length, param$default)
+  }
+
+  cat(sprintf("%-18s %s\n", "Beta (Row Reg):", fmt_range(x$beta)))
+  cat(sprintf("%-18s %s\n", "Gamma (Col Reg):", fmt_range(x$gamma)))
+  cat(sprintf("%-18s Range: %d -> %d (Step: %s, Streaks: %s)\n",
+              "Rank:",
+              x$rank$min,
+              x$rank$max,
+              x$rank$step_sizes,
+              x$rank$n_streaks))
+  steps_str <- paste(x$laplace$steps, collapse = ", ")
+  cat(sprintf("%-18s Range: %s -> %s (Steps: %s)\n",
+              "Laplace:",
+              x$laplace$min,
+              x$laplace$max,
+              steps_str))
+
+  cat("========================================\n\n")
+
+  invisible(x)
+}
+
+
+
+#' @export
 get_imr_default_hparams <- function(similarity_row = NULL,
                                     similarity_col = NULL,
                                     lambda_row = 0,

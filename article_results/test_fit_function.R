@@ -9,7 +9,14 @@ dat <-
 generate_simulated_data(400, 500, 3, 5, 5, 0.7,sparsity_beta = .50, sparsity_gamma = .50,
                         prepare_for_fitting = T,mv_coeffs = T,seed = 2025)
 
-dim(dat$Y)
+#======
+S <- generate_similarity(diag(rnorm(100),400,400), invert = T, jitter = 10);S
+data <- prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2, similarity_rows = S);data
+hp <- imr_hparameters();hp
+
+
+
+#====
 
 
 #
