@@ -473,3 +473,21 @@ print.imr_fit <- function(x, ...) {
 
   invisible(x)
 }
+
+#' @export
+print.imr_control <- function(x, ...) {
+  cat("\n== IMR Convergence Parameters ==\n")
+
+  cat(sprintf("Max Iterations: %d\n", x$maxit))
+  cat(sprintf("Threshold:      %g\n", x$thresh))
+
+  init_method <- if (x$ls_initial) "Least Squares" else "Randomized"
+  cat(sprintf("Initialization: %s\n", init_method))
+
+  # 3. Trace/Verbosity
+  trace_status <- if (x$trace) "Enabled" else "Disabled"
+  cat(sprintf("Trace Progress: %s\n", trace_status))
+
+  cat("================================\n")
+  invisible(x)
+}
