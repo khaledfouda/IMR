@@ -15,8 +15,12 @@ get_lambda_lasso_max(
   intercept_col = TRUE,
   shared_information = FALSE,
   hpar = get_imr_default_hparams(),
+  r = 5,
   interior_loop_length = 20,
   maxit = 100,
+  thresh = 0.001,
+  init_maxit = 100,
+  init_thresh = 1e-04,
   verbose = 0,
   tol = 1
 )

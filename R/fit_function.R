@@ -106,6 +106,7 @@ imr_solver <- function(
   nz <- Matrix::nnzero(Y, na.counted = TRUE)
   irow <- Y@i
   pcol <- Y@p
+  Y@x <- Y@x + 0 # force a copy so the original matrix doesn't get modified by C++
 
   # Unpack control ----------------------------------------------------------
   maxit  <- control$maxit
@@ -122,6 +123,10 @@ imr_solver <- function(
   laplace_c_flag <- !(is.null(Uc) || is.null(dc))
   low_rank_flag <- !(is.null(r) || is.null(lambda_M) || r <= 0)
   if(!low_rank_flag) ls_initial = FALSE
+  #-------------------------------------------------
+  if(laplace_r_flag) dr = dr * lambda_M
+  if(laplace_c_flag) dc = dc * lambda_M
+  #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
 
@@ -242,10 +247,10 @@ imr_solver <- function(
   if (!is.null(warm_start) || (is.null(warm_start) && ls_initial)) {
     if (beta_flag && !shared_beta) Y@x <- Y@x - xb_obs
     if (gamma_flag && !shared_gamma) Y@x <- Y@x - zg_obs
-    if (beta_flag && shared_beta) add_to_rows_inplace_cpp(Y@x, Y@i, -xbeta)
-    if (gamma_flag && shared_gamma) add_to_cols_inplace_cpp(Y@x, Y@p, -gammaz)
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
+    if (beta_flag && shared_beta) add_to_rows_inplace_cpp(Y@x, irow, -xbeta)
+    if (gamma_flag && shared_gamma) add_to_cols_inplace_cpp(Y@x, pcol, -gammaz)
+    if (intercept_row) add_to_rows_inplace_cpp(Y@x, irow, -beta0)
+    if (intercept_col) add_to_cols_inplace_cpp(Y@x, pcol, -gamma0)
   }
 
   #  Main loop ---------------------------------------------------------------
@@ -309,7 +314,7 @@ imr_solver <- function(
         old_val <- xbeta
         xbeta <- X %*% beta
         change <- old_val - xbeta
-        add_to_rows_inplace_cpp(Y@x, Y@i, change)
+        add_to_rows_inplace_cpp(Y@x, irow, change)
       }else{
         beta <- soft_threshold_cpp(
           as.matrix((crossprod(X, Y)) + beta),
@@ -332,7 +337,7 @@ imr_solver <- function(
         old_val <- gammaz
         gammaz <- tcrossprod(gamma, Z)
         change <- old_val - gammaz
-        add_to_cols_inplace_cpp(Y@x, Y@p, change)
+        add_to_cols_inplace_cpp(Y@x, pcol, change)
       }else{
         gamma <- soft_threshold_cpp(
           as.matrix(Y %*% Z + gamma),
@@ -351,7 +356,7 @@ imr_solver <- function(
       old_val <- beta0
       beta0 <- row_means_cpp(Y, nc) + beta0
       change <- old_val - beta0
-      add_to_rows_inplace_cpp(Y@x, Y@i, change)
+      add_to_rows_inplace_cpp(Y@x, irow, change)
     }
 
     # Column-level intercepts (gamma0), then apply delta to residuals.
@@ -359,7 +364,7 @@ imr_solver <- function(
       old_val <- gamma0
       gamma0 <- col_means_cpp(Y, nr) + gamma0
       change <- old_val - gamma0
-      add_to_cols_inplace_cpp(Y@x, Y@p, change)
+      add_to_cols_inplace_cpp(Y@x, pcol, change)
     }
 
     # 4.7 Convergence check ----------------------------------------------------

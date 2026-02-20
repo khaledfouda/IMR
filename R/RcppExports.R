@@ -5,12 +5,12 @@ soft_threshold_cpp <- function(B, lambda) {
     .Call(`_IMR_soft_threshold_cpp`, B, lambda)
 }
 
-row_means_cpp <- function(yS4, n_cols) {
-    .Call(`_IMR_row_means_cpp`, yS4, n_cols)
+row_means_cpp <- function(x, i, n_rows, n_cols) {
+    .Call(`_IMR_row_means_cpp`, x, i, n_rows, n_cols)
 }
 
-col_means_cpp <- function(yS4, n_rows) {
-    .Call(`_IMR_col_means_cpp`, yS4, n_rows)
+col_means_cpp <- function(x, p, n_rows, n_cols) {
+    .Call(`_IMR_col_means_cpp`, x, p, n_rows, n_cols)
 }
 
 add_to_rows_inplace_cpp <- function(yx, i, add_per_row) {
@@ -29,8 +29,8 @@ update_A_cpp <- function(yS4, U, V, Dsq, lambda_M) {
     .Call(`_IMR_update_A_cpp`, yS4, U, V, Dsq, lambda_M)
 }
 
-update_A_sim_cpp <- function(yS4, U, V, Dsq, lambda_M, Ur, dr) {
-    .Call(`_IMR_update_A_sim_cpp`, yS4, U, V, Dsq, lambda_M, Ur, dr)
+update_A_sim_cpp <- function(yS4, U, V, Dsq, Ur, dr) {
+    .Call(`_IMR_update_A_sim_cpp`, yS4, U, V, Dsq, Ur, dr)
 }
 
 update_B_cpp <- function(yS4, U, V, Dsq, lambda_M) {
