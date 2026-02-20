@@ -1,7 +1,7 @@
 library(testthat)
 library(Matrix)
 
-test_that("C++ functions", {
+test_that("C++/Fortran functions", {
   # -------------------------------------------------------------------
   #  Data Preparations
   # -------------------------------------------------------------------
@@ -20,7 +20,6 @@ test_that("C++ functions", {
   add_per_row <- rnorm(nrow(mat))
   x_row_test <- mat@x + 0
 
-  # Run the C++ function
   IMR:::add_to_rows_inplace_cpp(x_row_test, mat@i, add_per_row)
 
   for(i in 1:ncol(mat)){
@@ -38,7 +37,6 @@ test_that("C++ functions", {
   add_per_col <- rnorm(ncol(mat))
   x_row_test <- mat@x + 0 # this is very important
 
-  # Run the C++ function
   IMR:::add_to_cols_inplace_cpp(x_row_test, mat@p, add_per_col)
 
   for(i in 1:nrow(mat)){
@@ -170,7 +168,7 @@ test_that("C++ functions", {
   expect_equal(actual, expected,
                info = "Crossprod don't match")
   #-----------------------------------------------------------------------
-  # Test 12: [Fortran]  crossprodt.f90
+  # Test 13: [Fortran]  crossprodt.f90
   #-----------------------------------------------------------------------
   actual <- (dat$gamma %*% t(dat$Z))[as.matrix(data$valid_mask)==1]
   expected <- IMR:::partial_crossprod(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T)
