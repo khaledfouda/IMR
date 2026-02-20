@@ -1,14 +1,17 @@
 library(testthat)
 library(Matrix)
-source("./article/simulation/generate_simu_dat.R")
-dat <- generate_simulated_data(100, 200, 5, 5, 5,sparsity_beta = 0)
-d1 <-  matrix(rbinom(10000,100,.2), 100, 100);d1 <- (d1 + t(d1)) / 2
-d2 <-  matrix(rbinom(20000,200,.2), 200, 200);d2 <- (d2 + t(d2)) / 2
-S <- generate_similarity(d1, invert = T, jitter = 1);S
-S2 <- generate_similarity(d2, invert = T, jitter = 1);S
-data <- prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2, S, S2);data
 
 test_that("C++ functions", {
+  # -------------------------------------------------------------------
+  #  Data Preparations
+  # -------------------------------------------------------------------
+  source("./article/simulation/generate_simu_dat.R")
+  dat <- generate_simulated_data(100, 200, 5, 5, 5,sparsity_beta = 0)
+  d1 <-  matrix(rbinom(10000,100,.2), 100, 100);d1 <- (d1 + t(d1)) / 2
+  d2 <-  matrix(rbinom(20000,200,.2), 200, 200);d2 <- (d2 + t(d2)) / 2
+  S <- generate_similarity(d1, invert = T, jitter = 1);S
+  S2 <- generate_similarity(d2, invert = T, jitter = 1);S
+  data <- prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2, S, S2);data
 
   # -------------------------------------------------------------------
   # Test 1: Row Addition
@@ -140,6 +143,39 @@ test_that("C++ functions", {
   actual <- IMR:::update_B_sim_cpp(mat, U1, V1, d1, S2$U, S2$d)
   expect_equal(actual, expected,
                info = "update_A_sim does not match.")
+  #-----------------------------------------------------------------------
+  # Test 10: SVD small nr
+  #-----------------------------------------------------------------------
+  unsvd <- function(x) x$u %*% (t(x$v) * x$d)
+  expected <- svd(t(dat$X))
+  actual <- IMR:::svd_small_nr_cpp(t(dat$X))
+  expect_equal(actual$d, expected$d,
+               info = "SVD small nr eigenvalues don't match")
+  expect_equal(unsvd(actual), unsvd(expected),
+               info = "SVD small nr reconstructions don't match")
+  #-----------------------------------------------------------------------
+  # Test 11: SVD small nc
+  #-----------------------------------------------------------------------
+  expected <- svd((dat$X))
+  actual <- IMR:::svd_small_nc_cpp((dat$X))
+  expect_equal(actual$d, expected$d,
+               info = "SVD small nr eigenvalues don't match")
+  expect_equal(unsvd(actual), unsvd(expected),
+               info = "SVD small nr reconstructions don't match")
+  #-----------------------------------------------------------------------
+  # Test 12: [Fortran]  crossprod.f90
+  #-----------------------------------------------------------------------
+  actual <- (dat$X %*% dat$beta)[as.matrix(data$valid_mask)==1]
+  expected <- IMR:::partial_crossprod(dat$X, dat$beta, data$valid_mask@i, data$valid_mask@p)
+  expect_equal(actual, expected,
+               info = "Crossprod don't match")
+  #-----------------------------------------------------------------------
+  # Test 12: [Fortran]  crossprodt.f90
+  #-----------------------------------------------------------------------
+  actual <- (dat$gamma %*% t(dat$Z))[as.matrix(data$valid_mask)==1]
+  expected <- IMR:::partial_crossprod(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T)
+  expect_equal(actual, expected,
+               info = "Crossprod don't match")
 
 
 })
@@ -147,9 +183,15 @@ test_that("C++ functions", {
 #
 # bench::mark(
 #
-#   A1 <- Afun(mat, U1, V1, d1, S),
-#   A2 <- IMR:::update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d),
+#   actual <- (dat$gamma %*% t(dat$Z))[as.matrix(data$valid_mask)==1],
+#   expected_old  <- IMR:::partial_crossprod(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T),
+#   expected_old2  <- IMR:::partial_crossprod(dat$gamma, t(dat$Z), data$valid_mask@i, data$valid_mask@p),
+#   expected_fast <- IMR:::partial_crossprod_fast(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T),
 #
 #   check = TRUE,
-#   iterations = 1000
+#   iterations = 10000
 # )
+#
+#
+# clean_dll(); Rcpp::compileAttributes(); document(); load_all()
+

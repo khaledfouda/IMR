@@ -45,6 +45,10 @@ partial_crossprod <- function(u, v, irow, pcol, vtranspose = FALSE) {
     .Call(`_IMR_partial_crossprod`, u, v, irow, pcol, vtranspose)
 }
 
+partial_crossprod_fast <- function(u, v, irow, pcol, vtranspose = FALSE) {
+    .Call(`_IMR_partial_crossprod_fast`, u, v, irow, pcol, vtranspose)
+}
+
 svd_small_nc_cpp <- function(mS) {
     .Call(`_IMR_svd_small_nc_cpp`, mS)
 }

@@ -269,7 +269,7 @@ imr_solver <- function(
       #  Update (V, Dsq, U) from the "B" side --------------------------------
       # B_mat = BD
       if (laplace_c_flag) {
-        BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
+        BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
       } else {
         BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
       }
@@ -288,7 +288,7 @@ imr_solver <- function(
       # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
       # A_mat <- AD
       if (laplace_r_flag) {
-        AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
+        AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
       } else {
         AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
       }

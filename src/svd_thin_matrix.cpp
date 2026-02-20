@@ -25,68 +25,88 @@ static arma::mat dense_view(SEXP mS) {
   stop("svd_small_nc_cpp: expected a base numeric matrix or a Matrix::dgeMatrix.");
 }
 
-
-// Computes B = t(M) %*% M (p×p), eigensolves it, builds U,V,d.
 // [[Rcpp::export]]
 Rcpp::List svd_small_nc_cpp(SEXP mS) {
-  arma::mat M = dense_view(mS);         // n × p (no copy)
+  arma::mat M = dense_view(mS);       // n x p (no copy)
   const arma::uword p = M.n_cols;
 
-  // B = crossprod(M)
-  arma::mat B = M.t() * M;              // p × p, symmetric PSD
+  // 1. Gram matrix
+  arma::mat B = M.t() * M;            // p x p
 
-  // eigendecomposition (faster than SVD for symmetric B)
-  arma::vec eval;                        // ascending
+  // 2. Eigendecomposition
+  arma::vec eval;                     // Guaranteed ascending
   arma::mat evec;
-  if (!arma::eig_sym(eval, evec, B))
+  if (!arma::eig_sym(eval, evec, B)) {
     stop("eig_sym failed on B = t(M) %*% M.");
-
-  // sort descending by eigenvalue (singular values = sqrt(eigenvalues))
-  arma::uvec ord = arma::sort_index(eval, "descend");
-  arma::vec d = arma::sqrt(eval(ord));
-  arma::mat V = evec.cols(ord);         // right singular vectors
-
-  // U = M * V * diag(1/d)  (vectorized; guard zeros)
-  arma::mat U = M * V;                  // n × p
-  const double eps = std::numeric_limits<double>::epsilon();
-  for (arma::uword j = 0; j < p; ++j) {
-    double dj = d(j);
-    if (dj > eps) U.col(j) /= dj;
-    else          U.col(j).zeros();     // rank-deficient: safe/finite
   }
-  // ensure that d is an R vector instead of an matrix
+
+  // 3. Skip the sorting algorithm! Just flip them backward.
+  eval = arma::flipud(eval);
+  arma::mat V = arma::fliplr(evec);
+
+  // 4. Safety clamp for floating-point rounding errors before sqrt
+  eval.elem(arma::find(eval < 0.0)).zeros();
+  arma::vec d = arma::sqrt(eval);
+
+  // 5. Scale V instead of U (Saves n * p divisions!)
+  arma::mat V_scaled = V;
+  const double eps = std::numeric_limits<double>::epsilon();
+
+  for (arma::uword j = 0; j < p; ++j) {
+    if (d(j) > eps) {
+      V_scaled.col(j) /= d(j);
+    } else {
+      V_scaled.col(j).zeros();
+    }
+  }
+
+  // 6. One clean, fast BLAS Level 3 operation
+  arma::mat U = M * V_scaled;
+
+  // 7. Return directly
   Rcpp::NumericVector d_out(d.begin(), d.end());
   return List::create(_["d"] = d_out, _["v"] = V, _["u"] = U);
 }
 
+
 // [[Rcpp::export]]
 Rcpp::List svd_small_nr_cpp(SEXP mS) {
-  arma::mat M = dense_view(mS);     // n × p (no copy)
-  //const arma::uword n = M.n_rows;
+  arma::mat M = dense_view(mS);     // n x p (no copy)
+  const arma::uword n = M.n_rows;
 
-  // A = M %*% t(M)  (n × n, symmetric PSD)
+  // 1. Gram matrix (n x n)
   arma::mat A = M * M.t();
 
-  // eigendecomposition (cheaper than SVD for symmetric A)
+  // 2. Eigendecomposition
   arma::vec eval;      // ascending
   arma::mat evec;      // columns = eigenvectors
-  if (!arma::eig_sym(eval, evec, A))
+  if (!arma::eig_sym(eval, evec, A)) {
     stop("eig_sym failed on M %*% t(M)");
-
-  // sort descending (singular values are sqrt(eigenvalues))
-  arma::uvec ord = arma::sort_index(eval, "descend");
-  arma::vec d = arma::sqrt(eval(ord));   // length n
-  arma::mat U = evec.cols(ord);          // n × n (left singular vectors)
-
-  // V = t(M) %*% U %*% diag(1/d)
-  arma::mat V = M.t() * U;               // p × n
-  const double eps = std::numeric_limits<double>::epsilon();
-  for (arma::uword j = 0; j < d.n_elem; ++j) {
-    double dj = d(j);
-    if (dj > eps) V.col(j) /= dj;        // scale each column by 1/d_j
-    else          V.col(j).zeros();      // rank-deficient guard
   }
-  // ensure that d is an R vector instead of an matrix
+
+  // 3. Skip the sort! Reverse the arrays to get descending order.
+  eval = arma::flipud(eval);
+  arma::mat U = arma::fliplr(evec);
+
+  // 4. Safety clamp for floating-point negative zeros
+  eval.elem(arma::find(eval < 0.0)).zeros();
+  arma::vec d = arma::sqrt(eval);
+
+  // 5. Scale U instead of V (Saves p * n divisions!)
+  arma::mat U_scaled = U;
+  const double eps = std::numeric_limits<double>::epsilon();
+  for (arma::uword j = 0; j < n; ++j) {
+    if (d(j) > eps) {
+      U_scaled.col(j) /= d(j);
+    } else {
+      U_scaled.col(j).zeros();
+    }
+  }
+
+  // 6. One clean, fast BLAS Level 3 operation
+  arma::mat V = M.t() * U_scaled;
+
+  // 7. Format output
   Rcpp::NumericVector d_out(d.begin(), d.end());
   return List::create(_["d"] = d_out, _["u"] = U, _["v"] = V);
 }
