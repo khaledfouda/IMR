@@ -138,8 +138,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // update_B_sim_cpp
-arma::mat update_B_sim_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const double lambda_M, const arma::mat& Uc, const arma::vec& dc);
-RcppExport SEXP _IMR_update_B_sim_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP lambda_MSEXP, SEXP UcSEXP, SEXP dcSEXP) {
+arma::mat update_B_sim_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const arma::mat& Uc, const arma::vec& dc);
+RcppExport SEXP _IMR_update_B_sim_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP UcSEXP, SEXP dcSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -147,10 +147,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
-    Rcpp::traits::input_parameter< const double >::type lambda_M(lambda_MSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type Uc(UcSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type dc(dcSEXP);
-    rcpp_result_gen = Rcpp::wrap(update_B_sim_cpp(yS4, U, V, Dsq, lambda_M, Uc, dc));
+    rcpp_result_gen = Rcpp::wrap(update_B_sim_cpp(yS4, U, V, Dsq, Uc, dc));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -202,7 +201,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
     {"_IMR_update_A_sim_cpp", (DL_FUNC) &_IMR_update_A_sim_cpp, 6},
     {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},
-    {"_IMR_update_B_sim_cpp", (DL_FUNC) &_IMR_update_B_sim_cpp, 7},
+    {"_IMR_update_B_sim_cpp", (DL_FUNC) &_IMR_update_B_sim_cpp, 6},
     {"_IMR_partial_crossprod", (DL_FUNC) &_IMR_partial_crossprod, 5},
     {"_IMR_svd_small_nc_cpp", (DL_FUNC) &_IMR_svd_small_nc_cpp, 1},
     {"_IMR_svd_small_nr_cpp", (DL_FUNC) &_IMR_svd_small_nr_cpp, 1},

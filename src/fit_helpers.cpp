@@ -315,28 +315,43 @@ arma::mat update_B_cpp(SEXP yS4,              // dgCMatrix (n x m)
 }
 
 
+
 // [[Rcpp::export]]
 arma::mat update_B_sim_cpp(SEXP yS4,              // dgCMatrix (n x m)
-                        const arma::mat& U,    // n x J
-                        const arma::mat& V,    // m x J
-                        const arma::vec& Dsq,  // length J
-                        const arma::mat& Uc,   // m x m
-                        const arma::vec& dc) { // length m
-  // y: sparse matrix
-  S4 y(yS4);
-  arma::sp_mat Y = as_spmat_dgc(y);     // n x m
-  arma::uword  J = U.n_cols;
-  // B <- crossprod(Uc,(crossprod(Y, U) + V %*% Dsq))
-  arma::mat B = Uc.t() * ( arma::trans(Y) * U + V.each_row() % Dsq.t());  // m x J
+                           const arma::mat& U,    // n x J
+                           const arma::mat& V,    // m x J
+                           const arma::vec& Dsq,  // length J
+                           const arma::mat& Uc,   // n x n
+                           const arma::vec& dc) { // length n
 
-  for (arma::uword j = 0; j < J; ++j) {
+  // 1. Fast sparse construction (zero std::vector copies)
+  arma::sp_mat Y = as_spmat_dgc(yS4);
+
+  // 2. Construct W
+  arma::mat W = Y.t() * U;
+  W = W.each_row() % Dsq.t() + V.each_row() % (Dsq % Dsq).t();
+
+  // 3. Pre-multiply by t(Ur) (Level 3 BLAS Matrix-Matrix multiply)
+  arma::mat W_tilde = Uc.t() * W;
+
+  // 4. Create an intermediate matrix to hold the scaled columns
+  // arma::no_zeros tells C++ not to waste time filling this with 0.0s since we
+  // are going to immediately overwrite it anyway.
+  arma::mat B_inner(V.n_rows, V.n_cols, arma::fill::none);
+
+  // 5. The Loop: ONLY do the fast element-wise math here (O(n) operations)
+  for (arma::uword j = 0; j < U.n_cols; ++j) {
     const double d = Dsq(j);
-    arma::vec a = d / (dc + d );
-    B.col(j) = Uc * (a % B.col(j));
+    arma::vec b = 1.0 / (dc + d);
+
+    B_inner.col(j) = b % W_tilde.col(j);
   }
 
-  return B; // m x J
+  // 6. Final transformation: ONE big Matrix-Matrix multiply (Level 3 BLAS)
+  return Uc * B_inner;
 }
+
+
 
 
 

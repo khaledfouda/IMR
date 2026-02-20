@@ -137,28 +137,19 @@ test_that("C++ functions", {
     expected[,j] <- S2$U %*% (diag(1,nrow(expected)) *
                                 (1/(S2$d+d1[j]))) %*% t(S2$U) %*% W[,j]
 
-  actual <- IMR:::update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d)
+  actual <- IMR:::update_B_sim_cpp(mat, U1, V1, d1, S2$U, S2$d)
   expect_equal(actual, expected,
                info = "update_A_sim does not match.")
 
 
 })
-
-
-bench::mark(
-
-  A1 <- Afun(mat, U1, V1, d1, S),
-  A2 <- IMR:::update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d),
-
-  check = TRUE,
-  iterations = 1000
-)
-
-mat <- IMR::as.Incomplete(dat$Y)
-
-Afun <- function(mat, U1, V1, d1, S){
-  W = mat %*% V1 %*% diag(d1) + U1 %*% diag(d1^2);A = matrix(NA, nrow(U1), ncol(U1))
-  for(j in 1:ncol(A))
-    A[,j] <- S$U %*% (diag(1,nrow(A)) * (1/(S$d+d1[j]))) %*% t(S$U) %*% W[,j]
-  return(A)
-}
+#
+#
+# bench::mark(
+#
+#   A1 <- Afun(mat, U1, V1, d1, S),
+#   A2 <- IMR:::update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d),
+#
+#   check = TRUE,
+#   iterations = 1000
+# )

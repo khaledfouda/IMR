@@ -37,8 +37,8 @@ update_B_cpp <- function(yS4, U, V, Dsq, lambda_M) {
     .Call(`_IMR_update_B_cpp`, yS4, U, V, Dsq, lambda_M)
 }
 
-update_B_sim_cpp <- function(yS4, U, V, Dsq, lambda_M, Uc, dc) {
-    .Call(`_IMR_update_B_sim_cpp`, yS4, U, V, Dsq, lambda_M, Uc, dc)
+update_B_sim_cpp <- function(yS4, U, V, Dsq, Uc, dc) {
+    .Call(`_IMR_update_B_sim_cpp`, yS4, U, V, Dsq, Uc, dc)
 }
 
 partial_crossprod <- function(u, v, irow, pcol, vtranspose = FALSE) {
