@@ -30,7 +30,7 @@ sim_res <- function(dat, fit, name = "",
   out$M <- error_metric(refit$M, dat$M)
 
   out$rank <- length(fit$d)#qr(refit$estimates)$rank
-  # true_singular <- IMR::opt_svd(dat$theta, tol = 1e-6)$d
+  # true_singular <- IMR::svd_opt(dat$theta, tol = 1e-6)$d
   # num_singular <- length(true_singular)
   # if (length(fit$d) > num_singular) {
   #   estim_singular <- fit$d[1:num_singular]

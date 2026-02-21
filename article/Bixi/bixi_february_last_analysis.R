@@ -32,7 +32,7 @@ model_combn <- model_combn[c(7, 8), ]
 total_results <- data.frame()
 train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
 vars_to_keep <- c(
-  "model", "lambda_M", "error.test", "corr.test", "error.train",
+  "model", "lambda_m", "error.test", "corr.test", "error.train",
   "time0", "time1", "time2"
 )
 # =================================================================

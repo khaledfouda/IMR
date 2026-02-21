@@ -26,7 +26,7 @@ sim_res <- function(dat, fit, name = "",
   out$M_rmse <- error_metric(refit$M, dat$M)
 
   out$rank <- length(fit$d)#qr(refit$estimates)$rank
-  true_singular <- IMR::opt_svd(dat$theta, tol = 1e-6)$d
+  true_singular <- IMR::svd_opt(dat$theta, tol = 1e-6)$d
   num_singular <- length(true_singular)
   if (length(fit$d) > num_singular) {
     estim_singular <- fit$d[1:num_singular]
@@ -94,11 +94,11 @@ IMR::initialize_parallel_workers(8)
 
 #--- done -------- go run from the function >>
 # delete this part later
-n1 = IMR::opt_svd(
+n1 = IMR::svd_opt(
   IMR::naive_MC(resid),
   r, n, m, FALSE, FALSE
 )
-n2 <- IMR::opt_svd(
+n2 <- IMR::svd_opt(
   resid,
   r, n, m, FALSE, FALSE
 )
@@ -176,7 +176,7 @@ fit <- IMR::imr.fit_no_low_rank(
   trace = TRUE
 )
 
-sdd = IMR::opt_svd((data$y_train), 5,n,m,F,F)
+sdd = IMR::svd_opt((data$y_train), 5,n,m,F,F)
 fit[names(sdd)] <- sdd
 fit$d[1:5] <- 0
 sim_res(dat, fit, "Covariates (beta from Covariates)",T)
@@ -264,7 +264,7 @@ fit1 <- IMR::imr.fit(
   X = data$Xq,
   Z = data$Zq,
   r = 2,
-  lambda_M = 5,
+  lambda_m = 5,
   lambda_beta = hpar$beta$value,
   lambda_gamma = hpar$gamma$value,
   intercept_row = F,
@@ -286,7 +286,7 @@ fit1 <- IMR::imr.fit(
 warm <- res3$best_fit
 resid <- data$Y
 resid@x <- resid@x - IMR:::partial_crossprod(dat$X, warm$beta, Y2@i, Y2@p)
-init <- opt_svd(naive_MC(resid), 2, n, m, FALSE, FALSE)
+init <- svd_opt(naive_MC(resid), 2, n, m, FALSE, FALSE)
 warm$u <- init$u; warm$v = init$v; warm$d = init$d;
 res4 <-
   IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
@@ -307,7 +307,7 @@ warm <- res3$best_fit
 warm$beta <- dat$beta
 resid <- data$Y
 resid@x <- resid@x - IMR:::partial_crossprod(dat$X, warm$beta, Y2@i, Y2@p)
-init <- opt_svd(naive_MC(resid), 2, n, m, FALSE, FALSE)
+init <- svd_opt(naive_MC(resid), 2, n, m, FALSE, FALSE)
 warm$u <- init$u; warm$v = init$v; warm$d = init$d;
 res6 <-
   IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
@@ -382,7 +382,7 @@ rbind(
 # warm <- res1$best_fit
 # resid <- data$Y
 # resid@x <- resid@x - IMR:::partial_crossprod(dat$X, warm$beta, Y2@i, Y2@p)
-# init <- opt_svd(naive_MC(resid), 2, n, m, FALSE, FALSE)
+# init <- svd_opt(naive_MC(resid), 2, n, m, FALSE, FALSE)
 # warm$u <- init$u; warm$v = init$v; warm$d = init$d;
 #
 # bench::bench_time(res3 <-
@@ -463,7 +463,7 @@ for (b in 1:1) {
     test_error = IMR:::error_metric$rmse,
     #rank.init = hpar$M$rank.min, maxit = 600,
     #rank.step = 1, rank.limit = hpar$M$rank.max
-    # lambda0_fun = IMR::get_lambda_M_max
+    # lambda0_fun = IMR::get_lambda_m_max
   ))
 
 
@@ -492,7 +492,7 @@ fit.imrS$fit$d
 fitsim$fit$d
 svd(dat$theta)$d[1:r]
 
-fit.imrS$lambda_M
+fit.imrS$lambda_m
 fitsim$cols$best_parameter
 fitsim$rows$best_parameter
 

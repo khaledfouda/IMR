@@ -105,7 +105,7 @@ imr.cv_21 <- function(
       X = fdata$Xq,
       Z = fdata$Zq,
       r = r,
-      lambda_M = lambda_laplace,
+      lambda_m = lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
@@ -201,7 +201,7 @@ imr.cv_21 <- function(
                                           shared_information = shared_information,
                                           maxit = init_maxit,
                                           thresh = init_thresh)
-  init <- IMR::opt_svd(initial_fit$resid, hpar$rank$default, rthin =  FALSE, cthin =  FALSE)
+  init <- IMR::svd_opt(initial_fit$resid, hpar$rank$default, rthin =  FALSE, cthin =  FALSE)
   initial_fit$u <- init$u
   initial_fit$d <- init$d
   initial_fit$v <- init$v
@@ -401,7 +401,7 @@ imr.cv_21 <- function(
       X = data$Xq,
       Z = data$Zq,
       r = results[1,]$rank,
-      lambda_M = results[1,]$lambda_laplace,
+      lambda_m = results[1,]$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,

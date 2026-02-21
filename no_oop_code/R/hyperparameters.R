@@ -62,7 +62,7 @@ decompose_symmetric_matrix <- function(x, lambda = 1) {
 }
 #-----------------------------------------------------
 #' @export
-get_lambda_M_max <-
+get_lambda_m_max <-
   function(Y,
            X = NULL,
            Z = NULL,
@@ -135,21 +135,21 @@ get_lambda_lasso_max <- function(
                                           shared_information = shared_information,
                                           maxit = init_maxit,
                                           thresh = init_thresh)
-  init <- IMR::opt_svd(initial_fit$resid, r, nr, nc, FALSE, FALSE)
+  init <- IMR::svd_opt(initial_fit$resid, r, nr, nc, FALSE, FALSE)
   initial_fit$u <- init$u
   initial_fit$d <- init$d
   initial_fit$v <- init$v
   initial_fit$resid =NULL
-  # step 1: get an initial fit and find suitable lambda_M and rank before starting:
+  # step 1: get an initial fit and find suitable lambda_m and rank before starting:
   if (is.null(y_valid)) {
     mfit <- list()
-    # if no validation set provided then fit with a generic r and lambda_M
+    # if no validation set provided then fit with a generic r and lambda_m
     mfit$fit <- IMR::imr.fit(
       Y = y_train,
       X = X,
       Z = Z,
       r = r,
-      lambda_M = 0,
+      lambda_m = 0,
       lambda_beta = 0,
       lambda_gamma = 0,
       intercept_row = intercept_row,
@@ -160,7 +160,7 @@ get_lambda_lasso_max <- function(
       thresh = thresh,
       trace = F
     )
-    lambda_M <- 0
+    lambda_m <- 0
     r <- 2
   } else {
     mfit <- IMR::imr.cv_M(
@@ -178,7 +178,7 @@ get_lambda_lasso_max <- function(
       thresh = thresh,
       hpar = hpar
     )
-    lambda_M <- mfit$lambda_M
+    lambda_m <- mfit$lambda_m
     r <- max(2, mfit$rank_M) # do not want the rank to be below 2
   }
   ##  Compute max value using kkt ------------
@@ -202,7 +202,7 @@ get_lambda_lasso_max <- function(
       X             = X,
       Z             = Z,
       r             = r,
-      lambda_M      = lambda_M,
+      lambda_m      = lambda_m,
       lambda_beta   = lambda_beta,
       lambda_gamma  = lambda_gamma,
       intercept_row = intercept_row,

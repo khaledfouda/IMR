@@ -22,12 +22,12 @@ hpar <- IMR::get_imr_default_hparams()
 
 Y <- inp.dat$Y
 
-yn <- IMR:::naive_MC(Y) %>% IMR::opt_svd(k=r)
+yn <- IMR:::naive_MC(Y) %>% IMR::svd_opt(k=r)
 
 U <- yn$u
 Dsq <- yn$d
 V <- yn$v
-lambda_M <- 1.2
+lambda_m <- 1.2
 xsvd <- base::eigen(dat$similarity_cols, symmetric=TRUE)
 dc <- xsvd$values
 Uc <- xsvd$vectors
@@ -43,10 +43,10 @@ Ur <- xsvd$vectors
 VDsq <- t(t(V)*Dsq)
 all.equal(VDsq, V %*% diag(Dsq))
 # test 2
-BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
+BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_m)
 BD2 <- as.matrix(crossprod(Y, U) + VDsq)
-BD3 <- BD2 %*% diag(1/(1+lambda_M/Dsq))
-BD2 <- t(t(BD2)*(1/(1+lambda_M/Dsq)))
+BD3 <- BD2 %*% diag(1/(1+lambda_m/Dsq))
+BD2 <- t(t(BD2)*(1/(1+lambda_m/Dsq)))
 all.equal(BD, BD2)
 all.equal(BD2, BD3)
 # test 3 with lambda_c = 0
@@ -54,10 +54,10 @@ BD4 <- matrix(NA, m, r)
 W <- as.matrix(crossprod(Y, U) + VDsq)
 W <- crossprod(Uc, W)
 for(i in 1:r){
-  BD4[,i] <- ( Uc) %*% diag(Dsq[i]/(Dsq[i]+lambda_M+dc)) %*% W[,i]
+  BD4[,i] <- ( Uc) %*% diag(Dsq[i]/(Dsq[i]+lambda_m+dc)) %*% W[,i]
 }
 all.equal(BD, BD4)
-BD5 <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
+BD5 <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_m, Uc, dc)
 all.equal(BD, BD5)
 all.equal(BD4,BD5)
 BD[1:5,1:4]
@@ -68,10 +68,10 @@ BD4[1:5,1:4]
 UDsq <- t(t(U)*Dsq)
 all.equal(UDsq, U %*% diag(Dsq))
 # test 2
-AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
+AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_m)
 AD2 <- as.matrix(Y %*% V + UDsq)
-AD3 <- AD2 %*% diag(1/(1+lambda_M/Dsq))
-AD2 <- t(t(AD2)* (1/(1+lambda_M/Dsq)))
+AD3 <- AD2 %*% diag(1/(1+lambda_m/Dsq))
+AD2 <- t(t(AD2)* (1/(1+lambda_m/Dsq)))
 all.equal(AD, AD2)
 all.equal(AD2, AD3)
 # test 3 with lambda_r = 0
@@ -79,10 +79,10 @@ AD4 <- matrix(NA, n, r)
 W <- as.matrix(Y %*% V + UDsq)
 W <- crossprod(Ur, W)
 for(i in 1:r){
-  AD4[,i] <- Ur %*% diag(Dsq[i]/(Dsq[i]+lambda_M+dr)) %*% W[,i]
+  AD4[,i] <- Ur %*% diag(Dsq[i]/(Dsq[i]+lambda_m+dr)) %*% W[,i]
 }
 all.equal(AD, AD4)
-AD5 <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
+AD5 <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_m, Ur, dr)
 all.equal(AD5, AD4)
 all.equal(AD, AD5)
 #================================================
@@ -91,13 +91,13 @@ M <- matrix(rnorm(1000*10), 1000, 10)
 microbenchmark::microbenchmark(
   svd1 = IMR:::svd_small_nc_cpp(M),
   svd2 = base::svd(M),
-  svd3 = IMR::opt_svd(M, 4),
+  svd3 = IMR::svd_opt(M, 4),
   times = 1000
 
 )
 svd1 = IMR:::svd_small_nc_cpp(M)
 svd2 = base::svd(M)
-svd3 = IMR::opt_svd(M, 4)
+svd3 = IMR::svd_opt(M, 4)
 undo <- function(x) x$u %*% t(x$v * x$d)
 all.equal( undo(svd1), undo(svd2))
 all.equal(svd1$d, svd2$d)
@@ -146,7 +146,7 @@ Z = inp.dat$Zq
 intercept_row = FALSE
 intercept_col = FALSE
 r = 2
-lambda_M = 0.1
+lambda_m = 0.1
 lambda_beta = 0.1
 lambda_gamma = 0.2
 Ur = NULL;dr = NULL;Uc = NULL;dc = NULL

@@ -217,7 +217,7 @@ nlrr.cv <- function(
     X = inp.dat$Xq,
     Z = inp.dat$Zq,
     r = mfit$rank_M,
-    lambda_M = mfit$lambda_M,
+    lambda_m = mfit$lambda_m,
     lambda_beta = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
     intercept_row = intercept_row,
@@ -229,7 +229,7 @@ nlrr.cv <- function(
     warm_start = nfit,
   )
   mfit$rank_M -> best_fit$rank_M
-  mfit$lambda_M -> best_fit$lambda_M
+  mfit$lambda_m -> best_fit$lambda_m
 
   return(best_fit)
 }

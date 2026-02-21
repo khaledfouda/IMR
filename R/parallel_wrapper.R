@@ -396,3 +396,21 @@ parallel_grid_1d_adaptive <- function(param_min,
 }
 
 
+#------------------------------
+#' @export
+initialize_parallel_workers <- function(num_cores = parallelly::availableCores(),
+                                        nested=FALSE) {
+  if (!is.numeric(num_cores) | num_cores < 1) {
+    stop("num_cores must be numeric and strictly positive")
+  }
+  future::plan(future::sequential)
+  if (round(num_cores) > 1) {
+    if(nested){
+      future::plan(list(
+        future::tweak(future::multisession, workers = 2L), #outer loop
+        future::tweak(future::multisession, workers = I(max(1, floor(num_cores/2))))  #inner loop
+      ))
+    }else
+      future::plan(future::multisession, workers = round(num_cores))
+  }
+}

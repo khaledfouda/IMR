@@ -1,105 +1,3 @@
-#----------------------------------------------------------------
-#' @export
-generate_similarity <- function(x,
-                             d = NULL,
-                             matern_params = list(smoothness = 1.5, range = 1),
-                             rbf_params = list(ell = 1),
-                             jitter = 0,
-                             invert = FALSE) {
-
-    S <- NULL
-    source_type <- "User Matrix"
-    params_used <- list()
-
-    if (is.matrix(x)) {
-      if (nrow(x) != ncol(x)) stop("Input matrix 'x' must be square.")
-      S <- x
-
-    } else if (is.character(x)) {
-      if (is.null(d)) stop("Distance matrix 'd' is required for kernel generation.")
-
-      if (tolower(x) == "matern") {
-
-        source_type <- "Matern Kernel"
-        params_used <- matern_params
-
-        S <- fields::Matern(d,
-                            smoothness = matern_params$smoothness,
-                            range = matern_params$range)
-
-      } else if (tolower(x) == "rbf") {
-        source_type <- "RBF Kernel"
-        params_used <- rbf_params
-        ell <- rbf_params$ell
-        S <- exp(-(d^2) / (2 * ell^2))
-
-      } else {
-        stop("Unknown method. 'x' must be a matrix, 'matern', or 'RBF'.")
-      }
-      if (!invert) {
-        warning(paste("Generated a raw Covariance matrix without inversion.",
-                "fit_imr() expects the inverse."))
-      }
-
-    } else {
-      stop("Input 'x' must be a matrix or a character string ('matern', 'RBF').")
-    }
-
-    if (invert) {
-      S <- tryCatch({
-        chol2inv(S)
-      }, error = function(e) {
-        stop("Matrix inversion failed (matrix might be singular).")
-      })
-      source_type <- paste(source_type, "(Inverted)")
-    }
-    if(is.numeric(jitter) && jitter > 0){
-      S <- S + diag(jitter, nrow(S), ncol(S))
-      #source_type <- paste(source_type, "(With Jitter)")
-    }else jitter = 0
-
-  decomp <- eigen(S, symmetric = TRUE)
-  evals <- abs(decomp$values)
-  cond_num <- max(evals) / min(evals[evals > 0])
-
-    structure(
-      list(
-        U = decomp$vectors,
-        d = decomp$values,
-        meta = list(
-          source = source_type,
-          dim = dim(S),
-          params = params_used,
-          inverted = invert,
-          jitter = jitter,
-          condition_number = cond_num
-        )
-      ),
-      class = "imr_similarity"
-    )
-}
-
-#' @export
-print.imr_similarity <- function(x, ...) {
-  cat("\n== IMR Similarity Decomposition ==\n")
-  cat(sprintf("Source:           %s\n", x$meta$source))
-  cat(sprintf("Dimensions:       %d x %d\n", x$meta$dim[1], x$meta$dim[2]))
-  cat(sprintf("Jitter value:     %s\n", x$meta$jitter))
-
-  if (length(x$meta$params) > 0) {
-    p_names <- names(x$meta$params)
-    p_vals <- unlist(x$meta$params)
-    cat(sprintf("Parameters:       %s\n", paste(p_names, p_vals, sep="=", collapse=", ")))
-  }
-  cond_fmt <- if (x$meta$condition_number > 1e4) "%.2e" else "%.2f"
-  cat(sprintf("Condition Number: %s\n", sprintf(cond_fmt, x$meta$condition_number)))
-
-  cat("Top 5 Eigenvalues:", paste(format(head(x$d, 5), digits = 3), collapse = ", "), "...\n")
-  cat("==================================\n")
-
-  invisible(x)
-}
-
 
 
 #' @export
@@ -181,105 +79,148 @@ print.imr_hparameters <- function(x, ...) {
   invisible(x)
 }
 
-
-
-#' @export
-get_imr_default_hparams <- function(similarity_row = NULL,
-                                    similarity_col = NULL,
-                                    lambda_row = 0,
-                                    lambda_col = 0,
-                                    tol = 1e-4) {
-  laplacian_row <- if (is.null(similarity_row)) {
-    list(U = NULL, d = NULL)
-  } else {
-    IMR::decompose_symmetric_matrix(similarity_row, lambda_row)
-  }
-  laplacian_col <- if (is.null(similarity_col)) {
-    list(U = NULL, d = NULL)
-  } else {
-    IMR::decompose_symmetric_matrix(similarity_col, lambda_col)
-  }
-
-  list(
-    beta = list(
-      min   = 0,
-      max = NULL, # if NULL, computed internally (recommended)
-      #step_sizes = c(5,1),
-      length = 10,
-      #n_streaks = 2,
-      value = 0 # if equal to max then no tuning to be done
-    ),
-    gamma = list(
-      min   = 0,
-      max = NULL, # if NULL, computed internally (recommended)
-      #step_sizes = c(5,1),
-      length = 10,
-      #n_streaks = 2,
-      value = 0 # if equal to max then no tuning to be done
-    ),
-    laplacian_row = laplacian_row,
-    laplacian_col = laplacian_col,
-    rank = list(
-      min = 2,
-      max = 30,
-      default = 2,
-      step_sizes = c(1),
-      n_streaks = 2
-    ),
-    laplace = list(
-      min = 0,
-      max = 30,
-      step_sizes = c(5, 2, 1, 0.1),
-      n_streaks = 2
-    )
-  )
-}
 #-----------------------------------------------------
 #' @export
-decompose_symmetric_matrix <- function(x, lambda = 1) {
-  stopifnot(isSymmetric(x))
-  # if (lambda == 0) {
-  #  return(list(U = NULL, d = NULL))
-  # }
-  xsvd <- base::eigen(x, symmetric = TRUE)
-  return(list(U = xsvd$vectors, d = xsvd$values * lambda))
-}
-#-----------------------------------------------------
-#' @export
-get_lambda_M_max <-
-  function(Y,
-           X = NULL,
-           Z = NULL,
+get_lambda_m_max <-
+  function(data,
            intercept_row = FALSE,
            intercept_col = FALSE,
-           lambda_beta = NULL,
-           lambda_gamma = NULL,
+           lambda_beta = 0,
+           lambda_gamma = 0,
+           shared_beta = FALSE,
+           shared_gamma = FALSE,
+           convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE)) {
 
-           maxit = 30) {
-    need_fit <- any(!is.null(X), !is.null(Z), intercept_row, intercept_col)
+    need_fit <- any(!is.null(data$Xq), !is.null(data$Zq), intercept_row, intercept_col)
 
 
     if (!need_fit) {
-      return(svd::propack.svd(as.matrix(naive_MC(Y)),
-        neig = 1, opts = list(kmax = maxit)
-      )$d[1])
+      return(IMR::svd_opt(data$Y,1)$d[1])
     }
-    mfit <- imr.fit_no_low_rank(
-      Y,
-      X = X,
-      Z = Z,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
-      lambda_beta = lambda_beta,
-      lambda_gamma = lambda_gamma,
-      trace = FALSE
-    )
+
+    fit <- IMR::imr_fit(data, rank = 0,
+                        lambda_beta = lambda_beta,
+                        lambda_gamma = lambda_gamma,
+                        intercept_row = intercept_row,
+                        intercept_col = intercept_col,
+                        shared_beta = shared_beta,
+                        shared_gamma = shared_gamma,
+                        convergence = convergence)
+
     # return largest singular value
-    svd::propack.svd(as.matrix(naive_MC(mfit$resid)),
-      neig = 1, opts = list(kmax = maxit)
-    )$d[1]
+    return(IMR::svd_opt(fit$residuals,1)$d[1])
   }
 #------------------------------------------------
+#' Find the minimum Lasso lambda that forces all covariates to zero
+#' @export
+get_lambda_lasso_max <- function(
+    data,                     # Must be an 'imr_data' S3 object
+    target = c("beta", "gamma"),
+    rank = 2,
+    lambda_m = 0,
+    intercept_row = TRUE,
+    intercept_col = TRUE,
+    shared_effects = FALSE,   # Maps shared_beta/shared_gamma flags
+    bisection_iter = 15,
+    convergence = imr_convergence(),
+    verbose = 0
+) {
+
+  stopifnot(inherits(data, "imr_data"))
+  target <- match.arg(target)
+  is_beta <- target == "beta"
+
+  if (is_beta && !data$meta$has_X) stop("Target is 'beta' but no X matrix found in data.")
+  if (!is_beta && !data$meta$has_Z) stop("Target is 'gamma' but no Z matrix found in data.")
+
+  # --- 1. Baseline Fit (Holding Target at 0) ---
+  # Fit the model with rank and intercepts, but keep our target penalized to 0
+  baseline_fit <- imr_fit(
+    data = data,
+    rank = rank,
+    lambda_m = lambda_m,
+    lambda_beta = 0,
+    lambda_gamma = 0,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
+    shared_beta = if(is_beta) shared_effects else FALSE,
+    shared_gamma = if(!is_beta) shared_effects else FALSE,
+    convergence = convergence
+  )
+
+  # --- 2. Calculate Residuals for KKT Conditions ---
+  # Reconstruct predictions (M + intercepts)
+  preds <- reconstruct(baseline_fit, data, trace = FALSE)$estimates
+
+  # Calculate true dense residuals for the observed elements
+  # (Assuming data$Y is a sparse matrix, we extract the non-zero locations)
+  # For a full KKT check, we need the matrix multiplication against X or Z
+  resid_mat <- matrix(0, nrow = data$meta$dimensions[1], ncol = data$meta$dimensions[2])
+  resid_mat[data$obs_mask@i + 1, data$obs_mask@p] <- data$Y@x # Example mapping, adjust based on your exact sparse class
+  resid_mat <- resid_mat - preds
+
+  # --- 3. Theoretical KKT Max (The Anchor) ---
+  # The theoretical minimum lambda that forces all coefs to 0 is max(abs(Covariates^T * Residuals))
+  if (is_beta) {
+    # CRITICAL FIX: Added abs()
+    lambda_kkt <- max(abs(crossprod(data$Xq, resid_mat)))
+  } else {
+    lambda_kkt <- max(abs(resid_mat %*% data$Zq))
+  }
+
+  # --- 4. Bisection Search for Practical Supremum ---
+  # Due to shared effects or scaling, practical max might deviate slightly from theory.
+  # Bisection search is exponentially faster than grid search.
+
+  lower <- 0
+  upper <- lambda_kkt * 1.5 # 50% buffer above theory just in case
+
+  # Helper to fit a single model
+  fit_test <- function(lam) {
+    imr_fit(
+      data = data,
+      rank = rank,
+      lambda_m = lambda_m,
+      lambda_beta = if (is_beta) lam else 0,
+      lambda_gamma = if (!is_beta) lam else 0,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      shared_beta = if(is_beta) shared_effects else FALSE,
+      shared_gamma = if(!is_beta) shared_effects else FALSE,
+      warm_start = baseline_fit, # Use baseline to instantly converge
+      convergence = convergence
+    )
+  }
+
+  for (i in seq_len(bisection_iter)) {
+    mid <- (lower + upper) / 2
+    test_model <- fit_test(mid)
+
+    # Check if all coefficients are effectively zero
+    coefs <- if (is_beta) test_model$coefficients$beta else test_model$coefficients$gamma
+    zero_ratio <- mean(abs(coefs) < 1e-6)
+
+    if (zero_ratio == 1) {
+      # It is fully sparse. We can try a LOWER lambda.
+      upper <- mid
+    } else {
+      # It is NOT fully sparse. We must try a HIGHER lambda.
+      lower <- mid
+    }
+  }
+
+  # The upper bound is guaranteed to be the minimum lambda that achieves 100% sparsity
+  lambda_sup <- upper
+
+  if (verbose > 0) {
+    message(sprintf(
+      "Target: %s | KKT Theory: %.3f | Empiric Sup: %.3f (%.1f%% of KKT)",
+      ifelse(is_beta, "Beta", "Gamma"), lambda_kkt, lambda_sup, 100 * lambda_sup / lambda_kkt
+    ))
+  }
+
+  return(lambda_sup)
+}
 #' this return that max value for either row covariates or column covariates.
 #' you must either privde X or Z. do not provide both
 #' @export
@@ -319,21 +260,21 @@ get_lambda_lasso_max <- function(
                                           shared_information = shared_information,
                                           maxit = init_maxit,
                                           thresh = init_thresh)
-  init <- IMR::opt_svd(initial_fit$resid, r, nr, nc, FALSE, FALSE)
+  init <- IMR::svd_opt(initial_fit$resid, r, nr, nc, FALSE, FALSE)
   initial_fit$u <- init$u
   initial_fit$d <- init$d
   initial_fit$v <- init$v
   initial_fit$resid =NULL
-  # step 1: get an initial fit and find suitable lambda_M and rank before starting:
+  # step 1: get an initial fit and find suitable lambda_m and rank before starting:
   if (is.null(y_valid)) {
     mfit <- list()
-    # if no validation set provided then fit with a generic r and lambda_M
+    # if no validation set provided then fit with a generic r and lambda_m
     mfit$fit <- IMR::imr.fit(
       Y = y_train,
       X = X,
       Z = Z,
       r = r,
-      lambda_M = 0,
+      lambda_m = 0,
       lambda_beta = 0,
       lambda_gamma = 0,
       intercept_row = intercept_row,
@@ -344,7 +285,7 @@ get_lambda_lasso_max <- function(
       thresh = thresh,
       trace = F
     )
-    lambda_M <- 0
+    lambda_m <- 0
     r <- 2
   } else {
     mfit <- IMR::imr.cv_M(
@@ -362,7 +303,7 @@ get_lambda_lasso_max <- function(
       thresh = thresh,
       hpar = hpar
     )
-    lambda_M <- mfit$lambda_M
+    lambda_m <- mfit$lambda_m
     r <- max(2, mfit$rank_M) # do not want the rank to be below 2
   }
   ##  Compute max value using kkt ------------
@@ -386,7 +327,7 @@ get_lambda_lasso_max <- function(
       X             = X,
       Z             = Z,
       r             = r,
-      lambda_M      = lambda_M,
+      lambda_m      = lambda_m,
       lambda_beta   = lambda_beta,
       lambda_gamma  = lambda_gamma,
       intercept_row = intercept_row,

@@ -27,7 +27,7 @@ hpar <- IMR::get_imr_default_hparams(spatial_kernel, temporal_kernel, 1, 1)
 fit <- IMR::imr.fit(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
                     #Uc = hpar$laplacian_col$U, dc = hpar$laplacian_col$d,
                     #Ur = hpar$laplacian_row$U, dr = hpar$laplacian_row$d,
-                    r=6, lambda_M = 3.23, lambda_beta=.000, lambda_gamma=0,
+                    r=6, lambda_m = 3.23, lambda_beta=.000, lambda_gamma=0,
                     trace=F, ls_initial = T,intercept_row = T, intercept_col = T)
 quick_camc_simu_res(dat, fit)
 #========================================================
@@ -64,7 +64,7 @@ trimm <- function(a, tol=1e-6, i=FALSE) {
 L <- generate_similarity_bixi(0.6, "25Sep")
 
 s1 <- base::svd(L$spatial)
-s2 <- IMR::opt_svd(L$spatial, tol=1e-4)
+s2 <- IMR::svd_opt(L$spatial, tol=1e-4)
 
 all.equal(unsvd(s1), L$spatial)
 all.equal(unsvd(s1), unsvd(s2), tolerance = 1e-6)
@@ -105,14 +105,14 @@ sol2[1:5,1:5]
 ## 1. Original (loop + diag) implementation
 ## ---------------------------------------------------------
 
-method_loop <- function(Y, V, U, Dsq, Ur, dr, lambda_M) {
+method_loop <- function(Y, V, U, Dsq, Ur, dr, lambda_m) {
   # Y:  m x n
   # V:  n x r
   # U:  m x r
   # Dsq: length r
   # Ur: m x m
   # dr: length m
-  # lambda_M: scalar
+  # lambda_m: scalar
   #
   # Returns: A_mat (m x r), using your original structure
 
@@ -126,7 +126,7 @@ method_loop <- function(Y, V, U, Dsq, Ur, dr, lambda_M) {
   A_mat <- matrix(0, nrow = nrow(Ur), ncol = r)
 
   for (j in seq_len(r)) {
-    A_mat[, j] <- Ur %*% diag(1 / (dr + Dsq[j] + lambda_M)) %*% partial[, j]
+    A_mat[, j] <- Ur %*% diag(1 / (dr + Dsq[j] + lambda_m)) %*% partial[, j]
   }
 
   A_mat
@@ -137,7 +137,7 @@ method_loop <- function(Y, V, U, Dsq, Ur, dr, lambda_M) {
 ## 2. Optimized vectorized implementation (no diag, no loop)
 ## ---------------------------------------------------------
 
-method_vec <- function(Y, V, U, Dsq, Ur, dr, lambda_M) {
+method_vec <- function(Y, V, U, Dsq, Ur, dr, lambda_m) {
   # Same arguments as method_loop, but vectorized.
 
   m <- nrow(Y)
@@ -154,8 +154,8 @@ method_vec <- function(Y, V, U, Dsq, Ur, dr, lambda_M) {
   partial <- crossprod(Ur, sweep(partial, 2L, Dsq, `*`))  # m x r
 
   # 2) Build scaling factors for each (row i, column j)
-  # denom[i, j] = dr[i] + Dsq[j] + lambda_M
-  denom <- outer(dr + lambda_M, Dsq, `+`)  # m x r
+  # denom[i, j] = dr[i] + Dsq[j] + lambda_m
+  denom <- outer(dr + lambda_m, Dsq, `+`)  # m x r
   coef  <- 1 / denom                       # m x r
 
   # 3) Apply scaling and final multiply
@@ -170,7 +170,7 @@ method_vec <- function(Y, V, U, Dsq, Ur, dr, lambda_M) {
 ## 3. Simulation / comparison function
 ## ---------------------------------------------------------
 
-run_sim <- function(m = 500, n = 400, r = 10, lambda_M = 0.1, seed = 1L) {
+run_sim <- function(m = 500, n = 400, r = 10, lambda_m = 0.1, seed = 1L) {
   set.seed(seed)
 
   # Generate random matrices with compatible dimensions
@@ -185,8 +185,8 @@ run_sim <- function(m = 500, n = 400, r = 10, lambda_M = 0.1, seed = 1L) {
   Ur  <- qr.Q(qr(tmp))                       # m x m, orthonormal columns
 
   # 1) Check numerical agreement
-  res_loop <- method_loop(Y, V, U, Dsq, Ur, dr, lambda_M)
-  res_vec  <- method_vec (Y, V, U, Dsq, Ur, dr, lambda_M)
+  res_loop <- method_loop(Y, V, U, Dsq, Ur, dr, lambda_m)
+  res_vec  <- method_vec (Y, V, U, Dsq, Ur, dr, lambda_m)
 
   max_diff <- max(abs(res_loop - res_vec))
   all.equal(res_loop, res_vec)
@@ -198,8 +198,8 @@ run_sim <- function(m = 500, n = 400, r = 10, lambda_M = 0.1, seed = 1L) {
     library(microbenchmark)
 
     bench <- microbenchmark(
-      loop = method_loop(Y, V, U, Dsq, Ur, dr, lambda_M),
-      vec  = method_vec (Y, V, U, Dsq, Ur, dr, lambda_M),
+      loop = method_loop(Y, V, U, Dsq, Ur, dr, lambda_m),
+      vec  = method_vec (Y, V, U, Dsq, Ur, dr, lambda_m),
       times = 50L
     )
 
@@ -216,10 +216,10 @@ run_sim <- function(m = 500, n = 400, r = 10, lambda_M = 0.1, seed = 1L) {
 ## ---------------------------------------------------------
 
 # Medium size
-run_sim(m = 300, n = 300, r = 10, lambda_M = 0.1, seed = 1L)
+run_sim(m = 300, n = 300, r = 10, lambda_m = 0.1, seed = 1L)
 
 # Larger example (adjust to your machine’s RAM/CPU)
-run_sim(m = 800, n = 600, r = 20, lambda_M = 0.1, seed = 2L)
+run_sim(m = 800, n = 600, r = 20, lambda_m = 0.1, seed = 2L)
 
 
 
@@ -305,7 +305,7 @@ all.equal(m1, m4)
 # test the fit function
 fit <- IMR::imr.fit(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
 
-                r=6, lambda_M = 3.23, lambda_beta=.000, lambda_gamma=0,
+                r=6, lambda_m = 3.23, lambda_beta=.000, lambda_gamma=0,
                 trace=T, ls_initial = T,intercept_row = T, intercept_col = T)
 quick_camc_simu_res(dat, fit)
 
@@ -336,7 +336,7 @@ fit <- IMR::imr.fit(
   X = NULL,
   Z = dat$fit_data$Z$Q,
   r = 7,
-  lambda_M = 62.34,
+  lambda_m = 62.34,
   lambda_beta = 0,
   lambda_gamma = 0,
   intercept_row = T,
@@ -378,7 +378,7 @@ quick_camc_simu_res(dat, fit32$fit)
 fitsi <- simpute.cv(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$Y_full,
                     trace=T,tol = 5, n.lambda=80, rank.init = 2,
                     rank.step = 1
-                    #lambda0_fun = IMR::get_lambda_M_max
+                    #lambda0_fun = IMR::get_lambda_m_max
                     )
 quick_camc_simu_res(dat, fitsi$fit)
 
@@ -472,7 +472,7 @@ IMR::imr.fit(
 dims <- dim(y_train)
 nr <- dims[1]
 nc <- dims[2]
-init <- opt_svd(IMR:::naive_MC(y_train), 2, nr, nc, FALSE, FALSE)
+init <- svd_opt(IMR:::naive_MC(y_train), 2, nr, nc, FALSE, FALSE)
 
 mat <- as.matrix(y_train)
 

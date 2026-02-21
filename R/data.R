@@ -131,178 +131,242 @@ print.imr_data <- function(x, ...) {
   cat("=====================\n")
   invisible(x)
 }
+#'
+
 
 #' @export
-prepare_data <- function(Y, X = NULL, Z = NULL,
-                         similarity_rows = NULL,
-                         similarity_cols = NULL,
-                         val_prop = 0.2, seed = 2025) {
-  out <- list()
-  if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
-  out$Y <- IMR::as.Incomplete(Y)
-  message("Performing train/valid split")
-  obs_mask <- as.matrix(Y != 0)
-  out$valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  train_mask <- IMR::as.Incomplete(obs_mask * (1 - out$valid_mask))
-  out$valid_mask <- IMR::as.Incomplete(out$valid_mask)
-  out$obs_mask <- IMR::as.Incomplete(obs_mask * 1)
+reconstruct <- function(fit, data, trace = TRUE) {
 
-  out$y_train <- IMR::as.Incomplete(Y * train_mask)
-  out$y_valid <- IMR::as.Incomplete(Y * out$valid_mask)
+  stopifnot(inherits(fit, "imr_fit"))
+  stopifnot(inherits(data, "imr_data"))
 
+  out <- list(beta = NULL, gamma = NULL, M = NULL,
+              xbeta = NULL, gammaz = NULL, estimates = 0)
 
-  if (!is.null(similarity_rows)) {
-    stopifnot(nrow(similarity_rows) == nrow(Y))
-    stopifnot(isSymmetric(similarity_rows))
-    stopifnot(nrow(similarity_rows) == ncol(similarity_rows))
-    out$similarity_rows <- similarity_rows
-  } else {
-    out$similarity_rows <- NULL
-  }
-  if (!is.null(similarity_cols)) {
-    stopifnot(nrow(similarity_cols) == ncol(Y))
-    stopifnot(isSymmetric(similarity_cols))
-    stopifnot(nrow(similarity_cols) == ncol(similarity_cols))
-    out$similarity_cols <- similarity_cols
-  } else {
-    out$similarity_cols <- NULL
-  }
+  coefs <- fit$coefficients
+  meta <- fit$meta
 
-  if (!is.null(X)) {
-    stopifnot(is.matrix(X))
-    stopifnot(nrow(X) == nrow(Y))
-    xqr <- qr(X)
-    #out$X <- X
-    out$Xq <- qr.Q(xqr)
-    out$Xr <- out$Xr <- qr.R(xqr)
-  }
-  if (!is.null(Z)) {
-    stopifnot(is.matrix(Z))
-    stopifnot(nrow(Z) == ncol(Y))
-    Zqr <- qr(Z)
-    #out$Z <- Z
-    out$Zq <- qr.Q(Zqr)
-    out$Zr <- out$Zr <- qr.R(Zqr)
-  }
+  # Get dimensions to safely initialize estimates if M is absent
+  n <- data$meta$dimensions[1]
+  m <- data$meta$dimensions[2]
+  out$estimates <- matrix(0, nrow = n, ncol = m)
 
-  return(out)
-}
-
-#' @export
-reconstruct <- function(fit, data, trace = TRUE, shared_information=FALSE) {
-  out <- list(beta = NA, gamma = NA, M = NA, xbeta = NA, gammaz = NA, estimates = 0)
-  # remove this check later
-  if(shared_information){
-    if(!is.null(fit$beta)) fit$beta <- as.vector(fit$beta)
-    if(!is.null(fit$gamma)) fit$gamma <- as.vector(fit$gamma)
-  }
-  check_mat <- function(mat, is_matrix = TRUE) {
-    if (any(is.na(mat))) {
-      return(FALSE)
-    }
-    if (is_matrix & is.matrix(mat)) {
-      return(TRUE)
-    }
-    if (is_matrix) {
-      return(FALSE)
-    }
-    if (is.vector(mat)) {
-      return(TRUE)
-    }
-    return(FALSE)
-  }
-  #-----
-  if (check_mat(fit$u) & check_mat(fit$d, FALSE) & check_mat(fit$v)) {
+  # --- reconstruct M ---
+  if (!is.null(coefs$u) && !is.null(coefs$d) && !is.null(coefs$v)) {
     if (trace) message("Constructing M ...")
-    out$M <- fit$u %*% (fit$d * t(fit$v))
-    out$estimates <- out$M
+    out$M <- coefs$u %*% (coefs$d * t(coefs$v))
+    out$estimates <- out$estimates + out$M
   }
-  if (check_mat(data$Xq) && check_mat(data$Xr)) {
-    if(!shared_information && check_mat(fit$beta)){
-      if (trace) message("Constructing XBeta ...")
-      out$beta <- solve(data$Xr) %*% fit$beta
-      out$xbeta <- data$Xq %*% fit$beta
-      out$estimates <- out$estimates + out$xbeta
-    }else if(shared_information && check_mat(fit$beta, FALSE)){
-      if (trace) message("Constructing XBeta ...")
-      out$beta <- solve(data$Xr) %*% fit$beta
-      out$xbeta <- data$Xq %*% fit$beta
-      out$estimates <- out$estimates + out$xbeta  %*% matrix(1, 1, ncol(out$estimates))
-    }
-  }
-  if (check_mat(data$Zq) && check_mat(data$Zr)) {
-    if(!shared_information && check_mat(fit$gamma)){
-      if (trace) message("Constructing GammaZ ...")
-      out$gamma <- fit$gamma %*% solve(t(data$Zr))
-      out$gammaz <- fit$gamma %*% t(data$Zq)
-      out$estimates <- out$estimates + out$gammaz
-    }else if(shared_information && check_mat(fit$gamma, FALSE)){
-      if (trace) message("Constructing GammaZ ...")
-      out$gamma <- fit$gamma %*% solve(t(data$Zr))
-      out$gammaz <- fit$gamma %*% t(data$Zq)
-      out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% out$gammaz
 
+  # --- Reconstructing row covariate effects ---
+  if (!is.null(coefs$beta) && !is.null(data$Xq) && !is.null(data$Xr)) {
+    if (trace) message("Constructing XBeta ...")
+
+    # Back-transform beta to original scale
+    out$beta <- solve(data$Xr, coefs$beta)
+    out$xbeta <- data$Xq %*% coefs$beta
+
+    if (meta$shared_effects["beta"]) {
+      # Shared beta: xbeta is an n x 1 matrix
+      out$estimates <- sweep(out$estimates, 1, as.vector(out$xbeta), "+")
+    } else {
+      # Unshared beta: xbeta is an n x m matrix.
+      out$estimates <- out$estimates + out$xbeta
     }
   }
-  if (check_mat(fit$beta0, FALSE)) {
+
+  # --- Reconstructing column covariate effects ---
+  if (!is.null(coefs$gamma) && !is.null(data$Zq) && !is.null(data$Zr)) {
+    if (trace) message("Constructing GammaZ ...")
+
+    # Back-transform gamma to original scale
+    out$gamma <- coefs$gamma %*% solve(t(data$Zr))
+    out$gammaz <- coefs$gamma %*% t(data$Zq)
+
+    if (meta$shared_effects["gamma"]) {
+      # Shared gamma: gammaz is a 1 x m matrix.
+      out$estimates <- sweep(out$estimates, 2, as.vector(out$gammaz), "+")
+    } else {
+      # Unshared gamma: gammaz is an n x m matrix.
+      out$estimates <- out$estimates + out$gammaz
+    }
+  }
+
+  # --- Adding Intercepts ---
+  if (!is.null(coefs$beta0)) {
     if (trace) message("Constructing row intercepts ...")
-    out$estimates <- out$estimates + fit$beta0 %*% matrix(1, 1, ncol(out$estimates))
+    out$estimates <- sweep(out$estimates, 1, as.vector(coefs$beta0), "+")
   }
-  if (check_mat(fit$gamma0, FALSE)) {
+
+  if (!is.null(coefs$gamma0)) {
     if (trace) message("Constructing column intercepts ...")
-    out$estimates <- out$estimates + matrix(1, nrow(out$estimates), 1) %*% t(fit$gamma0)
+    out$estimates <- sweep(out$estimates, 2, as.vector(coefs$gamma0), "+")
   }
+
   if (trace) message("done.")
   return(out)
 }
 #-----------------------------
+
 #' @export
-reconstruct_partial <- function(fit, data, target, shared_information = FALSE, trace = FALSE) {
-  stopifnot(is.Incomplete(target))
-  if (trace) message("Constructing M ...")
-  target@x <- IMR:::partial_crossprod(fit$u, fit$d * t(fit$v), target@i, target@p)
+reconstruct_partial <- function(fit, data, target, trace = FALSE) {
 
-  check_mat <- function(mat, is_matrix = TRUE) {
-    if (any(is.na(mat))) {
-      return(FALSE)
-    }
-    if (is_matrix & is.matrix(mat)) {
-      return(TRUE)
-    }
-    if (is_matrix) {
-      return(FALSE)
-    }
-    if (is.vector(mat)) {
-      return(TRUE)
-    }
-    return(FALSE)
+  stopifnot(inherits(fit, "imr_fit"))
+  stopifnot(inherits(data, "imr_data"))
+  stopifnot(IMR::is.Incomplete(target))
+
+  coefs <- fit$coefficients
+  meta <- fit$meta
+
+  # --- Reconstruct M ---
+  if (!is.null(coefs$u) && !is.null(coefs$d) && !is.null(coefs$v)) {
+    if (trace) message("Constructing M ...")
+    target@x <- IMR:::partial_crossprod(
+      coefs$u,
+      sweep(t(coefs$v), 1, coefs$d, "*"),
+      target@i, target@p
+    )
+  } else {
+    target@x <- rep(0.0, length(target@i))
   }
 
-  if (check_mat(data$Xq) && check_mat(data$Xr)) {
+  # --- reconstruct row covariate effects ---
+  if (!is.null(coefs$beta) && !is.null(data$Xq)) {
     if (trace) message("Constructing XBeta ...")
-    if(shared_information){
-      xbeta <- data$Xq %*% fit$beta
-      add_to_rows_inplace_cpp(target@x, target@i, xbeta)
-    }else
-      target@x <- target@x + partial_crossprod(data$Xq, fit$beta, target@i, target@p)
+
+    if (meta$shared_effects["beta"]) {
+      xbeta_vec <- as.numeric(data$Xq %*% coefs$beta)
+      IMR:::add_to_rows_inplace_cpp(target@x, target@i, xbeta_vec)
+    } else {
+      target@x <- target@x + IMR:::partial_crossprod(data$Xq, coefs$beta, target@i, target@p)
+    }
   }
-  if (check_mat(data$Zq) && check_mat(data$Zr)) {
+
+  # ---  Column covariate effects ---
+  if (!is.null(coefs$gamma) && !is.null(data$Zq)) {
     if (trace) message("Constructing GammaZ ...")
-    if(shared_information){
-      gammaz <- tcrossprod(fit$gamma, data$Zq)
-      add_to_cols_inplace_cpp(target@x, target@p, gammaz)
-    }else
-    target@x <- target@x + partial_crossprod(fit$gamma, data$Zq, target@i, target@p, TRUE)
+
+    if (meta$shared_effects["gamma"]) {
+      gammaz_vec <- as.numeric(coefs$gamma %*% t(data$Zq))
+      IMR:::add_to_cols_inplace_cpp(target@x, target@p, gammaz_vec)
+    } else {
+      target@x <- target@x + IMR:::partial_crossprod(coefs$gamma, data$Zq, target@i, target@p, vtranspose = TRUE)
+    }
   }
 
-
-  if (check_mat(fit$beta0, FALSE)) {
+  # ---  Intercepts ---
+  if (!is.null(coefs$beta0)) {
     if (trace) message("Constructing row intercepts ...")
-    add_to_rows_inplace_cpp(target@x, target@i, fit$beta0)
+    IMR:::add_to_rows_inplace_cpp(target@x, target@i, coefs$beta0)
   }
-  if (check_mat(fit$gamma0, FALSE)) {
+
+  if (!is.null(coefs$gamma0)) {
     if (trace) message("Constructing column intercepts ...")
-    add_to_cols_inplace_cpp(target@x, target@p, fit$gamma0)
+    IMR:::add_to_cols_inplace_cpp(target@x, target@p, coefs$gamma0)
   }
+
   return(target)
 }
+
+#----------------------------------------------------------------
+#' @export
+generate_similarity <- function(x,
+                                d = NULL,
+                                matern_params = list(smoothness = 1.5, range = 1),
+                                rbf_params = list(ell = 1),
+                                jitter = 0,
+                                invert = FALSE) {
+
+  S <- NULL
+  source_type <- "User Matrix"
+  params_used <- list()
+
+  if (is.matrix(x)) {
+    if (nrow(x) != ncol(x)) stop("Input matrix 'x' must be square.")
+    S <- x
+
+  } else if (is.character(x)) {
+    if (is.null(d)) stop("Distance matrix 'd' is required for kernel generation.")
+
+    if (tolower(x) == "matern") {
+
+      source_type <- "Matern Kernel"
+      params_used <- matern_params
+
+      S <- fields::Matern(d,
+                          smoothness = matern_params$smoothness,
+                          range = matern_params$range)
+
+    } else if (tolower(x) == "rbf") {
+      source_type <- "RBF Kernel"
+      params_used <- rbf_params
+      ell <- rbf_params$ell
+      S <- exp(-(d^2) / (2 * ell^2))
+
+    } else {
+      stop("Unknown method. 'x' must be a matrix, 'matern', or 'RBF'.")
+    }
+    if (!invert) {
+      warning(paste("Generated a raw Covariance matrix without inversion.",
+                    "fit_imr() expects the inverse."))
+    }
+
+  } else {
+    stop("Input 'x' must be a matrix or a character string ('matern', 'RBF').")
+  }
+
+  if (invert) {
+    S <- tryCatch({
+      chol2inv(S)
+    }, error = function(e) {
+      stop("Matrix inversion failed (matrix might be singular).")
+    })
+    source_type <- paste(source_type, "(Inverted)")
+  }
+  if(is.numeric(jitter) && jitter > 0){
+    S <- S + diag(jitter, nrow(S), ncol(S))
+    #source_type <- paste(source_type, "(With Jitter)")
+  }else jitter = 0
+
+  decomp <- eigen(S, symmetric = TRUE)
+  evals <- abs(decomp$values)
+  cond_num <- max(evals) / min(evals[evals > 0])
+
+  structure(
+    list(
+      U = decomp$vectors,
+      d = decomp$values,
+      meta = list(
+        source = source_type,
+        dim = dim(S),
+        params = params_used,
+        inverted = invert,
+        jitter = jitter,
+        condition_number = cond_num
+      )
+    ),
+    class = "imr_similarity"
+  )
+}
+
+#' @export
+print.imr_similarity <- function(x, ...) {
+  cat("\n== IMR Similarity Decomposition ==\n")
+  cat(sprintf("Source:           %s\n", x$meta$source))
+  cat(sprintf("Dimensions:       %d x %d\n", x$meta$dim[1], x$meta$dim[2]))
+  cat(sprintf("Jitter value:     %s\n", x$meta$jitter))
+
+  if (length(x$meta$params) > 0) {
+    p_names <- names(x$meta$params)
+    p_vals <- unlist(x$meta$params)
+    cat(sprintf("Parameters:       %s\n", paste(p_names, p_vals, sep="=", collapse=", ")))
+  }
+  cond_fmt <- if (x$meta$condition_number > 1e4) "%.2e" else "%.2f"
+  cat(sprintf("Condition Number: %s\n", sprintf(cond_fmt, x$meta$condition_number)))
+
+  cat("Top 5 Eigenvalues:", paste(format(head(x$d, 5), digits = 3), collapse = ", "), "...\n")
+  cat("==================================\n")
+
+  invisible(x)
+}
+

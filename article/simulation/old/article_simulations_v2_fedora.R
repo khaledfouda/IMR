@@ -76,7 +76,7 @@ sim_grid_search <- function(dat,
                       test_error = IMR:::error_metric$rmse
                       #, n.lambda=80, rank.init = 2,
                       #rank.step = 1,
-                      #lambda0_fun = IMR::get_lambda_M_max
+                      #lambda0_fun = IMR::get_lambda_m_max
   )
   res <- sim1_res(dat, fitsi$fit, "SoftImpute") %>%
     dplyr::mutate(lambdar=NA, valerr = fitsi$error)
@@ -189,7 +189,7 @@ one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
                       test_error = IMR:::error_metric$rmse
                       #, n.lambda=80, rank.init = 2,
                       #rank.step = 1,
-                      #lambda0_fun = IMR::get_lambda_M_max
+                      #lambda0_fun = IMR::get_lambda_m_max
   )
   #fitmmci <- MCCI.cv(dat$Y, dat$X, dat$mask, numCores = 9, seed = seed)
   fitnai <- naive.fit(dat$Y, dat$X)
@@ -401,7 +401,7 @@ fit.nlrr <-  IMR:::nlrr.cv(dat$fit_data$Y_full, X=dat$fit_data$X$Q,
 lambdas %<>% rbind(
   data.frame(sparsity=dat$sparsity, n=1000,beta=fit.nlrr$lambda_beta,
              gamma = fit.nlrr$lambda_gamma,
-             M = fit.nlrr$lambda_M,
+             M = fit.nlrr$lambda_m,
              r = fit.nlrr$rank_M)
 )
 
@@ -523,7 +523,7 @@ for(b in 1:30){
       X = dat$fit_data$X$Q,
       Z = dat$fit_data$Z$Q,
       r = lambdas$r[s],
-      lambda_M = lambdas$M[s],
+      lambda_m = lambdas$M[s],
       lambda_beta = lambdas$beta[s],
       lambda_gamma = lambdas$gamma[s],
       trace = FALSE,
@@ -650,7 +650,7 @@ fit <- fit.nlrr$fit
 sim1_res(dat, fit2)
 
 fit2 <- IMR::imr.fit(dat$fit_data$Y_full, dat$fit_data$X$Q,
-                     lambda_M = fit.nlrr$lambda_M, r = fit.nlrr$rank_M,
+                     lambda_m = fit.nlrr$lambda_m, r = fit.nlrr$rank_M,
                      lambda_beta = fit.nlrr$lambda_beta, warm_start = fit,
                      trace = T)
 

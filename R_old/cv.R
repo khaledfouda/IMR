@@ -26,7 +26,7 @@ imr.cv_M <- function(
 
   # lambda lambda_m sequence
   if(is.null(hpar$M$lambda_max)){
-    hpar$M$lambda_max <- get_lambda_M_max(y_train, X, Z, T, T,
+    hpar$M$lambda_max <- get_lambda_m_max(y_train, X, Z, T, T,
                                            lambda_beta, lambda_gamma) *
       hpar$M$lambda_factor
   }
@@ -58,7 +58,7 @@ imr.cv_M <- function(
       X = X,
       Z = Z,
       r = rank_max,
-      lambda_M = lambda_seq[i],
+      lambda_m = lambda_seq[i],
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
       intercept_row = intercept_row,
@@ -108,7 +108,7 @@ imr.cv_M <- function(
       best_fit <- list(
         error     = verror,
         rank_M    = current_rank,
-        lambda_M  = lambda_seq[i],
+        lambda_m  = lambda_seq[i],
         rank_max  = rank_max,
         fit       = old_fit
       )
@@ -147,7 +147,7 @@ imr.cv_M <- function(
       X = X,
       Z = Z,
       r = best_fit$rank_max,
-      lambda_M = best_fit$lambda_M,
+      lambda_m = best_fit$lambda_m,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
       intercept_row = intercept_row,
@@ -320,7 +320,7 @@ imr.cv <- function(
         res$error,
         res$loop_size,
         res$rank_M,
-        res$lambda_M
+        res$lambda_m
       ))
     }
     message(sprintf(
@@ -332,7 +332,7 @@ imr.cv <- function(
       best_fit$error,
       best_fit$loop_size,
       best_fit$rank_M,
-      best_fit$lambda_M
+      best_fit$lambda_m
     ))
     best_fit$init_hparams <- hpar
   }

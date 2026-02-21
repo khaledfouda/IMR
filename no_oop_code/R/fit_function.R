@@ -11,7 +11,7 @@
 #' @param intercept_col Logical. Include column-level intercepts? Default is \code{FALSE}.
 #' @param r Integer. The rank (number of latent factors/columns in A and B).
 #'   Default is 2.
-#' @param lambda_M Numeric scalar. Controls the nuclear penalty. Default is 0.
+#' @param lambda_m Numeric scalar. Controls the nuclear penalty. Default is 0.
 #' @param lambda_beta Numeric scalar. Controls the Lasso penalty on the row
 #'   covariates. Default is 0.
 #' @param lambda_gamma Numeric scalar. Controls the Lasso penalty on the column
@@ -50,7 +50,7 @@ imr.fit <- function(
   intercept_row = FALSE,
   intercept_col = FALSE,
   r = 2,
-  lambda_M = 0,
+  lambda_m = 0,
   lambda_beta = 0,
   lambda_gamma = 0,
   Ur = NULL,
@@ -151,7 +151,7 @@ imr.fit <- function(
         gamma0 <- mfit$gamma0
       }
 
-      init <- IMR::opt_svd(mfit$resid, r, nr, nc, FALSE, FALSE)
+      init <- IMR::svd_opt(mfit$resid, r, nr, nc, FALSE, FALSE)
     } else {
       if (beta_flag) {
         if(shared_information){
@@ -178,7 +178,7 @@ imr.fit <- function(
         gamma0 <- rep(0, nc)
       }
 
-      init <- IMR::opt_svd(Y, r, nr, nc, FALSE, FALSE)
+      init <- IMR::svd_opt(Y, r, nr, nc, FALSE, FALSE)
     }
 
     U <- init$u
@@ -215,9 +215,9 @@ imr.fit <- function(
     #  Update (V, Dsq, U) from the "B" side --------------------------------
     # B_mat = BD
     if (laplace_c_flag) {
-      BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_M, Uc, dc)
+      BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, lambda_m, Uc, dc)
     } else {
-      BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
+      BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_m)
     }
 
     BD <- IMR:::svd_small_nc_cpp(BD)
@@ -234,9 +234,9 @@ imr.fit <- function(
     # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
     # A_mat <- AD
     if (laplace_r_flag) {
-      AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_M, Ur, dr)
+      AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, lambda_m, Ur, dr)
     } else {
-      AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
+      AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_m)
     }
 
     AD <- IMR:::svd_small_nc_cpp(AD)
@@ -329,7 +329,7 @@ imr.fit <- function(
         ratio <- ratio + sum((gamma_old-gamma)^2) / denom
     }
     if (trace) {
-      obj <- (0.5 * sum(Y@x^2) + lambda_M * sum(Dsq) +
+      obj <- (0.5 * sum(Y@x^2) + lambda_m * sum(Dsq) +
         ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
         ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz

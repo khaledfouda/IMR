@@ -256,7 +256,7 @@ for(b in 1:500){
                            intercept_row = FALSE,
                            intercept_col = FALSE,
                            r = r,
-                           lambda_M = best_hparams$lambda_laplace,
+                           lambda_m = best_hparams$lambda_laplace,
                            lambda_beta = best_hparams$lambda_beta,
                            lambda_gamma = best_hparams$lambda_gamma,
                            maxit = 1000,

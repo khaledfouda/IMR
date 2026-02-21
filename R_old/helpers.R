@@ -192,7 +192,7 @@ error_metric = list(
 
 # SVD operations. general purpose, selects the optimal function to call
 #' @export
-opt_svd <-
+svd_opt <-
   function(mat,
            k = NULL, # number of singular values to retain - default:return all
            nr = nrow(mat),

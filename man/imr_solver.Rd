@@ -20,7 +20,7 @@ imr_solver(
   dr,
   Uc,
   dc,
-  control,
+  convergence,
   warm_start
 )
 }

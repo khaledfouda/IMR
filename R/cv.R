@@ -40,7 +40,7 @@ imr.cv_laplace <- function(
       X = fdata$Xq,
       Z = fdata$Zq,
       r = r,
-      lambda_M = lambda_laplace,
+      lambda_m = lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
@@ -159,7 +159,7 @@ imr.cv_laplace <- function(
       X = data$Xq,
       Z = data$Zq,
       r = results$best_fit$r,
-      lambda_M = results$best_fit$lambda_laplace,
+      lambda_m = results$best_fit$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
@@ -454,7 +454,7 @@ imr.cv <- function(
         X = data$Xq,
         Z = data$Zq,
         r = results$best_fit$r,
-        lambda_M = results$best_fit$lambda_laplace,
+        lambda_m = results$best_fit$lambda_laplace,
         lambda_beta = hpar$beta$value,
         lambda_gamma = hpar$gamma$value,
         intercept_row = intercept_row,
@@ -581,7 +581,7 @@ imr.cv <- function(
   #       res$error,
   #       res$loop_size,
   #       res$rank_M,
-  #       res$lambda_M
+  #       res$lambda_m
   #     ))
   #   }
   #   message(sprintf(
@@ -593,7 +593,7 @@ imr.cv <- function(
   #     best_fit$error,
   #     best_fit$loop_size,
   #     best_fit$rank_M,
-  #     best_fit$lambda_M
+  #     best_fit$lambda_m
   #   ))
   #   best_fit$init_hparams <- hpar
   # }

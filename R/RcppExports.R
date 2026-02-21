@@ -25,16 +25,16 @@ frob_ratio_cpp <- function(Uold, Dsqold, Vold, U, Dsq, V) {
     .Call(`_IMR_frob_ratio_cpp`, Uold, Dsqold, Vold, U, Dsq, V)
 }
 
-update_A_cpp <- function(yS4, U, V, Dsq, lambda_M) {
-    .Call(`_IMR_update_A_cpp`, yS4, U, V, Dsq, lambda_M)
+update_A_cpp <- function(yS4, U, V, Dsq, lambda_m) {
+    .Call(`_IMR_update_A_cpp`, yS4, U, V, Dsq, lambda_m)
 }
 
 update_A_sim_cpp <- function(yS4, U, V, Dsq, Ur, dr) {
     .Call(`_IMR_update_A_sim_cpp`, yS4, U, V, Dsq, Ur, dr)
 }
 
-update_B_cpp <- function(yS4, U, V, Dsq, lambda_M) {
-    .Call(`_IMR_update_B_cpp`, yS4, U, V, Dsq, lambda_M)
+update_B_cpp <- function(yS4, U, V, Dsq, lambda_m) {
+    .Call(`_IMR_update_B_cpp`, yS4, U, V, Dsq, lambda_m)
 }
 
 update_B_sim_cpp <- function(yS4, U, V, Dsq, Uc, dc) {

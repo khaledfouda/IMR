@@ -81,7 +81,7 @@ bench_time(fit_init <- IMR::imr.fit(
   X = fdata$Xq,
   Z = fdata$Zq,
   r = hpar$rank$default,
-  lambda_M = lambda_laplace,
+  lambda_m = lambda_laplace,
   lambda_beta = hpar$beta$value,
   lambda_gamma = hpar$gamma$value,
   intercept_row = intercept_row,

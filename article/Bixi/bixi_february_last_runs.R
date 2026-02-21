@@ -241,7 +241,7 @@ for (prefix in 11:50) {
         X = NULL,
         Z = NULL,
         r = model_combn$rank[i],
-        lambda_M = model_combn$lambda[i],
+        lambda_m = model_combn$lambda[i],
         lambda_beta = 0,
         lambda_gamma = 0,
         intercept_row = FALSE,

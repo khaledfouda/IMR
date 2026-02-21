@@ -1,5 +1,5 @@
 #' @export
-imr_control <- function(maxit = 300,
+imr_convergence <- function(maxit = 300,
                         thresh = 1e-5,
                         trace = FALSE,
                         ls_initial = TRUE) {
@@ -8,27 +8,27 @@ imr_control <- function(maxit = 300,
          thresh = thresh,
          trace = trace,
          ls_initial = ls_initial),
-    class = "imr_control"
+    class = "imr_convergence"
   )
 }
 
 #' @export
-fit_imr <- function(
+imr_fit <- function(
     data,
     rank = 2,
-    lambda_M = 0,
+    lambda_m = 0,
     lambda_beta = 0,
     lambda_gamma = 0,
     intercept_row = FALSE,
     intercept_col = FALSE,
     shared_beta = FALSE,
     shared_gamma = FALSE,
-    control = imr_control(),
+    convergence = imr_convergence(),
     warm_start = NULL){
 
   # validation
   if (!inherits(data, "imr_data")) stop("Data must be an 'imr_data' object.")
-  if (!inherits(control, "imr_control")) control <- imr_control()
+  if (!inherits(convergence, "imr_convergence")) convergence <- imr_convergence()
 
 
   if (inherits(warm_start, "imr_fit")) {
@@ -39,10 +39,10 @@ fit_imr <- function(
 
   result_list <- imr_solver(
     Y = data$Y,
-    X = data$X,
-    Z = data$Z,
+    X = data$Xq,
+    Z = data$Zq,
     r = rank,
-    lambda_M = lambda_M,
+    lambda_m = lambda_m,
     lambda_beta = lambda_beta,
     lambda_gamma = lambda_gamma,
     Ur = data$similarity_row$U,
@@ -53,7 +53,7 @@ fit_imr <- function(
     intercept_col = intercept_col,
     shared_beta = shared_beta,
     shared_gamma = shared_gamma,
-    control = control,
+    convergence = convergence,
     warm_start = warm_start
   )
 
@@ -72,15 +72,15 @@ fit_imr <- function(
       residuals = result_list$residuals,
       meta = list(
         rank = rank,
-        lambdas = c(M=lambda_M, beta=lambda_beta, gamma=lambda_gamma),
+        lambdas = c(M=lambda_m, beta=lambda_beta, gamma=lambda_gamma),
         intercepts = c(row = intercept_row, col = intercept_col),
         shared_effects = c(beta=shared_beta, gamma=shared_gamma),
         n_iter = result_list$n_iter,
-        converged = result_list$n_iter < control$maxit,
+        converged = result_list$n_iter < convergence$maxit,
         # statistic for print function
         tss = sum((data$Y@x - mean(data$Y@x))^2)
       ),
-      control = control
+      convergence = convergence
     ),
     class = "imr_fit"
   )
@@ -94,9 +94,9 @@ imr_solver <- function(
   Y, X, Z,
   intercept_row, intercept_col,
   shared_beta, shared_gamma,
-  r, lambda_M, lambda_beta, lambda_gamma,
+  r, lambda_m, lambda_beta, lambda_gamma,
   Ur, dr, Uc, dc,
-  control,
+  convergence,
   warm_start) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
@@ -108,30 +108,29 @@ imr_solver <- function(
   pcol <- Y@p
   Y@x <- Y@x + 0 # force a copy so the original matrix doesn't get modified by C++
 
-  # Unpack control ----------------------------------------------------------
-  maxit  <- control$maxit
-  thresh <- control$thresh
-  trace  <- control$trace
-  ls_initial <- control$ls_initial
-  shared_beta <- control$shared_beta
-  shared_gamma <- control$shared_gamma
+  # Unpack convergence ----------------------------------------------------------
+  maxit  <- convergence$maxit
+  thresh <- convergence$thresh
+  trace  <- convergence$trace
+  ls_initial <- convergence$ls_initial
 
   # Laplacian flags (L_* expected as eigendecompositions) -------------------
   beta_flag <- !(is.null(X))
   gamma_flag <- !(is.null(Z))
   laplace_r_flag <- !(is.null(Ur) || is.null(dr))
   laplace_c_flag <- !(is.null(Uc) || is.null(dc))
-  low_rank_flag <- !(is.null(r) || is.null(lambda_M) || r <= 0)
+  low_rank_flag <- !(is.null(r) || is.null(lambda_m) || r <= 0)
   if(!low_rank_flag) ls_initial = FALSE
   #-------------------------------------------------
-  if(laplace_r_flag) dr = dr * lambda_M
-  if(laplace_c_flag) dc = dc * lambda_M
+  if(laplace_r_flag) dr = dr * lambda_m
+  if(laplace_c_flag) dc = dc * lambda_m
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
-  warm_start <- verify_warm_start(warm_start, r)
+  if(!is.null(warm_start))
+    warm_start <- verify_warm_start(warm_start, r)
 
   if (!is.null(warm_start)) {
     required <- c("u", "d", "v", "beta", "gamma", "beta0", "gamma0")
@@ -168,13 +167,13 @@ imr_solver <- function(
     Dsq <- warm_start$d
   } else {
     if (ls_initial) {
-      mift <- imr_solver(
+      mfit <- imr_solver(
         Y = Y, X = X, Z = Z,
         intercept_row = intercept_row, intercept_col = intercept_col,
         shared_beta = shared_beta, shared_gamma = shared_gamma,
-        r = 0, lambda_M = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
+        r = 0, lambda_m = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
-        control = control,
+        convergence = convergence,
         warm_start = NULL)
 
       if (beta_flag) {
@@ -200,7 +199,7 @@ imr_solver <- function(
         gamma0 <- mfit$gamma0
       }
 
-      init <- IMR::opt_svd(mfit$residuals, r, nr, nc, FALSE, FALSE)
+      init <- IMR::svd_opt(mfit$residuals, r)
     } else {
       if (beta_flag) {
         if(shared_beta){
@@ -227,7 +226,7 @@ imr_solver <- function(
         gamma0 <- rep(0, nc)
       }
       if(low_rank_flag)
-        init <- IMR::opt_svd(Y, r, nr, nc, FALSE, FALSE)
+        init <- IMR::svd_opt(Y, r)
     }
 
     if(low_rank_flag){
@@ -271,7 +270,7 @@ imr_solver <- function(
       if (laplace_c_flag) {
         BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
       } else {
-        BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_M)
+        BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_m)
       }
 
       BD <- IMR:::svd_small_nc_cpp(BD)
@@ -290,7 +289,7 @@ imr_solver <- function(
       if (laplace_r_flag) {
         AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
       } else {
-        AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_M)
+        AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_m)
       }
 
       AD <- IMR:::svd_small_nc_cpp(AD)
@@ -308,7 +307,7 @@ imr_solver <- function(
     if (beta_flag) {
       if(shared_beta){
         beta <- soft_threshold_cpp(
-          crossprod(X, row_means_cpp(Y, nc) ) + beta,
+          crossprod(X, row_means_cpp(Y@x, Y@i, nr, nc) ) + beta,
           lambda_beta
         )
         old_val <- xbeta
@@ -331,7 +330,7 @@ imr_solver <- function(
     if (gamma_flag) {
       if(shared_gamma){
         gamma <- soft_threshold_cpp(
-          col_means_cpp(Y, nr) %*% Z + gamma,
+          col_means_cpp(Y@x, Y@p, nr, nc) %*% Z + gamma,
           lambda_gamma
         )
         old_val <- gammaz
@@ -354,7 +353,7 @@ imr_solver <- function(
     # Row-level intercepts (beta0), then apply delta to residuals.
     if (intercept_row) {
       old_val <- beta0
-      beta0 <- row_means_cpp(Y, nc) + beta0
+      beta0 <- row_means_cpp(Y@x, Y@i, nr, nc) + beta0
       change <- old_val - beta0
       add_to_rows_inplace_cpp(Y@x, irow, change)
     }
@@ -362,7 +361,7 @@ imr_solver <- function(
     # Column-level intercepts (gamma0), then apply delta to residuals.
     if (intercept_col) {
       old_val <- gamma0
-      gamma0 <- col_means_cpp(Y, nr) + gamma0
+      gamma0 <- col_means_cpp(Y@x, Y@p, nr, nc) + gamma0
       change <- old_val - gamma0
       add_to_cols_inplace_cpp(Y@x, pcol, change)
     }
@@ -383,7 +382,7 @@ imr_solver <- function(
     }
     if (trace) {
       obj <- (0.5 * sum(Y@x^2) +
-        ifelse(low_rank_flag, lambda_M * sum(Dsq), 0) +
+        ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
         ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
         ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
@@ -404,7 +403,7 @@ imr_solver <- function(
 
   list(
     residuals = Y,
-    u = u,
+    u = U,
     d = Dsq,
     v = V,
     beta = beta,
@@ -428,27 +427,51 @@ print.imr_fit <- function(x, ...) {
   has_row_int  <- !is.null(x$coefficients$beta0)
   has_col_int  <- !is.null(x$coefficients$gamma0)
 
+  # --- 1. Equation ---
   terms <- c()
   if (has_row_cov) {
-    beta_type <- if (x$meta$shared_effects["beta"]) "vec" else "mat"
-    terms <- c(terms, paste0("X\u00b7\u03b2(", beta_type, ")"))
+    beta_type <- if (x$meta$shared_effects["beta"]) "" else ""
+    terms <- c(terms, paste0("X\u00b7\u03b2"))
   }
   if (has_col_cov) {
-    gamma_type <- if (x$meta$shared_effects["gamma"]) "vec" else "mat"
-    terms <- c(terms, paste0("\u03b3(", gamma_type, ")\u00b7Z'"))
+    gamma_type <- if (x$meta$shared_effects["gamma"]) "shared" else ""
+    terms <- c(terms, paste0("\u03b3", "\u00b7Z"))
   }
-  if (has_low_rank) terms <- c(terms, "M(SVD)")
+  if (has_low_rank) terms <- c(terms, "M")
   if (has_row_int)  terms <- c(terms, "\u03b2\u2080")
   if (has_col_int)  terms <- c(terms, "\u03b3\u2080")
   if (length(terms) == 0) terms <- c("0")
 
   cat(sprintf("Equation:  Y ~ %s\n", paste(terms, collapse = " + ")))
 
+  # --- 2. Coefficient Dimensions ---
+  # Helper function to gracefully format vector vs matrix dimensions
+  get_dim_str <- function(coef) {
+    if (is.matrix(coef)) {
+      return(sprintf("%d x %d matrix", nrow(coef), ncol(coef)))
+    } else {
+      return(sprintf("length %d vector", length(coef)))
+    }
+  }
+
+  cat("\n-- Coefficient Dimensions --\n")
+  if (has_row_cov) cat(sprintf("  %-7s : %s\n", "\u03b2",   get_dim_str(x$coefficients$beta)))
+  if (has_col_cov) cat(sprintf("  %-7s : %s\n", "\u03b3",  get_dim_str(x$coefficients$gamma)))
+  if (has_row_int) cat(sprintf("  %-9s : %s\n", "\u03b2\u2080",  get_dim_str(x$coefficients$beta0)))
+  if (has_col_int) cat(sprintf("  %-9s : %s\n", "\u03b3\u2080", get_dim_str(x$coefficients$gamma0)))
+  if (has_low_rank) {
+    # It's also helpful to remind them of the dimensions of the latent factor matrices
+    cat(sprintf("  %-6s : U(%d x %d), D(length %d), V(%d x %d)\n",
+                "M", nrow(x$coefficients$u), ncol(x$coefficients$u),
+                length(x$coefficients$d),
+                nrow(x$coefficients$v), ncol(x$coefficients$v)))
+  }
+
+  # --- 3. Fit Statistics ---
   if (!is.null(x$residuals)) {
     rss <- sum(x$residuals@x^2)
     tss <- x$meta$tss
-    n   <- x$meta$n_obs
-
+    n   <- length(x$residuals@x)
     mse  <- rss / n
     rmse <- sqrt(mse)
     r2   <- 1 - (rss / tss)
@@ -480,7 +503,7 @@ print.imr_fit <- function(x, ...) {
 }
 
 #' @export
-print.imr_control <- function(x, ...) {
+print.imr_convergence <- function(x, ...) {
   cat("\n== IMR Convergence Parameters ==\n")
 
   cat(sprintf("Max Iterations: %d\n", x$maxit))

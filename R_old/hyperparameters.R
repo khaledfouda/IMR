@@ -33,7 +33,7 @@ get_imr_default_hparams <- function(){
 
 #-----------------------------------------------------
 #' @export
-get_lambda_M_max <-
+get_lambda_m_max <-
   function(Y,
            X = NULL,
            Z = NULL,
@@ -90,16 +90,16 @@ get_lambda_lasso_max <- function(
   row_cov <- is.null(Z)
   nr <- nrow(y_train)
   nc <- ncol(y_train)
-  # step 1: get an initial fit and find suitable lambda_M and rank before starting:
+  # step 1: get an initial fit and find suitable lambda_m and rank before starting:
   if (is.null(y_valid)) {
     mfit <- list()
-    # if no validation set provided then fit with a generic r and lambda_M
+    # if no validation set provided then fit with a generic r and lambda_m
     mfit$fit <- IMR::imr.fit(
       Y           = y_train,
       X           = X,
       Z           = Z,
       r           = 5,
-      lambda_M    = 0,
+      lambda_m    = 0,
       lambda_beta = 0,
       lambda_gamma = 0,
       intercept_row = intercept_row,
@@ -107,7 +107,7 @@ get_lambda_lasso_max <- function(
       maxit       = maxit,
       trace       = F
     )
-    lambda_M <- 0
+    lambda_m <- 0
     r = 5
   } else {
     mfit <- IMR::imr.cv_M(
@@ -124,7 +124,7 @@ get_lambda_lasso_max <- function(
       maxit       = maxit,
       hpar        = hpar
     )
-    lambda_M = mfit$lambda_M
+    lambda_m = mfit$lambda_m
     r        = max(2, mfit$rank_M) # do not want the rank to be below 2
   }
   ##  Compute max value using kkt ------------
@@ -145,7 +145,7 @@ get_lambda_lasso_max <- function(
       X             = X,
       Z             = Z,
       r             = r,
-      lambda_M      = lambda_M,
+      lambda_m      = lambda_m,
       lambda_beta   = lambda_beta,
       lambda_gamma  = lambda_gamma,
       intercept_row = intercept_row,

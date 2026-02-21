@@ -89,7 +89,7 @@ bench::bench_time(fitimr <- IMR::imr.fit(
   X = data$mdat$Xq,
   Z = data$mdat$Zq,
   r = 14,
-  lambda_M = 17.88, #20.79,#14.53,#
+  lambda_m = 17.88, #20.79,#14.53,#
   lambda_beta = .21053,#.03158,
   lambda_gamma = .3157892,
   intercept_row = T,

@@ -1,42 +1,36 @@
-#' @export
-inv <- function(X, is_square = nrow(X) == ncol(X)) {
+#' Do not export
+inv <- function(X, tol = sqrt(.Machine$double.eps)) {
+
+  # Ensure X is a base matrix
+  if (!is.matrix(X)) X <- as.matrix(X)
+
+  is_square <- nrow(X) == ncol(X)
+
   if (is_square) {
-    # Try to apply solve() and catch any errors indicating singularity
-    tryCatch(
-      {
-        return(solve(X))
-      },
-      error = function(e) {
-        return(MASS::ginv(X))
-      }
-    )
-  } else {
-    # Use ginv() for non-square matrices
-    inv_X <-
-      return(MASS::ginv(X))
+    #  Try Cholesky for symmetric matrices
+    if (isSymmetric(X)) {
+      tryCatch({
+        return(chol2inv(chol(X)))
+      }, error = function(e) {
+        # not positive-definite
+      })
+    }
+    # standard solve or ginv if it fails
+    tryCatch({
+      return(solve(X))
+    }, error = function(e) {
+      #if singular
+      return(MASS::ginv(X, tol = tol))
+    })
   }
+
+  # ginv for rectangle matrices
+  return(MASS::ginv(X, tol = tol))
 }
-#------------------------------
-#' @export
-initialize_parallel_workers <- function(num_cores = parallelly::availableCores(),
-                                        nested=FALSE) {
-  if (!is.numeric(num_cores) | num_cores < 1) {
-    stop("num_cores must be numeric and strictly positive")
-  }
-  future::plan(future::sequential)
-  if (round(num_cores) > 1) {
-    if(nested){
-      future::plan(list(
-        future::tweak(future::multisession, workers = 2L), #outer loop
-        future::tweak(future::multisession, workers = I(max(1, floor(num_cores/2))))  #inner loop
-      ))
-    }else
-      future::plan(future::multisession, workers = round(num_cores))
-  }
-}
+
 #-------------------------------------
 
-trim_eig <- function(d, tol = 1e-10) d[d > 0 & !is.nan(d) & !is.na(d)]
+# trim_eig <- function(d, tol = 1e-10) d[d > 0 & !is.nan(d) & !is.na(d)]
 
 #' @export
 mask_train_test_split <-
@@ -78,162 +72,193 @@ mask_train_test_split <-
 # Do not export
 verify_low_rank <- function(M, J, min_eigv = 1e-6) {
   D <- M$d
-  JD <- max(sum(D >= min_eigv), 1)
+  # Count valid singular values, cap at length(D)
+  JD <- sum(D >= min_eigv)
+  # Ensure JD is at least 1 so we don't break matrix operations
+  JD <- max(JD, 1)
+
   if (JD >= J) {
-    # more singular values than required: downscale
+    # We have enough components: just truncate exactly to J
     M$u <- M$u[, seq(J), drop = FALSE]
     M$v <- M$v[, seq(J), drop = FALSE]
     M$d <- D[seq(J)]
   } else {
-    # less singular values than required: upscale
+    # We don't have enough valid components: upscale to exactly J
+    # First, keep ONLY the JD valid components
+    U <- M$u[, seq(JD), drop = FALSE]
+    V <- M$v[, seq(JD), drop = FALSE]
+    D_valid <- D[seq(JD)]
+
+    #  Add Ja new components
     Ja <- J - JD
-    M$d <- c(D, rep(D[JD], Ja))
-    U <- M$u
+    M$d <- c(D_valid, rep(D_valid[JD], Ja))
+
     nr <- nrow(U)
     Ua <- matrix(stats::rnorm(nr * Ja), nr, Ja)
+
+    #  orthogonalization
     Ua <- Ua - U %*% (t(U) %*% Ua)
-    Ua <- svd_small_nc_cpp(Ua)$u
+
+    #  Orthonormalize the new columns
+    Ua <- qr.Q(qr(Ua))
+
     M$u <- cbind(U, Ua)
-    M$v <- cbind(M$v, matrix(0, nrow(M$v), Ja))
+    M$v <- cbind(V, matrix(0, nrow(V), Ja))
   }
-  M
+
+  return(M)
 }
 
 # Do not export
 verify_warm_start <- function(M, J, min_eigv = 1e-6) {
-  if (is.null(M)) {
+  if (is.null(M) || is.null(M$d) || is.null(M$u) || is.null(M$v)) {
+    warning("warm start verification failed - missing u, d, or v. Reinitializing...")
     return(NULL)
   }
+
   d <- M$d
-  if (is.null(d)) {
-    warning("warm start verification failed - no singular values detected -. Reinitializing...")
-    return(NULL)
-  }
-  if (any(d >= 0)) {
+  if (any(d >= min_eigv)) {
+    # Fix R's habit of dropping dimensions to vectors
     if (length(d) == 1) {
-      M$u <- matrix(M$u, ncol = 1)
-      M$v <- matrix(M$v, ncol = 1)
+      M$u <- as.matrix(M$u)
+      M$v <- as.matrix(M$v)
     }
-    verify_low_rank(M, J, min_eigv)
+    return(verify_low_rank(M, J, min_eigv))
   } else {
-    warning("warm start verification failed - no nonegative singular values -. Reinitializing...")
-    NULL
+    warning("warm start verification failed - no significant singular values. Reinitializing...")
+    return(NULL)
   }
 }
-error_metric <- list(
-  #--- error functions:
-  unexplained_variance = function(predicted, true, adjusted = FALSE, k = NA) {
-    # SSE / SST
-    if (!adjusted) {
-      return(sum((true - predicted)^2) / sum((true - mean(true))^2))
+
+
+#' @export
+error_metrics <- list(
+  # Mean Absolute Percentage Error
+  mape = function(predicted, actual, na.rm = TRUE) {
+    if (na.rm) {
+      idx <- complete.cases(predicted, actual) & actual != 0
     } else {
-      n <- length(true)
-      stopifnot(is.numeric(k))
-      return(((sum((true - predicted)^2) /
-        sum((true - mean(true))^2)) *
-        (n - 1) / (n - k - 1)))
+      idx <- actual != 0
     }
+    mean(abs((actual[idx] - predicted[idx]) / actual[idx])) * 100
   },
-  mape = function(predicted, true) {
-    mean(abs((as.double(true) - as.double(predicted)) / true), na.rm = TRUE) * 100
+
+  #  Mean Absolute Error
+  mae = function(predicted, actual, na.rm = TRUE) {
+    mean(abs(actual - predicted), na.rm = na.rm)
   },
-  mae = function(predicted, true) {
-    mean(abs(as.double(true) - as.double(predicted)), na.rm = TRUE)
+
+  # RMSE
+  rmse = function(predicted, actual, na.rm = TRUE) {
+    sqrt(mean((actual - predicted)^2, na.rm = na.rm))
   },
-  rmse_normalized = function(predicted, true) {
-    sqrt(mean((as.double(true) - as.double(predicted))^2, na.rm = TRUE)) /
-      sd(as.double(true), na.rm = TRUE)
+
+  # 6. Relative RMSE
+  rrmse = function(predicted, actual, na.rm = TRUE) {
+    if (na.rm) {
+      idx <- complete.cases(predicted, actual)
+      predicted <- predicted[idx]
+      actual <- actual[idx]
+    }
+    sqrt(sum((actual - predicted)^2)) / sqrt(sum(actual^2))
   },
-  rmse = function(predicted, true) {
-    sqrt(mean((as.double(true) - as.double(predicted))^2, na.rm = TRUE))
-  },
-  rel.rmse = function(predicted, true) {
-    sqrt(sum((true - predicted)^2, na.rm = TRUE)) /
-      sqrt(sum(true^2, na.rm = TRUE))
-  },
-  spearman_R2 = function(predicted, true) {
-    cor(true, predicted, method = "spearman")
+
+  # 7. Spearman Correlation (Rho)
+  spearman = function(predicted, actual, na.rm = TRUE) {
+    use_method <- if (na.rm) "complete.obs" else "everything"
+    cor(actual, predicted, method = "spearman", use = use_method)
   }
 )
+
+#' Return one of the error metrics above.
+#' Do not export
+get_metric <- function(metric) {
+  if (stringr::str_to_lower(metric) == "rmse")        return(error_metrics$rmse)
+  if (stringr::str_to_lower(metric) == "rrmse")       return(error_metrics$rrmse)
+  if (stringr::str_to_lower(metric) == "mae")         return(error_metrics$mae)
+  if (stringr::str_to_lower(metric) == "mape")        return(error_metrics$mape)
+  if (stringr::str_to_lower(metric) == "spearman")    return(error_metric$spearman)
+  stop("Unvalid error metric")
+}
+
+#' Evaluate Model Predictions on all metrics
+#' @export
+evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
+  p <- as.numeric(predicted)
+  a <- as.numeric(actual)
+  if(stringr::str_to_lower(metric) != "all")
+    return(IMR:::get_metric(metric)(p, a, na.rm))
+  tibble(
+    RMSE            = error_metrics$rmse(p, a, na.rm),
+    Rel_RMSE        = error_metrics$rrmse(p, a, na.rm),
+    MAE             = error_metrics$mae(p, a, na.rm),
+    MAPE            = error_metrics$mape(p, a, na.rm),
+    Spearman_Rho    = error_metrics$spearman(p, a, na.rm)
+  )
+}
 
 
 # SVD operations. general purpose, selects the optimal function to call
 #' @export
-opt_svd <-
-  function(mat,
-           k = NULL, # number of singular values to retain - default:return all
-           nr = nrow(mat),
-           nc = ncol(mat),
-           rthin = nc > 2 * nr,
-           cthin = nr > 2 * nc,
-           tol = NULL) {
-    if (is.null(k)) {
-      if (rthin) {
-        dec <- IMR:::svd_small_nr_cpp(mat)
-      } else if (cthin) {
-        dec <- IMR:::svd_small_nc_cpp(mat)
-      } else {
-        dec <- base::svd(mat)
-      }
+svd_opt <- function(mat,
+                    k = NULL,
+                    tol = NULL) {
+
+  nr <- nrow(mat)
+  nc <- ncol(mat)
+
+  # thin thresholds
+  rthin <- nc > 2 * nr
+  cthin <- nr > 2 * nc
+
+  # If k is requested but equals the max possible rank, treat as full SVD
+  if (!is.null(k) && k >= min(nr, nc)) {
+    k <- NULL
+  }
+
+  # ---  FAST PATH: Thin Matrices or Full SVD ---
+  # If the matrix is thin, use fastsvd
+  if (rthin || cthin || is.null(k)) {
+    if (rthin) {
+      dec <- IMR:::svd_small_nr_cpp_fast(mat)
+    } else if (cthin) {
+      dec <- IMR:::svd_small_nc_cpp_fast(mat)
     } else {
-      if (k == min(nr, nc)) {
-        dec <- base::svd(mat)
-      } else if (rthin || cthin || k > 5) {
-        dec <- RSpectra::svds(mat, k)
-      } else {
-        dec <- irlba::irlba(mat, k)
-      }
+      dec <- base::svd(mat)
     }
-    if (!is.null(tol)) {
-      idx <- seq_len(sum(dec$d > tol))
-      return(list(
-        u = dec$u[, idx, drop = FALSE],
-        d = dec$d[idx],
-        v = dec$v[, idx, drop = FALSE]
-      ))
+
+    # If a specific k was requested, truncate the full exact SVD
+    if (!is.null(k)) {
+      dec$u <- dec$u[, seq_len(k), drop = FALSE]
+      dec$d <- dec$d[seq_len(k)]
+      dec$v <- dec$v[, seq_len(k), drop = FALSE]
+    }
+
+  } else {
+    #  large matrices with k != NULL
+    # irlba is faster for very small k or sparse matrices.
+    # RSpectra is faster for larger k or dense matrices.
+    if (inherits(mat, "sparseMatrix") || k <= 5) {
+      dec <- irlba::irlba(mat, nv = k)
     } else {
-      return(dec)
+      dec <- RSpectra::svds(mat, k)
     }
   }
 
+  # ---  Finally, truncate eigenvalues, if requested
+  if (!is.null(tol)) {
+    valid_k <- sum(dec$d > tol)
 
-# partial cross product at certain indices and returns a vector
-#'
-# partial_crossprod <-
-#   function(u, v, irow, pcol, vtranpose = FALSE) {
-#     dd <- dim(u)
-#     nnrow <- as.integer(dd[1])
-#     nrank <- dd[2]
-#     stopifnot(all(irow < nnrow))
-#     storage.mode(u) <- "double"
-#     storage.mode(v) <- "double"
-#     storage.mode(irow) <- "integer"
-#     storage.mode(pcol) <- "integer"
-#     nomega <- as.integer(length(irow))
-#     r = double(nomega)
+    if (valid_k < length(dec$d)) {
+      dec$u <- dec$u[, seq_len(valid_k), drop = FALSE]
+      dec$d <- dec$d[seq_len(valid_k)]
+      dec$v <- dec$v[, seq_len(valid_k), drop = FALSE]
+    }
+  }
+
+  return(dec)
+}
+
 #
-#     if (vtranpose) {
-#       nncol <- as.integer(nrow(v))
-#       stopifnot(nrank == ncol(v))
-#       pcrossprodt_call(nnrow, nncol, nrank, u, v, irow, pcol, nomega, r)
-#     } else {
-#       nncol <- as.integer(ncol(v))
-#       stopifnot(nrank == nrow(v))
-#       pcrossprod_call(nnrow, nncol, nrank, u, v, irow, pcol, nomega, r)
-#     }
-#     return(r)
-#
-#     # .Fortran(
-#     #   call_fun,
-#     #   nnrow,
-#     #   nncol,
-#     #   nrank,
-#     #   u,
-#     #   v,
-#     #   irow,
-#     #   pcol,
-#     #   nomega,
-#     #   r = double(nomega),
-#     #   PACKAGE = "IMR"
-#     # )$r
-#   }
+
+

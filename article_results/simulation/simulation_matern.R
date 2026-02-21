@@ -63,7 +63,7 @@ if (run_all) {
         test_error = IMR:::error_metric$rmse,
         rank.init = hpar$M$rank.min, maxit = 600,
         rank.step = 1, rank.limit = hpar$M$rank.max
-        # lambda0_fun = IMR::get_lambda_M_max
+        # lambda0_fun = IMR::get_lambda_m_max
       ))
 
 
@@ -136,7 +136,7 @@ if (run_all) {
         test_error = IMR:::error_metric$rmse,
         rank.init = hpar$M$rank.min, maxit = 600,
         rank.step = 1, rank.limit = hpar$M$rank.max
-        # lambda0_fun = IMR::get_lambda_M_max
+        # lambda0_fun = IMR::get_lambda_m_max
       ))
 
 
@@ -307,7 +307,7 @@ if (run_all) {
     test_error = IMR:::error_metric$rmse,
     rank.init = hpar$M$rank.min, maxit = 600,
     rank.step = 1, rank.limit = hpar$M$rank.max
-    # lambda0_fun = IMR::get_lambda_M_max
+    # lambda0_fun = IMR::get_lambda_m_max
   ))
 
 
@@ -335,7 +335,7 @@ if (run_all) {
   all_res <- list(
     IMR = fit.imrS, IMRS = fitsim,
     IMRSF = fitsimF, IMRSI = fitsimI,
-    true_eig = IMR::opt_svd(dat$theta, tol = 1e-6)$d,
+    true_eig = IMR::svd_opt(dat$theta, tol = 1e-6)$d,
     dat = dat,
     fitSI = fitsi, res = res
   )
@@ -404,7 +404,7 @@ data.frame(
   )
 ####
 data.frame(
-  IMR = c(fit.imrS$lambda_M, fit.imrS$lambda_M),
+  IMR = c(fit.imrS$lambda_m, fit.imrS$lambda_m),
   IMR_matern = c(fitsim$rows$best_parameter, fitsim$cols$best_parameter),
   IMR_shuffled = c(fitsimF$rows$best_parameter, fitsimF$cols$best_parameter),
   IMR_identity = c(fitsimI$rows$best_parameter, fitsimI$cols$best_parameter),

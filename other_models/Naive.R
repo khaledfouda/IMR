@@ -40,7 +40,7 @@ reduced_hat_decomp.H <- function(X) {
     },
     error = function(e) {
       message(paste("SvdH:", e))
-      IMR::opt_svd(H, rank)
+      IMR::svd_opt(H, rank)
     })
     list(u = svdH$u,
          v = svdH$d * t(svdH$v),

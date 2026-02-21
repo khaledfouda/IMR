@@ -25,12 +25,12 @@ frob_ratio_cpp <- function(Uold, Dsqold, Vold, U, Dsq, V) {
     .Call(`_IMR_frob_ratio_cpp`, Uold, Dsqold, Vold, U, Dsq, V)
 }
 
-update_A_cpp <- function(yS4, V, U, Dsq, lambda_M) {
-    .Call(`_IMR_update_A_cpp`, yS4, V, U, Dsq, lambda_M)
+update_A_cpp <- function(yS4, V, U, Dsq, lambda_m) {
+    .Call(`_IMR_update_A_cpp`, yS4, V, U, Dsq, lambda_m)
 }
 
-update_B_cpp <- function(yS4, U, V, Dsq, lambda_M) {
-    .Call(`_IMR_update_B_cpp`, yS4, U, V, Dsq, lambda_M)
+update_B_cpp <- function(yS4, U, V, Dsq, lambda_m) {
+    .Call(`_IMR_update_B_cpp`, yS4, U, V, Dsq, lambda_m)
 }
 
 partial_crossprod <- function(u, v, irow, pcol, vtranspose = FALSE) {

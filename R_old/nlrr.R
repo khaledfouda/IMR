@@ -206,7 +206,7 @@ nlrr.cv <- function(
     X = X,
     Z = Z,
     r = mfit$rank_M,
-    lambda_M = mfit$lambda_M,
+    lambda_m = mfit$lambda_m,
     lambda_beta = best_fit$lambda_beta,
     lambda_gamma = best_fit$lambda_gamma,
     intercept_row = intercept_row,
@@ -219,7 +219,7 @@ nlrr.cv <- function(
 
     )
   mfit$rank_M -> best_fit$rank_M
-  mfit$lambda_M -> best_fit$lambda_M
+  mfit$lambda_m -> best_fit$lambda_m
 
   return(best_fit)
 }

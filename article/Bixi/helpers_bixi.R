@@ -62,7 +62,7 @@ BKTR_Bixi_Wrapper <- function(
 
   results <- list(
     model = "BKTR",
-    lambda_M = NA,
+    lambda_m = NA,
     lambda_beta = NA
   )
 

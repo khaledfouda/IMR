@@ -247,7 +247,7 @@ bench::bench_time(results1_1$LS[[i]] <- IMR::imr.fit_no_low_rank(
   intercept_col = F, shared_information = T, maxit = 600,
   trace = F
 )) -> timee
-sdd = IMR::opt_svd(IMR::naive_MC(results1_1$LS[[i]]$resid), r,n,m,F,F)
+sdd = IMR::svd_opt(IMR::naive_MC(results1_1$LS[[i]]$resid), r,n,m,F,F)
 results1_1$LS[[i]][names(sdd)] <- sdd
 results1_1$LS[[i]]$time <- round(lubridate::time_length(timee[2], "seconds"), 2)
 

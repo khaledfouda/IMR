@@ -4,7 +4,7 @@ imr.fit <- function(
     X = NULL,
     Z = NULL,
     r = 2,
-    lambda_M = 0,
+    lambda_m = 0,
     lambda_beta = 0,
     lambda_gamma = 0,
     intercept_row = FALSE,
@@ -86,7 +86,7 @@ imr.fit <- function(
         gamma0 <- mfit$gamma0
       }
 
-      init <- opt_svd(naive_MC(as.matrix(mfit$resid)), r, nr, nc, FALSE, FALSE)
+      init <- svd_opt(naive_MC(as.matrix(mfit$resid)), r, nr, nc, FALSE, FALSE)
     } else {
       if (beta_flag) {
         beta <- matrix(0, ncol(X), nc)
@@ -103,7 +103,7 @@ imr.fit <- function(
         gamma0 <- rep(0, nc)
       }
 
-      init <- opt_svd(naive_MC(Y), r, nr, nc, FALSE, FALSE)
+      init <- svd_opt(naive_MC(Y), r, nr, nc, FALSE, FALSE)
     }
 
     U <- init$u
@@ -176,7 +176,7 @@ imr.fit <- function(
 
     #  Update (V, Dsq, U) from the "B" side --------------------------------
 
-    B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_M)
+    B_mat <- update_B_cpp(Y, U, V, Dsq, lambda_m)
     B_mat <- svd_small_nc_cpp(B_mat)
 
     Dsq <- trim_eig(B_mat$d, eig.tol)
@@ -195,7 +195,7 @@ imr.fit <- function(
 
     # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
 
-    A_mat <- update_A_cpp(Y, V, U, Dsq, lambda_M)
+    A_mat <- update_A_cpp(Y, V, U, Dsq, lambda_m)
     A_mat <- svd_small_nc_cpp(A_mat)
 
     # Dsq <- A_mat$d[A_mat$d > 0]
@@ -212,7 +212,7 @@ imr.fit <- function(
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
     if (trace) {
-      obj <- (0.5 * sum(Y@x^2) + lambda_M * sum(Dsq) +
+      obj <- (0.5 * sum(Y@x^2) + lambda_m * sum(Dsq) +
         ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
         ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
