@@ -2,30 +2,21 @@
 % Please edit documentation in R/hyperparameters.R
 \name{get_lambda_lasso_max}
 \alias{get_lambda_lasso_max}
-\title{this return that max value for either row covariates or column covariates.
-you must either privde X or Z. do not provide both}
+\title{Find the minimum Lasso lambda that forces all covariates to zero}
 \usage{
 get_lambda_lasso_max(
-  y_train,
-  X = NULL,
-  Z = NULL,
-  y_valid = NULL,
-  y = NULL,
+  data,
+  target = c("beta", "gamma"),
+  rank = 2,
+  lambda_m = 0,
   intercept_row = TRUE,
   intercept_col = TRUE,
-  shared_information = FALSE,
-  hpar = get_imr_default_hparams(),
-  r = 5,
-  interior_loop_length = 20,
-  maxit = 100,
-  thresh = 0.001,
-  init_maxit = 100,
-  init_thresh = 1e-04,
-  verbose = 0,
-  tol = 1
+  shared_effects = FALSE,
+  bisection_iter = 15,
+  convergence = imr_convergence(),
+  verbose = 0
 )
 }
 \description{
-this return that max value for either row covariates or column covariates.
-you must either privde X or Z. do not provide both
+Find the minimum Lasso lambda that forces all covariates to zero
 }

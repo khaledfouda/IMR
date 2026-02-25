@@ -13,7 +13,7 @@ imr_solver(
   shared_beta,
   shared_gamma,
   r,
-  lambda_M,
+  lambda_m,
   lambda_beta,
   lambda_gamma,
   Ur,

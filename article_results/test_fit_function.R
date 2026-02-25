@@ -37,12 +37,19 @@ get_lambda_m_max(data, intercept_row = T, intercept_col = T,
                  shared_beta = F, shared_gamma = F, convergence = convergence)
 
 
+IMR::get_lambda_lasso_max(data, target = "gamma", rank = 5, lambda_m = 0.2,
+                     intercept_row = TRUE, intercept_col = TRUE,
+                     shared_effects = TRUE, convergence = convergence, verbose=2)
 
+# parameters for lambda_lasso_max
+target = "beta"
+rank = 5
+lambda_m = 0.1
 intercept_row = FALSE
 intercept_col = FALSE
-shared_beta = shared_gamma = FALSE
+shared_beta = shared_gamma = shared_effects = FALSE
 bisection_iter = 15
-lambda_m = 0
+verbose = 2
 
 #====
 

@@ -519,3 +519,16 @@ print.imr_convergence <- function(x, ...) {
   cat("================================\n")
   invisible(x)
 }
+
+
+#' @export
+mc_with_means <- function(mat) {
+  # Calculate row and column means, excluding NAs
+  if (!IMR::is.Incomplete(mat)) mat <- IMR::as.Incomplete(mat)
+  row_means <- IMR:::row_means_cpp(mat@x, mat@i, nrow(mat), ncol(mat))
+  col_means <- IMR:::col_means_cpp(mat@x, mat@p, nrow(mat), ncol(mat))
+  ij <- Matrix::which(mat == 0, arr.ind = TRUE)
+  mat[ij] <- (row_means[ij[, 1]] + col_means[ij[, 2]]) / 2
+  mat <- Matrix::drop0(mat)
+  return(mat)
+}
