@@ -39,7 +39,8 @@ Margins in this document are roughly 0.75 inches all around, letter size paper.
 #| fig-cap: A not very interesting scatterplot
 library(tidyverse)
 ds <- tibble(x = 1:5, y = 5:1)
-ggplot(ds, aes(x = x, y = y)) + geom_point()
+ggplot(ds, aes(x = x, y = y)) +
+  geom_point()
 ```
 
 @fig-scatter1 displays a non-stochastic relationship.

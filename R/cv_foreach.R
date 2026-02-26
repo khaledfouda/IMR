@@ -70,8 +70,8 @@ imr.cv_2 <- function(
       tol = thresh
     )
   }
-  if(!gamma_flag) hpar$gamma$max <- hpar$gamma$length <- 1
-  if(!beta_flag) hpar$beta$max   <- hpar$beta$length <- 1
+  if (!gamma_flag) hpar$gamma$max <- hpar$gamma$length <- 1
+  if (!beta_flag) hpar$beta$max <- hpar$beta$length <- 1
   # =================================================================================
   #---------------------------------------------------
   # fixed: all. variable: none. number of fits: 1.
@@ -178,7 +178,7 @@ imr.cv_2 <- function(
 
   cl <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(cl)
-  #parallel::clusterExport(cl, varlist = c("imr.fit"))
+  # parallel::clusterExport(cl, varlist = c("imr.fit"))
   results <-
     foreach::foreach(
       lambda_laplace = seq(hpar$laplace$min, hpar$laplace$max, hpar$laplace$step_sizes[1]),
@@ -192,8 +192,8 @@ imr.cv_2 <- function(
       lambda_gamma = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length),
       .combine = rbind
     ) %dopar% {
-      #RhpcBLASctl::blas_set_num_threads(1)
-      #RhpcBLASctl::omp_set_num_threads(1)
+      # RhpcBLASctl::blas_set_num_threads(1)
+      # RhpcBLASctl::omp_set_num_threads(1)
       single_fit(
         lambda_laplace = lambda_laplace,
         lambda_beta = lambda_beta,
@@ -226,9 +226,8 @@ imr.cv_2 <- function(
     steps <- hpar$laplace$step_sizes # [1:nsteps_laplace]
 
     for (i in 2:nsteps) {
-
-      startp <- max(hpar$laplace$min, results[1, ]$lambda_laplace - steps[i-1])
-      endp <- min(hpar$laplace$max, results[1, ]$lambda_laplace + steps[i-1])
+      startp <- max(hpar$laplace$min, results[1, ]$lambda_laplace - steps[i - 1])
+      endp <- min(hpar$laplace$max, results[1, ]$lambda_laplace + steps[i - 1])
       grid <- seq(startp, endp, steps[i])
       # remove those that already exist
       grid <- setdiff(grid, unique(results$lambda_laplace))
@@ -256,38 +255,46 @@ imr.cv_2 <- function(
         }
       )
       dplyr::arrange(results, error, desc(lambda_laplace), desc(lambda_beta), desc(lambda_gamma)) ->
-        results
+      results
     }
   }
   parallel::stopCluster(cl)
-  #========= tuning is over, we now do one final fit and return >>
+  # ========= tuning is over, we now do one final fit and return >>
   if (trace >= 1) {
     message(sprintf(
-      paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-              "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+      paste0(
+        "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+        "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"
+      ),
       hpar$beta$value,
       hpar$gamma$value,
-      results[1,]$lambda_laplace,
-      results[1,]$rank,
-      results[1,]$error
+      results[1, ]$lambda_laplace,
+      results[1, ]$rank,
+      results[1, ]$error
     ))
   }
 
 
   if (!is.null(data$Y)) {
-    if(!is.null(data$similarity_rows) && results[1,]$lambda_laplace > 0)
-      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
-                                                            results[1,]$lambda_laplace)
-    if(!is.null(data$similarity_cols) && results[1,]$lambda_laplace > 0)
-      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
-                                                            results[1,]$lambda_laplace)
+    if (!is.null(data$similarity_rows) && results[1, ]$lambda_laplace > 0) {
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(
+        data$similarity_row,
+        results[1, ]$lambda_laplace
+      )
+    }
+    if (!is.null(data$similarity_cols) && results[1, ]$lambda_laplace > 0) {
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(
+        data$similarity_col,
+        results[1, ]$lambda_laplace
+      )
+    }
 
     fit <- IMR::imr.fit(
       Y = data$Y,
       X = data$Xq,
       Z = data$Zq,
-      r = results[1,]$rank,
-      lambda_m = results[1,]$lambda_laplace,
+      r = results[1, ]$rank,
+      lambda_m = results[1, ]$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
@@ -305,8 +312,7 @@ imr.cv_2 <- function(
     )
 
 
-    fit$params <- results[1,]
-    return(list(history = results, fit=fit, hpar=hpar))
-
-}
+    fit$params <- results[1, ]
+    return(list(history = results, fit = fit, hpar = hpar))
+  }
 }

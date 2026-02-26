@@ -18,7 +18,6 @@ imr.cv_21 <- function(
   init_thresh = 1e-4,
   init_maxit = 500,
   seed = NULL,
-
   separate = FALSE
 ) {
   #-------------------
@@ -87,8 +86,8 @@ imr.cv_21 <- function(
       tol = thresh
     )
   }
-  if(!gamma_flag) hpar$gamma$max <- hpar$gamma$length <- 1
-  if(!beta_flag) hpar$beta$max   <- hpar$beta$length <- 1
+  if (!gamma_flag) hpar$gamma$max <- hpar$gamma$length <- 1
+  if (!beta_flag) hpar$beta$max <- hpar$beta$length <- 1
   # =================================================================================
   #---------------------------------------------------
   # fixed: all. variable: none. number of fits: 1.
@@ -187,40 +186,42 @@ imr.cv_21 <- function(
       rank = results$best_parameter,
       error = results$best_error
     ) -> res
-    if(return_fit)
+    if (return_fit) {
       return(list(res = res, fit = results$best_fit))
+    }
     return(res)
   }
 
-  #================================================================================
+  # ================================================================================
   initial_fit <- IMR::imr.fit_no_low_rank(data$y_train, data$Xq, data$Zq,
-                                          hpar$beta$value,
-                                          hpar$gamma$value,
-                                          intercept_row = intercept_row,
-                                          intercept_col = intercept_col,
-                                          shared_information = shared_information,
-                                          maxit = init_maxit,
-                                          thresh = init_thresh)
-  init <- IMR::svd_opt(initial_fit$resid, hpar$rank$default, rthin =  FALSE, cthin =  FALSE)
+    hpar$beta$value,
+    hpar$gamma$value,
+    intercept_row = intercept_row,
+    intercept_col = intercept_col,
+    shared_information = shared_information,
+    maxit = init_maxit,
+    thresh = init_thresh
+  )
+  init <- IMR::svd_opt(initial_fit$resid, hpar$rank$default, rthin = FALSE, cthin = FALSE)
   initial_fit$u <- init$u
   initial_fit$d <- init$d
   initial_fit$v <- init$v
-  initial_fit$resid = NULL
-  #================================================================================
+  initial_fit$resid <- NULL
+  # ================================================================================
   # what we have >> beta$min -> beta$max with length
   #                 gamma$min -> gamma$max with length
   #                 laplace$min -> laplace$max  with step_sizes[1]
 
   cl <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(cl)
-  #parallel::clusterExport(cl, varlist = c("imr.fit"))
+  # parallel::clusterExport(cl, varlist = c("imr.fit"))
 
-  beta_seq = seq(hpar$beta$min, hpar$beta$max, length.out = hpar$beta$length)
-  gamma_seq = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length)
+  beta_seq <- seq(hpar$beta$min, hpar$beta$max, length.out = hpar$beta$length)
+  gamma_seq <- seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length)
 
-  if(separate){
-    gamma_seq_old = gamma_seq
-    gamma_seq = c(hpar$gamma$value)
+  if (separate) {
+    gamma_seq_old <- gamma_seq
+    gamma_seq <- c(hpar$gamma$value)
   }
   results <-
     foreach::foreach(
@@ -231,31 +232,30 @@ imr.cv_21 <- function(
       lambda_gamma = gamma_seq,
       .combine = rbind
     ) %dopar% {
-      lamseq = seq(hpar$laplace$max, hpar$laplace$min, -hpar$laplace$step_sizes[1])
-      warm_start = initial_fit
-      results = data.frame()
-      for(lambda_laplace in lamseq){
-
-      res <- single_fit(
-        lambda_laplace = lambda_laplace,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        data = data,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        hpar = hpar,
-        shared_information = shared_information,
-        error_function = error_function,
-        thresh = thresh,
-        trace = trace,
-        maxit = maxit,
-        ls_initial = ls_initial,
-        seed = seed,
-        return_fit = TRUE,
-        warm_start = warm_start
-      )
-      warm_start = res$fit
-      results <- rbind(results, res$res)
+      lamseq <- seq(hpar$laplace$max, hpar$laplace$min, -hpar$laplace$step_sizes[1])
+      warm_start <- initial_fit
+      results <- data.frame()
+      for (lambda_laplace in lamseq) {
+        res <- single_fit(
+          lambda_laplace = lambda_laplace,
+          lambda_beta = lambda_beta,
+          lambda_gamma = lambda_gamma,
+          data = data,
+          intercept_row = intercept_row,
+          intercept_col = intercept_col,
+          hpar = hpar,
+          shared_information = shared_information,
+          error_function = error_function,
+          thresh = thresh,
+          trace = trace,
+          maxit = maxit,
+          ls_initial = ls_initial,
+          seed = seed,
+          return_fit = TRUE,
+          warm_start = warm_start
+        )
+        warm_start <- res$fit
+        results <- rbind(results, res$res)
       }
       results
     }
@@ -268,29 +268,30 @@ imr.cv_21 <- function(
   hpar$gamma$value <- results[1, ]$lambda_gamma
   if (trace >= 1) {
     message(sprintf(
-      paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-              "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+      paste0(
+        "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+        "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"
+      ),
       hpar$beta$value,
       hpar$gamma$value,
-      results[1,]$lambda_laplace,
-      results[1,]$rank,
-      results[1,]$error
+      results[1, ]$lambda_laplace,
+      results[1, ]$rank,
+      results[1, ]$error
     ))
   }
   # ===========================================================================
-  if(separate){
-    gamma_seq = gamma_seq_old
-    lambda_beta = hpar$beta$value
+  if (separate) {
+    gamma_seq <- gamma_seq_old
+    lambda_beta <- hpar$beta$value
     results <-
       foreach::foreach(
         lambda_gamma = gamma_seq,
         .combine = rbind
       ) %dopar% {
-        lamseq = seq(hpar$laplace$min, hpar$laplace$max, hpar$laplace$step_sizes[1])
-        warm_start = initial_fit
-        results = data.frame()
-        for(lambda_laplace in lamseq){
-
+        lamseq <- seq(hpar$laplace$min, hpar$laplace$max, hpar$laplace$step_sizes[1])
+        warm_start <- initial_fit
+        results <- data.frame()
+        for (lambda_laplace in lamseq) {
           res <- single_fit(
             lambda_laplace = lambda_laplace,
             lambda_beta = lambda_beta,
@@ -309,26 +310,28 @@ imr.cv_21 <- function(
             return_fit = TRUE,
             warm_start = warm_start
           )
-          warm_start = res$fit
+          warm_start <- res$fit
           results <- rbind(results, res$res)
         }
         results
       }
     # ============================================================================
     dplyr::arrange(results, error, desc(lambda_laplace), desc(lambda_beta), desc(lambda_gamma)) ->
-      results
+    results
     hpar$beta$value <- results[1, ]$lambda_beta
     hpar$gamma$value <- results[1, ]$lambda_gamma
     # ===========================================================================
     if (trace >= 1) {
       message(sprintf(
-        paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-                "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+        paste0(
+          "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+          "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"
+        ),
         hpar$beta$value,
         hpar$gamma$value,
-        results[1,]$lambda_laplace,
-        results[1,]$rank,
-        results[1,]$error
+        results[1, ]$lambda_laplace,
+        results[1, ]$rank,
+        results[1, ]$error
       ))
     }
   }
@@ -340,9 +343,8 @@ imr.cv_21 <- function(
     steps <- hpar$laplace$step_sizes # [1:nsteps_laplace]
 
     for (i in 2:nsteps) {
-
-      startp <- max(hpar$laplace$min, results[1, ]$lambda_laplace - steps[i-1])
-      endp <- min(hpar$laplace$max, results[1, ]$lambda_laplace + steps[i-1])
+      startp <- max(hpar$laplace$min, results[1, ]$lambda_laplace - steps[i - 1])
+      endp <- min(hpar$laplace$max, results[1, ]$lambda_laplace + steps[i - 1])
       grid <- seq(startp, endp, steps[i])
       # remove those that already exist
       grid <- setdiff(grid, unique(results$lambda_laplace))
@@ -370,38 +372,46 @@ imr.cv_21 <- function(
         }
       )
       dplyr::arrange(results, error, desc(lambda_laplace), desc(lambda_beta), desc(lambda_gamma)) ->
-        results
+      results
     }
   }
   parallel::stopCluster(cl)
-  #========= tuning is over, we now do one final fit and return >>
+  # ========= tuning is over, we now do one final fit and return >>
   if (trace >= 1) {
     message(sprintf(
-      paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-              "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+      paste0(
+        "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+        "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"
+      ),
       hpar$beta$value,
       hpar$gamma$value,
-      results[1,]$lambda_laplace,
-      results[1,]$rank,
-      results[1,]$error
+      results[1, ]$lambda_laplace,
+      results[1, ]$rank,
+      results[1, ]$error
     ))
   }
 
 
   if (!is.null(data$Y)) {
-    if(!is.null(data$similarity_rows) && results[1,]$lambda_laplace > 0)
-      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
-                                                            results[1,]$lambda_laplace)
-    if(!is.null(data$similarity_cols) && results[1,]$lambda_laplace > 0)
-      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
-                                                            results[1,]$lambda_laplace)
+    if (!is.null(data$similarity_rows) && results[1, ]$lambda_laplace > 0) {
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(
+        data$similarity_row,
+        results[1, ]$lambda_laplace
+      )
+    }
+    if (!is.null(data$similarity_cols) && results[1, ]$lambda_laplace > 0) {
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(
+        data$similarity_col,
+        results[1, ]$lambda_laplace
+      )
+    }
 
     fit <- IMR::imr.fit(
       Y = data$Y,
       X = data$Xq,
       Z = data$Zq,
-      r = results[1,]$rank,
-      lambda_m = results[1,]$lambda_laplace,
+      r = results[1, ]$rank,
+      lambda_m = results[1, ]$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
@@ -419,8 +429,7 @@ imr.cv_21 <- function(
     )
 
 
-    fit$params <- results[1,]
-    return(list(history = results, fit=fit, hpar=hpar))
-
-}
+    fit$params <- results[1, ]
+    return(list(history = results, fit = fit, hpar = hpar))
+  }
 }

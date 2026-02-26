@@ -1,6 +1,5 @@
 #' Do not export
 inv <- function(X, tol = sqrt(.Machine$double.eps)) {
-
   # Ensure X is a base matrix
   if (!is.matrix(X)) X <- as.matrix(X)
 
@@ -9,19 +8,25 @@ inv <- function(X, tol = sqrt(.Machine$double.eps)) {
   if (is_square) {
     #  Try Cholesky for symmetric matrices
     if (isSymmetric(X)) {
-      tryCatch({
-        return(chol2inv(chol(X)))
-      }, error = function(e) {
-        # not positive-definite
-      })
+      tryCatch(
+        {
+          return(chol2inv(chol(X)))
+        },
+        error = function(e) {
+          # not positive-definite
+        }
+      )
     }
     # standard solve or ginv if it fails
-    tryCatch({
-      return(solve(X))
-    }, error = function(e) {
-      #if singular
-      return(MASS::ginv(X, tol = tol))
-    })
+    tryCatch(
+      {
+        return(solve(X))
+      },
+      error = function(e) {
+        # if singular
+        return(MASS::ginv(X, tol = tol))
+      }
+    )
   }
 
   # ginv for rectangle matrices
@@ -110,7 +115,7 @@ verify_low_rank <- function(M, J, min_eigv = 1e-6) {
 }
 
 # Do not export
-verify_warm_start <- function(M, J, min_eigv = 1e-6) {
+verify_warm_start <- function(M, J, min_eigv = 1e-16) {
   if (is.null(M) || is.null(M$d) || is.null(M$u) || is.null(M$v)) {
     warning("warm start verification failed - missing u, d, or v. Reinitializing...")
     return(NULL)
@@ -173,11 +178,21 @@ error_metrics <- list(
 #' Return one of the error metrics above.
 #' Do not export
 get_metric <- function(metric) {
-  if (stringr::str_to_lower(metric) == "rmse")        return(error_metrics$rmse)
-  if (stringr::str_to_lower(metric) == "rrmse")       return(error_metrics$rrmse)
-  if (stringr::str_to_lower(metric) == "mae")         return(error_metrics$mae)
-  if (stringr::str_to_lower(metric) == "mape")        return(error_metrics$mape)
-  if (stringr::str_to_lower(metric) == "spearman")    return(error_metric$spearman)
+  if (stringr::str_to_lower(metric) == "rmse") {
+    return(error_metrics$rmse)
+  }
+  if (stringr::str_to_lower(metric) == "rrmse") {
+    return(error_metrics$rrmse)
+  }
+  if (stringr::str_to_lower(metric) == "mae") {
+    return(error_metrics$mae)
+  }
+  if (stringr::str_to_lower(metric) == "mape") {
+    return(error_metrics$mape)
+  }
+  if (stringr::str_to_lower(metric) == "spearman") {
+    return(error_metric$spearman)
+  }
   stop("Unvalid error metric")
 }
 
@@ -186,8 +201,9 @@ get_metric <- function(metric) {
 evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
   p <- as.numeric(predicted)
   a <- as.numeric(actual)
-  if(stringr::str_to_lower(metric) != "all")
+  if (stringr::str_to_lower(metric) != "all") {
     return(IMR:::get_metric(metric)(p, a, na.rm))
+  }
   tibble(
     RMSE            = error_metrics$rmse(p, a, na.rm),
     Rel_RMSE        = error_metrics$rrmse(p, a, na.rm),
@@ -203,7 +219,6 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 svd_opt <- function(mat,
                     k = NULL,
                     tol = NULL) {
-
   nr <- nrow(mat)
   nc <- ncol(mat)
 
@@ -233,7 +248,6 @@ svd_opt <- function(mat,
       dec$d <- dec$d[seq_len(k)]
       dec$v <- dec$v[, seq_len(k), drop = FALSE]
     }
-
   } else {
     #  large matrices with k != NULL
     # irlba is faster for very small k or sparse matrices.
@@ -260,5 +274,3 @@ svd_opt <- function(mat,
 }
 
 #
-
-

@@ -1,34 +1,37 @@
 #' @export
-imr_convergence <- function(maxit = 300,
-                        thresh = 1e-5,
-                        trace = FALSE,
-                        ls_initial = TRUE) {
+imr_convergence <- function(maxit = 600,
+                            thresh = 1e-5,
+                            trace = FALSE,
+                            ls_initial = TRUE) {
   structure(
-    list(maxit = maxit,
-         thresh = thresh,
-         trace = trace,
-         ls_initial = ls_initial),
+    list(
+      maxit = maxit,
+      thresh = thresh,
+      trace = trace,
+      ls_initial = ls_initial
+    ),
     class = "imr_convergence"
   )
 }
 
 #' @export
 imr_fit <- function(
-    data,
-    rank = 2,
-    lambda_m = 0,
-    lambda_beta = 0,
-    lambda_gamma = 0,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    shared_beta = FALSE,
-    shared_gamma = FALSE,
-    convergence = imr_convergence(),
-    warm_start = NULL){
-
+  data,
+  rank = 2,
+  lambda_m = 0,
+  lambda_beta = 0,
+  lambda_gamma = 0,
+  intercept_row = FALSE,
+  intercept_col = FALSE,
+  shared_beta = FALSE,
+  shared_gamma = FALSE,
+  convergence = imr_convergence(),
+  warm_start = NULL,
+  training = FALSE # if training use y_train instead of Y.
+) {
   # validation
-  if (!inherits(data, "imr_data")) stop("Data must be an 'imr_data' object.")
-  if (!inherits(convergence, "imr_convergence")) convergence <- imr_convergence()
+  stopifnot(inherits(data, "imr_data"))
+  stopifnot(inherits(convergence, "imr_convergence"))
 
 
   if (inherits(warm_start, "imr_fit")) {
@@ -36,9 +39,8 @@ imr_fit <- function(
   }
 
 
-
   result_list <- imr_solver(
-    Y = data$Y,
+    Y = if(training) data$y_train else data$Y,
     X = data$Xq,
     Z = data$Zq,
     r = rank,
@@ -72,13 +74,14 @@ imr_fit <- function(
       residuals = result_list$residuals,
       meta = list(
         rank = rank,
-        lambdas = c(M=lambda_m, beta=lambda_beta, gamma=lambda_gamma),
+        lambdas = c(M = lambda_m, beta = lambda_beta, gamma = lambda_gamma),
         intercepts = c(row = intercept_row, col = intercept_col),
-        shared_effects = c(beta=shared_beta, gamma=shared_gamma),
+        shared_effects = c(beta = shared_beta, gamma = shared_gamma),
         n_iter = result_list$n_iter,
         converged = result_list$n_iter < convergence$maxit,
+        training = training,
         # statistic for print function
-        tss = sum((data$Y@x - mean(data$Y@x))^2)
+        tss = if(training) 0 else sum((data$Y@x - mean(data$Y@x))^2)
       ),
       convergence = convergence
     ),
@@ -97,7 +100,8 @@ imr_solver <- function(
   r, lambda_m, lambda_beta, lambda_gamma,
   Ur, dr, Uc, dc,
   convergence,
-  warm_start) {
+  warm_start
+) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is.Incomplete(Y))
   dims <- dim(Y)
@@ -109,9 +113,9 @@ imr_solver <- function(
   Y@x <- Y@x + 0 # force a copy so the original matrix doesn't get modified by C++
 
   # Unpack convergence ----------------------------------------------------------
-  maxit  <- convergence$maxit
+  maxit <- convergence$maxit
   thresh <- convergence$thresh
-  trace  <- convergence$trace
+  trace <- convergence$trace
   ls_initial <- convergence$ls_initial
 
   # Laplacian flags (L_* expected as eigendecompositions) -------------------
@@ -120,17 +124,18 @@ imr_solver <- function(
   laplace_r_flag <- !(is.null(Ur) || is.null(dr))
   laplace_c_flag <- !(is.null(Uc) || is.null(dc))
   low_rank_flag <- !(is.null(r) || is.null(lambda_m) || r <= 0)
-  if(!low_rank_flag) ls_initial = FALSE
+  if (!low_rank_flag) ls_initial <- FALSE
   #-------------------------------------------------
-  if(laplace_r_flag) dr = dr * lambda_m
-  if(laplace_c_flag) dc = dc * lambda_m
+  if (laplace_r_flag) dr <- dr * lambda_m
+  if (laplace_c_flag) dc <- dc * lambda_m
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
 
   # 3) Warm-start or initialize ------------------------------------------------
-  if(!is.null(warm_start))
+  if (!is.null(warm_start)) {
     warm_start <- verify_warm_start(warm_start, r)
+  }
 
   if (!is.null(warm_start)) {
     required <- c("u", "d", "v", "beta", "gamma", "beta0", "gamma0")
@@ -140,17 +145,17 @@ imr_solver <- function(
 
     if (beta_flag) {
       beta <- warm_start$beta
-      if(shared_beta){
+      if (shared_beta) {
         xbeta <- X %*% beta
-      }else{
+      } else {
         xb_obs <- partial_crossprod(X, beta, irow, pcol)
       }
     }
     if (gamma_flag) {
       gamma <- warm_start$gamma
-      if(shared_gamma){
+      if (shared_gamma) {
         gammaz <- tcrossprod(gamma, Z)
-      }else{
+      } else {
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
       }
     }
@@ -174,21 +179,22 @@ imr_solver <- function(
         r = 0, lambda_m = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
         convergence = convergence,
-        warm_start = NULL)
+        warm_start = NULL
+      )
 
       if (beta_flag) {
         beta <- mfit$beta
-        if(shared_beta){
+        if (shared_beta) {
           xbeta <- X %*% beta
-        }else{
+        } else {
           xb_obs <- partial_crossprod(X, beta, irow, pcol)
         }
       }
       if (gamma_flag) {
         gamma <- mfit$gamma
-        if(shared_gamma){
+        if (shared_gamma) {
           gammaz <- tcrossprod(gamma, Z)
-        }else{
+        } else {
           zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
         }
       }
@@ -202,19 +208,19 @@ imr_solver <- function(
       init <- IMR::svd_opt(mfit$residuals, r)
     } else {
       if (beta_flag) {
-        if(shared_beta){
+        if (shared_beta) {
           beta <- rep(0, ncol(X))
           xbeta <- rep(0, nr)
-        }else{
+        } else {
           beta <- matrix(0, ncol(X), nc)
           xb_obs <- rep(0, nz)
         }
       }
       if (gamma_flag) {
-        if(shared_gamma){
+        if (shared_gamma) {
           gamma <- rep(0, ncol(Z))
           gammaz <- rep(0, nc)
-        }else{
+        } else {
           gamma <- matrix(0, nr, ncol(Z))
           zg_obs <- rep(0, nz)
         }
@@ -225,11 +231,12 @@ imr_solver <- function(
       if (intercept_col) {
         gamma0 <- rep(0, nc)
       }
-      if(low_rank_flag)
+      if (low_rank_flag) {
         init <- IMR::svd_opt(Y, r)
+      }
     }
 
-    if(low_rank_flag){
+    if (low_rank_flag) {
       U <- init$u
       Dsq <- init$d
       V <- init$v
@@ -239,7 +246,7 @@ imr_solver <- function(
 
 
   #  Update residuals (first iteration only)  -----------------------------
-  if(low_rank_flag){
+  if (low_rank_flag) {
     M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
     Y@x <- Y@x - M_obs
   }
@@ -264,7 +271,7 @@ imr_solver <- function(
     beta_old <- beta
     gamma_old <- gamma
 
-    if(low_rank_flag){
+    if (low_rank_flag) {
       #  Update (V, Dsq, U) from the "B" side --------------------------------
       # B_mat = BD
       if (laplace_c_flag) {
@@ -305,16 +312,16 @@ imr_solver <- function(
 
     #  Update beta via soft-threshold --------------------------------------
     if (beta_flag) {
-      if(shared_beta){
+      if (shared_beta) {
         beta <- soft_threshold_cpp(
-          crossprod(X, row_means_cpp(Y@x, Y@i, nr, nc) ) + beta,
+          crossprod(X, row_means_cpp(Y@x, Y@i, nr, nc)) + beta,
           lambda_beta
         )
         old_val <- xbeta
         xbeta <- X %*% beta
         change <- old_val - xbeta
         add_to_rows_inplace_cpp(Y@x, irow, change)
-      }else{
+      } else {
         beta <- soft_threshold_cpp(
           as.matrix((crossprod(X, Y)) + beta),
           lambda_beta
@@ -328,7 +335,7 @@ imr_solver <- function(
 
     #  Update gamma via soft-threshold -------------------------------------
     if (gamma_flag) {
-      if(shared_gamma){
+      if (shared_gamma) {
         gamma <- soft_threshold_cpp(
           col_means_cpp(Y@x, Y@p, nr, nc) %*% Z + gamma,
           lambda_gamma
@@ -337,7 +344,7 @@ imr_solver <- function(
         gammaz <- tcrossprod(gamma, Z)
         change <- old_val - gammaz
         add_to_cols_inplace_cpp(Y@x, pcol, change)
-      }else{
+      } else {
         gamma <- soft_threshold_cpp(
           as.matrix(Y %*% Z + gamma),
           lambda_gamma
@@ -368,17 +375,20 @@ imr_solver <- function(
 
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- 0
-    if(low_rank_flag)
+    if (low_rank_flag) {
       ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
-    if(beta_flag){
-      denom = sum(beta_old*beta_old)
-      if(denom > 0)
-        ratio <- ratio + sum((beta_old-beta)^2) / denom
     }
-    if(gamma_flag){
-      denom = sum(gamma_old*gamma_old)
-      if(denom > 0)
-        ratio <- ratio + sum((gamma_old-gamma)^2) / denom
+    if (beta_flag) {
+      denom <- sum(beta_old * beta_old)
+      if (denom > 0) {
+        ratio <- ratio + sum((beta_old - beta)^2) / denom
+      }
+    }
+    if (gamma_flag) {
+      denom <- sum(gamma_old * gamma_old)
+      if (denom > 0) {
+        ratio <- ratio + sum((gamma_old - gamma)^2) / denom
+      }
     }
     if (trace) {
       obj <- (0.5 * sum(Y@x^2) +
@@ -394,11 +404,11 @@ imr_solver <- function(
   }
 
   # 5) Trim effective rank and return -----------------------------------------
-  if(low_rank_flag){
+  if (low_rank_flag) {
     r_eff <- min(max(1, sum(Dsq > 0)), r)
-    U = U[, seq_len(r_eff), drop = FALSE]
-    Dsq = Dsq[seq_len(r_eff)]
-    V = V[, seq_len(r_eff), drop = FALSE]
+    U <- U[, seq_len(r_eff), drop = FALSE]
+    Dsq <- Dsq[seq_len(r_eff)]
+    V <- V[, seq_len(r_eff), drop = FALSE]
   }
 
   list(
@@ -415,17 +425,15 @@ imr_solver <- function(
 }
 
 
-
 #' @export
 print.imr_fit <- function(x, ...) {
-
   cat("\n== IMR Fitted Model ==\n")
 
   has_low_rank <- !is.null(x$coefficients$d) && length(x$coefficients$d) > 0
-  has_row_cov  <- !is.null(x$coefficients$beta)
-  has_col_cov  <- !is.null(x$coefficients$gamma)
-  has_row_int  <- !is.null(x$coefficients$beta0)
-  has_col_int  <- !is.null(x$coefficients$gamma0)
+  has_row_cov <- !is.null(x$coefficients$beta)
+  has_col_cov <- !is.null(x$coefficients$gamma)
+  has_row_int <- !is.null(x$coefficients$beta0)
+  has_col_int <- !is.null(x$coefficients$gamma0)
 
   # --- 1. Equation ---
   terms <- c()
@@ -438,8 +446,8 @@ print.imr_fit <- function(x, ...) {
     terms <- c(terms, paste0("\u03b3", "\u00b7Z"))
   }
   if (has_low_rank) terms <- c(terms, "M")
-  if (has_row_int)  terms <- c(terms, "\u03b2\u2080")
-  if (has_col_int)  terms <- c(terms, "\u03b3\u2080")
+  if (has_row_int) terms <- c(terms, "\u03b2\u2080")
+  if (has_col_int) terms <- c(terms, "\u03b3\u2080")
   if (length(terms) == 0) terms <- c("0")
 
   cat(sprintf("Equation:  Y ~ %s\n", paste(terms, collapse = " + ")))
@@ -455,26 +463,28 @@ print.imr_fit <- function(x, ...) {
   }
 
   cat("\n-- Coefficient Dimensions --\n")
-  if (has_row_cov) cat(sprintf("  %-7s : %s\n", "\u03b2",   get_dim_str(x$coefficients$beta)))
-  if (has_col_cov) cat(sprintf("  %-7s : %s\n", "\u03b3",  get_dim_str(x$coefficients$gamma)))
-  if (has_row_int) cat(sprintf("  %-9s : %s\n", "\u03b2\u2080",  get_dim_str(x$coefficients$beta0)))
+  if (has_row_cov) cat(sprintf("  %-7s : %s\n", "\u03b2", get_dim_str(x$coefficients$beta)))
+  if (has_col_cov) cat(sprintf("  %-7s : %s\n", "\u03b3", get_dim_str(x$coefficients$gamma)))
+  if (has_row_int) cat(sprintf("  %-9s : %s\n", "\u03b2\u2080", get_dim_str(x$coefficients$beta0)))
   if (has_col_int) cat(sprintf("  %-9s : %s\n", "\u03b3\u2080", get_dim_str(x$coefficients$gamma0)))
   if (has_low_rank) {
     # It's also helpful to remind them of the dimensions of the latent factor matrices
-    cat(sprintf("  %-6s : U(%d x %d), D(length %d), V(%d x %d)\n",
-                "M", nrow(x$coefficients$u), ncol(x$coefficients$u),
-                length(x$coefficients$d),
-                nrow(x$coefficients$v), ncol(x$coefficients$v)))
+    cat(sprintf(
+      "  %-6s : U(%d x %d), D(length %d), V(%d x %d)\n",
+      "M", nrow(x$coefficients$u), ncol(x$coefficients$u),
+      length(x$coefficients$d),
+      nrow(x$coefficients$v), ncol(x$coefficients$v)
+    ))
   }
 
   # --- 3. Fit Statistics ---
   if (!is.null(x$residuals)) {
     rss <- sum(x$residuals@x^2)
     tss <- x$meta$tss
-    n   <- length(x$residuals@x)
-    mse  <- rss / n
+    n <- length(x$residuals@x)
+    mse <- rss / n
     rmse <- sqrt(mse)
-    r2   <- 1 - (rss / tss)
+    r2 <- 1 - (rss / tss)
 
     # Ensure R2 isn't negative (possible in non-OLS or heavy regularization)
     r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else sprintf("%.4f", r2)

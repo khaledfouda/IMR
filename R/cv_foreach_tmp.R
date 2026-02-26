@@ -67,8 +67,8 @@ imr.cv_tmp <- function(
       verbose = trace
     )
   }
-  if(!gamma_flag) hpar$gamma$max <- hpar$gamma$length <- 1
-  if(!beta_flag) hpar$beta$max   <- hpar$beta$length <- 1
+  if (!gamma_flag) hpar$gamma$max <- hpar$gamma$length <- 1
+  if (!beta_flag) hpar$beta$max <- hpar$beta$length <- 1
   # =================================================================================
   #---------------------------------------------------
   # fixed: all. variable: none. number of fits: 1.
@@ -160,66 +160,66 @@ imr.cv_tmp <- function(
       ))
     }
 
-    list(fit = results$best_fit,
-         res =
-    data.frame(
-      lambda_beta = hpar$beta$value,
-      lambda_gamma = hpar$gamma$value,
-      lambda_laplace = lambda_laplace,
-      rank = results$best_parameter,
-      error = results$best_error
-    ))
+    list(
+      fit = results$best_fit,
+      res =
+        data.frame(
+          lambda_beta = hpar$beta$value,
+          lambda_gamma = hpar$gamma$value,
+          lambda_laplace = lambda_laplace,
+          rank = results$best_parameter,
+          error = results$best_error
+        )
+    )
   }
   # ===============================================================================
   # what we have >> beta$min -> beta$max with length
   #                 gamma$min -> gamma$max with length
   #                 laplace$min -> laplace$max  with step_sizes[1]
 
-  #use this on windows.
+  # use this on windows.
   cl <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(cl)
 
-  #doParallel::registerDoParallel(cores = num_cores)
-  #parallel::clusterExport(cl, varlist = c("imr.fit"))
+  # doParallel::registerDoParallel(cores = num_cores)
+  # parallel::clusterExport(cl, varlist = c("imr.fit"))
   results <-
-    #foreach::foreach(
+    # foreach::foreach(
     #  lambda_laplace = seq(hpar$laplace$min, hpar$laplace$max, hpar$laplace$step_sizes[1]),
     #  .combine = rbind
-    #) %:%
+    # ) %:%
     foreach::foreach(
       lambda_beta = seq(hpar$beta$min, hpar$beta$max, length.out = hpar$beta$length),
-      .combine = rbind, #.options.mc = list(preschedule = FALSE)
+      .combine = rbind, # .options.mc = list(preschedule = FALSE)
     ) %:%
     foreach::foreach(
       lambda_gamma = seq(hpar$gamma$min, hpar$gamma$max, length.out = hpar$gamma$length),
-      .combine = rbind, #.options.mc = list(preschedule = FALSE),
+      .combine = rbind, # .options.mc = list(preschedule = FALSE),
     ) %dopar% {
       worker_results <- data.frame()
-      for(lambda_laplace in seq(hpar$laplace$max, hpar$laplace$min, -hpar$laplace$step_sizes[1])){
+      for (lambda_laplace in seq(hpar$laplace$max, hpar$laplace$min, -hpar$laplace$step_sizes[1])) {
+        out <- single_fit(
+          lambda_laplace = lambda_laplace,
+          lambda_beta = lambda_beta,
+          lambda_gamma = lambda_gamma,
+          data = data,
+          intercept_row = intercept_row,
+          intercept_col = intercept_col,
+          hpar = hpar,
+          shared_information = shared_information,
+          error_function = error_function,
+          thresh = thresh,
+          trace = trace,
+          maxit = maxit,
+          ls_initial = ls_initial,
+          seed = seed,
+          warm_start = warm_start
+        )
 
-      out = single_fit(
-        lambda_laplace = lambda_laplace,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        data = data,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        hpar = hpar,
-        shared_information = shared_information,
-        error_function = error_function,
-        thresh = thresh,
-        trace = trace,
-        maxit = maxit,
-        ls_initial = ls_initial,
-        seed = seed,
-        warm_start = warm_start
-      )
-
-      warm_start = out$fit
-      worker_results <- rbind(worker_results, out$res)
+        warm_start <- out$fit
+        worker_results <- rbind(worker_results, out$res)
       }
       worker_results
-
     }
 
   # ============================================================================
@@ -235,17 +235,18 @@ imr.cv_tmp <- function(
     steps <- hpar$laplace$step_sizes # [1:nsteps_laplace]
 
     for (i in 2:nsteps) {
-
-      startp <- max(hpar$laplace$min, results[1, ]$lambda_laplace - steps[i-1])
-      endp <- min(hpar$laplace$max, results[1, ]$lambda_laplace + steps[i-1])
+      startp <- max(hpar$laplace$min, results[1, ]$lambda_laplace - steps[i - 1])
+      endp <- min(hpar$laplace$max, results[1, ]$lambda_laplace + steps[i - 1])
       grid <- seq(startp, endp, steps[i])
       # remove those that already exist
       grid <- setdiff(grid, unique(results$lambda_laplace))
 
       results <- rbind(
         results,
-        foreach::foreach(lambda_laplace = grid, .combine = rbind,
-                         .options.mc = list(preschedule = FALSE)) %dopar% {
+        foreach::foreach(
+          lambda_laplace = grid, .combine = rbind,
+          .options.mc = list(preschedule = FALSE)
+        ) %dopar% {
           single_fit(
             lambda_laplace = lambda_laplace,
             lambda_beta = hpar$beta$value,
@@ -266,38 +267,46 @@ imr.cv_tmp <- function(
         }
       )
       dplyr::arrange(results, error, desc(lambda_laplace), desc(lambda_beta), desc(lambda_gamma)) ->
-        results
+      results
     }
   }
   parallel::stopCluster(cl)
-  #========= tuning is over, we now do one final fit and return >>
+  # ========= tuning is over, we now do one final fit and return >>
   if (trace >= 1) {
     message(sprintf(
-      paste0( "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
-              "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"),
+      paste0(
+        "best lambda_beta = %.2f | best lambda_gamma = %.2f | ",
+        "best lambda_laplace = %.2f |  best rank = %.0f | error = %.5f"
+      ),
       hpar$beta$value,
       hpar$gamma$value,
-      results[1,]$lambda_laplace,
-      results[1,]$rank,
-      results[1,]$error
+      results[1, ]$lambda_laplace,
+      results[1, ]$rank,
+      results[1, ]$error
     ))
   }
 
 
   if (!is.null(data$Y)) {
-    if(!is.null(data$similarity_rows) && results[1,]$lambda_laplace > 0)
-      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row,
-                                                            results[1,]$lambda_laplace)
-    if(!is.null(data$similarity_cols) && results[1,]$lambda_laplace > 0)
-      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col,
-                                                            results[1,]$lambda_laplace)
+    if (!is.null(data$similarity_rows) && results[1, ]$lambda_laplace > 0) {
+      hpar$laplacian_row <- IMR::decompose_symmetric_matrix(
+        data$similarity_row,
+        results[1, ]$lambda_laplace
+      )
+    }
+    if (!is.null(data$similarity_cols) && results[1, ]$lambda_laplace > 0) {
+      hpar$laplacian_col <- IMR::decompose_symmetric_matrix(
+        data$similarity_col,
+        results[1, ]$lambda_laplace
+      )
+    }
 
     fit <- IMR::imr.fit(
       Y = data$Y,
       X = data$Xq,
       Z = data$Zq,
-      r = results[1,]$rank,
-      lambda_m = results[1,]$lambda_laplace,
+      r = results[1, ]$rank,
+      lambda_m = results[1, ]$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
       intercept_row = intercept_row,
@@ -315,10 +324,7 @@ imr.cv_tmp <- function(
     )
 
 
-    fit$params <- results[1,]
-    return(list(history = results, fit=fit, hpar=hpar))
-
+    fit$params <- results[1, ]
+    return(list(history = results, fit = fit, hpar = hpar))
+  }
 }
-}
-
-

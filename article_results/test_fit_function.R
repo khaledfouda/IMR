@@ -17,8 +17,15 @@ S <- generate_similarity(d1, invert = T, jitter = 1);S
 S2 <- generate_similarity(d2, invert = T, jitter = 1);S2
 data <- IMR::prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
                           similarity_rows = S, similarity_cols = S2);data
-hp <- IMR::imr_hparameters();hp
+grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,1,2));grid
 convergence <- IMR::imr_convergence(400, 1e-4, FALSE,ls_initial = T); convergence
+grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=1); grid
+
+cv_out <- imr_cv_laplace(data, grid, intercept_row = FALSE, intercept_col = FALSE,
+                         shared_beta = FALSE, shared_gamma = FALSE,
+                         final_fit = TRUE, convergence=convergence, verbose=3, seed=2025)
+fit <- cv_out$fit
+
 
 fit <- IMR::imr_fit(data, rank = 5, lambda_m = 5,
                     lambda_beta = 0.2, lambda_gamma = 0.2,
@@ -32,8 +39,8 @@ recp <- IMR::reconstruct_partial(fit, data, dat$test, TRUE)
 IMR::evaluate(recp@x, dat$test@x, "all") %>% as_tibble()
 
 
-get_lambda_m_max(data, intercept_row = T, intercept_col = T,
-                 lambda_beta = 0, lambda_gamma = 0,
+get_lambda_m_max(data, intercept_row = F, intercept_col = F,
+                 lambda_beta = 0, lambda_gamma = 0, verbose = 3,
                  shared_beta = F, shared_gamma = F, convergence = convergence)
 
 
@@ -43,8 +50,8 @@ IMR::get_lambda_lasso_max(data, target = "gamma", rank = 5, lambda_m = 0.2,
 
 # parameters for lambda_lasso_max
 target = "beta"
-rank = 5
-lambda_m = 0.1
+rank = 2
+lambda_m = lambda_beta = lambda_gamma= 0.1
 intercept_row = FALSE
 intercept_col = FALSE
 shared_beta = shared_gamma = shared_effects = FALSE
@@ -54,6 +61,8 @@ verbose = 2
 #====
 
 
+
+#==========================
 bench::mark(
   a = svd::propack.svd(as.matrix(data$Y),
                    neig = 1, opts = list(kmax = svd_maxit)

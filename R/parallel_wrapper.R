@@ -357,8 +357,10 @@ parallel_grid_1d_adaptive <- function(param_min,
   original_min <- param_min
   original_max <- param_max
   old_grid <- NULL
-  results <- data.frame(parameter = numeric(0),
-                        error     = numeric(0))
+  results <- data.frame(
+    parameter = numeric(0),
+    error = numeric(0)
+  )
 
   for (step in step_sizes) {
     grid <- seq(param_min, param_max, step)
@@ -368,9 +370,8 @@ parallel_grid_1d_adaptive <- function(param_min,
         " with current bounds [", param_min, ", ", param_max, "]."
       )
     }
-    if(!is.null(old_grid)){
+    if (!is.null(old_grid)) {
       # check those that we already have results for
-
     }
 
     result <- parallel_grid_1d(grid, f, .seed, .packages, .progress, ...)
@@ -399,18 +400,19 @@ parallel_grid_1d_adaptive <- function(param_min,
 #------------------------------
 #' @export
 initialize_parallel_workers <- function(num_cores = parallelly::availableCores(),
-                                        nested=FALSE) {
+                                        nested = FALSE) {
   if (!is.numeric(num_cores) | num_cores < 1) {
     stop("num_cores must be numeric and strictly positive")
   }
   future::plan(future::sequential)
   if (round(num_cores) > 1) {
-    if(nested){
+    if (nested) {
       future::plan(list(
-        future::tweak(future::multisession, workers = 2L), #outer loop
-        future::tweak(future::multisession, workers = I(max(1, floor(num_cores/2))))  #inner loop
+        future::tweak(future::multisession, workers = 2L), # outer loop
+        future::tweak(future::multisession, workers = I(max(1, floor(num_cores / 2)))) # inner loop
       ))
-    }else
+    } else {
       future::plan(future::multisession, workers = round(num_cores))
+    }
   }
 }

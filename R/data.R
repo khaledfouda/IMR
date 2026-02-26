@@ -8,7 +8,6 @@ prepare_data <- function(Y,
                          similarity_cols = NULL,
                          val_prop = 0.2,
                          seed = 2025) {
-
   out <- list()
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
@@ -44,20 +43,22 @@ prepare_data <- function(Y,
 
   # ---  Similarity Matrices ---
   if (!is.null(similarity_rows) && !is.null(similarity_rows$d) &&
-      !is.null(similarity_rows$U)) {
-
-    stopifnot(nrow(similarity_rows$U) == nrow(Y),
-              length(similarity_rows$d) == ncol(similarity_rows$U))
+    !is.null(similarity_rows$U)) {
+    stopifnot(
+      nrow(similarity_rows$U) == nrow(Y),
+      length(similarity_rows$d) == ncol(similarity_rows$U)
+    )
     out$similarity_rows <- similarity_rows
   } else {
     out$similarity_rows <- NULL
   }
 
   if (!is.null(similarity_cols) && !is.null(similarity_cols$d) &&
-      !is.null(similarity_cols$U)) {
-
-    stopifnot(nrow(similarity_cols$U) == ncol(Y),
-              length(similarity_cols$d) == ncol(similarity_cols$U))
+    !is.null(similarity_cols$U)) {
+    stopifnot(
+      nrow(similarity_cols$U) == ncol(Y),
+      length(similarity_cols$d) == ncol(similarity_cols$U)
+    )
     out$similarity_cols <- similarity_cols
   } else {
     out$similarity_cols <- NULL
@@ -105,8 +106,10 @@ print.imr_data <- function(x, ...) {
 
   # Base Dimensions
   cat(sprintf("Target Matrix (Y): %d rows x %d cols\n", m$dimensions[1], m$dimensions[2]))
-  cat(sprintf("Observed Entries:  %d (%.2f%% Sparsity)\n",
-              m$total_obs, m$sparsity * 100))
+  cat(sprintf(
+    "Observed Entries:  %d (%.2f%% Sparsity)\n",
+    m$total_obs, m$sparsity * 100
+  ))
 
   # Train/Valid Split info
   if (m$split_data) {
@@ -118,10 +121,14 @@ print.imr_data <- function(x, ...) {
 
   # Covariates
   cat("\n-- Covariates --\n")
-  cat(sprintf("Row Covariates (X): %s\n",
-              if (m$has_X) sprintf("%d variables", m$num_X_vars) else "[None]"))
-  cat(sprintf("Col Covariates (Z): %s\n",
-              if (m$has_Z) sprintf("%d variables", m$num_Z_vars) else "[None]"))
+  cat(sprintf(
+    "Row Covariates (X): %s\n",
+    if (m$has_X) sprintf("%d variables", m$num_X_vars) else "[None]"
+  ))
+  cat(sprintf(
+    "Col Covariates (Z): %s\n",
+    if (m$has_Z) sprintf("%d variables", m$num_Z_vars) else "[None]"
+  ))
 
   # Similarities
   cat("\n-- Similarity Matrices (Decomposed) --\n")
@@ -136,12 +143,13 @@ print.imr_data <- function(x, ...) {
 
 #' @export
 reconstruct <- function(fit, data, trace = TRUE) {
-
   stopifnot(inherits(fit, "imr_fit"))
   stopifnot(inherits(data, "imr_data"))
 
-  out <- list(beta = NULL, gamma = NULL, M = NULL,
-              xbeta = NULL, gammaz = NULL, estimates = 0)
+  out <- list(
+    beta = NULL, gamma = NULL, M = NULL,
+    xbeta = NULL, gammaz = NULL, estimates = 0
+  )
 
   coefs <- fit$coefficients
   meta <- fit$meta
@@ -210,7 +218,6 @@ reconstruct <- function(fit, data, trace = TRUE) {
 
 #' @export
 reconstruct_partial <- function(fit, data, target, trace = FALSE) {
-
   stopifnot(inherits(fit, "imr_fit"))
   stopifnot(inherits(data, "imr_data"))
   stopifnot(IMR::is.Incomplete(target))
@@ -276,7 +283,6 @@ generate_similarity <- function(x,
                                 rbf_params = list(ell = 1),
                                 jitter = 0,
                                 invert = FALSE) {
-
   S <- NULL
   source_type <- "User Matrix"
   params_used <- list()
@@ -284,49 +290,52 @@ generate_similarity <- function(x,
   if (is.matrix(x)) {
     if (nrow(x) != ncol(x)) stop("Input matrix 'x' must be square.")
     S <- x
-
   } else if (is.character(x)) {
     if (is.null(d)) stop("Distance matrix 'd' is required for kernel generation.")
 
     if (tolower(x) == "matern") {
-
       source_type <- "Matern Kernel"
       params_used <- matern_params
 
       S <- fields::Matern(d,
-                          smoothness = matern_params$smoothness,
-                          range = matern_params$range)
-
+        smoothness = matern_params$smoothness,
+        range = matern_params$range
+      )
     } else if (tolower(x) == "rbf") {
       source_type <- "RBF Kernel"
       params_used <- rbf_params
       ell <- rbf_params$ell
       S <- exp(-(d^2) / (2 * ell^2))
-
     } else {
       stop("Unknown method. 'x' must be a matrix, 'matern', or 'RBF'.")
     }
     if (!invert) {
-      warning(paste("Generated a raw Covariance matrix without inversion.",
-                    "fit_imr() expects the inverse."))
+      warning(paste(
+        "Generated a raw Covariance matrix without inversion.",
+        "fit_imr() expects the inverse."
+      ))
     }
-
   } else {
     stop("Input 'x' must be a matrix or a character string ('matern', 'RBF').")
   }
 
   if (invert) {
-    S <- tryCatch({
-      chol2inv(S)
-    }, error = function(e) {
-      stop("Matrix inversion failed (matrix might be singular).")
-    })
+    S <- tryCatch(
+      {
+        chol2inv(S)
+      },
+      error = function(e) {
+        stop("Matrix inversion failed (matrix might be singular).")
+      }
+    )
     source_type <- paste(source_type, "(Inverted)")
   }
-  if(is.numeric(jitter) && jitter > 0){
+  if (is.numeric(jitter) && jitter > 0) {
     S <- S + diag(jitter, nrow(S), ncol(S))
-    #source_type <- paste(source_type, "(With Jitter)")
-  }else jitter = 0
+    # source_type <- paste(source_type, "(With Jitter)")
+  } else {
+    jitter <- 0
+  }
 
   decomp <- eigen(S, symmetric = TRUE)
   evals <- abs(decomp$values)
@@ -359,7 +368,7 @@ print.imr_similarity <- function(x, ...) {
   if (length(x$meta$params) > 0) {
     p_names <- names(x$meta$params)
     p_vals <- unlist(x$meta$params)
-    cat(sprintf("Parameters:       %s\n", paste(p_names, p_vals, sep="=", collapse=", ")))
+    cat(sprintf("Parameters:       %s\n", paste(p_names, p_vals, sep = "=", collapse = ", ")))
   }
   cond_fmt <- if (x$meta$condition_number > 1e4) "%.2e" else "%.2f"
   cat(sprintf("Condition Number: %s\n", sprintf(cond_fmt, x$meta$condition_number)))
@@ -369,4 +378,3 @@ print.imr_similarity <- function(x, ...) {
 
   invisible(x)
 }
-
