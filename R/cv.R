@@ -1,5 +1,4 @@
 #----------------------------------------------------------
-#' @export
 imr_tune_laplace <- function(data,
                            grid,
                            lambda_beta  = 0,
@@ -140,7 +139,6 @@ imr_tune_laplace <- function(data,
 
 }
 #==============================================================================================
-#' @export
 imr_tune_lasso <- function(data,
                            grid,
                            target = c("beta", "gamma"),
@@ -181,7 +179,7 @@ imr_tune_lasso <- function(data,
     n_cores <- 1L
   }
   if (verbose > 0) {
-    message(sprintf("Parallel Nested Search: %d %s values using %d cores...",
+    message(sprintf("Parallel Nested Search: %d lambda %s values using %d cores...",
                     lambda_obj$length, target, n_cores))
   }
   #--------------------------------------------------
@@ -243,7 +241,7 @@ imr_tune_lasso <- function(data,
   best_idx = which.min(best_inner$verror)
   best_params <- best_inner[best_idx,]
   if (verbose > 0) {
-    message(sprintf("Global Best found! %s: %.5f | Laplace: %.4f | Error: %.5f",
+    message(sprintf("Best parameters: %s: %.5f | Laplace: %.4f | Error: %.5f",
                     target, best_params[[paste0("lambda_", target)]],
                     best_params$lambda_laplace, best_params$verror))
   }
@@ -292,26 +290,175 @@ imr_tune <- function(data,
 ){
   if(! is.null(seed) && is.numeric(seed)) set.seed(seed)
   stopifnot(inherits(data, "imr_data"), inherits(grid, "imr_tune_grid"))
-
+  t_start_global <- Sys.time()
   # --- Determine which parameters to tune
   tune_beta  <- data$meta$has_X && grid$beta$length > 1
   tune_gamma <- data$meta$has_Z && grid$gamma$length > 1
 
   #----------------------------------------------------------
   # Scenario 1: Tune Laplace Only
+  #------------------------------------------------------------
   if(!tune_beta && !tune_gamma){
-    if (verbose > 0) message("Tuning Laplace (M) only...")
-    return(imr_tune_laplace(
+    if (verbose > 0) message("Tuning  Laplace (M) only...")
+    out_obj <- imr_tune_laplace(
       data = data, grid = grid,
-      lambda_beta = fixed_lambda_beta, lambda_gamma = fixed_lambda_gamma,
+      lambda_beta = default_lambda_beta, lambda_gamma = default_lambda_gamma,
       intercept_row = intercept_row, intercept_col = intercept_col,
       shared_beta = shared_beta, shared_gamma = shared_gamma,
       final_fit = final_fit, convergence = convergence,
       error_function = error_function, warm_start = warm_start,
       verbose = verbose, seed = seed
-    ))
+    )
+    t_total <- round(difftime(Sys.time(), t_start_global),2)
+    if(verbose > 0)
+      message(sprintf("\nTotal Tuning Time: %s", format(t_total)))
+    out_obj$time <- t_total
+    return(out_obj)
   }
+  #---------------------------------------------------------------------
+  # Scenario 2: Tuning Laplace + one of lambda_beta or lambda_gamma
+  #-----------------------------------------------------------------
+  if(tune_beta != tune_gamma){
+    target <- if (tune_beta) "beta" else "gamma"
+    fixed_other <- if (tune_beta) default_lambda_gamma else default_lambda_beta
 
+    if (verbose > 0) message(sprintf("Tuning %s + Laplace...", (target)))
+    out_obj <- imr_tune_lasso(
+      data = data, grid = grid, target = target, fixed_other_lasso = fixed_other,
+      intercept_row = intercept_row, intercept_col = intercept_col,
+      shared_beta = shared_beta, shared_gamma = shared_gamma,
+      final_fit = final_fit, use_warm_in_final = use_warm_in_final,
+      convergence = convergence, error_function = error_function,
+      warm_start = warm_start, verbose = verbose,
+      n_cores = n_cores, seed = seed
+    )
+    t_total <- difftime(Sys.time(), t_start_global)
+    if(verbose > 0)
+      message(sprintf("\nTotal Tuning Time: %s", format(t_total)))
+    out_obj$time <- t_total
+    return(out_obj)
+  }
+  #-----------------------------------------------------------------------
+  # Scenario 3: Tuning all 3 parameters. An iterative method will be used.
+  #------------------------------------------------------------------------
+  if (verbose > 0) message("Scenario 3: Alternating optimization for all 3 parameters...")
+
+  # Initialize
+  cur_gamma <- grid$gamma$max
+  cur_beta  <- diff_beta <- diff_gamma <- Inf
+  all_history <- all_params <- data.frame()
+  one_more_fit <- FALSE # this is an extra for for the purpose of final_fit=TRUE
+  keep_iterating <- TRUE
+  iter = 1
+  while(keep_iterating) {
+    if (verbose > 0) message(sprintf("\n--- Tune Iteration %d ---", iter))
+
+    old_beta <- cur_beta
+    old_gamma <- cur_gamma
+
+    # --- Step A: Tune Beta (given current Gamma) ---
+    t_start_iter <- Sys.time()
+    res_beta <- imr_tune_lasso(
+      data = data, grid = grid, target = "beta", fixed_other_lasso = cur_gamma,
+      intercept_row = intercept_row, intercept_col = intercept_col,
+      shared_beta = shared_beta, shared_gamma = shared_gamma,
+      final_fit = if(one_more_fit) final_fit else FALSE,
+      use_warm_in_final = use_warm_in_final,
+      convergence = convergence, error_function = error_function,
+      warm_start = warm_start, verbose = verbose - 1,
+      n_cores = n_cores, seed = seed
+    )
+    cur_beta <- res_beta$params$lambda_beta
+    iter_time_secs <- as.numeric(difftime(Sys.time(), t_start_iter, units = "secs"))
+    #---------------------------------------------------------------------------
+    # track parameter squared difference for convergence.
+    diff_beta <- (cur_beta - old_beta)^2
+    diff <-  diff_beta + diff_gamma
+    # track history for debugging/plotting
+    res_beta$history$step <- 1
+    res_beta$history$iter <- iter
+    all_history <- rbind(all_history, res_beta$history)
+    # track best performance rows as well
+    res_beta$params$step <- 1
+    res_beta$params$iter <- iter
+    res_beta$params$diff <- diff
+    all_params <- rbind(all_params, res_beta$params)
+    # convergence check
+    if (verbose > 0 && iter > 1)
+      message(sprintf("verror: %.4f | Beta: %.4f | Gamma: %.4f | Laplace: %.4f | Diff: %.6f | Time: %.2fs",
+                      res_beta$params$verror, cur_beta, cur_gamma, res_gamma$params$lambda_laplace, diff, iter_time_secs))
+
+    if (diff < tune_tol){
+      if(one_more_fit || !final_fit){
+        best_fit <- res_beta$fit
+        break
+      }
+      one_more_fit <- TRUE
+    }
+    #---------------------------------------------------------------------------
+    # --- Step B: Tune Gamma (given current Beta) ---
+    t_start_iter <- Sys.time()
+    res_gamma <- imr_tune_lasso(
+      data = data, grid = grid, target = "gamma", fixed_other_lasso = cur_beta,
+      intercept_row = intercept_row, intercept_col = intercept_col,
+      shared_beta = shared_beta, shared_gamma = shared_gamma,
+      final_fit = if(one_more_fit) final_fit else FALSE,
+      use_warm_in_final = use_warm_in_final,
+      convergence = convergence, error_function = error_function,
+      warm_start = warm_start, verbose = verbose - 1,
+      n_cores = n_cores, seed = seed
+    )
+    cur_gamma <- res_gamma$params$lambda_gamma
+    iter_time_secs <- as.numeric(difftime(Sys.time(), t_start_iter, units = "secs"))
+    #--------------------------------------------------
+    # track parameter squared difference for convergence.
+    diff_gamma <- (cur_gamma - old_gamma)^2
+    diff <- diff_beta + diff_gamma
+    # track history for debugging/plotting
+    res_gamma$history$step <- 1
+    res_gamma$history$iter <- iter
+    all_history <- rbind(all_history, res_gamma$history)
+    # track best performance rows as well
+    res_gamma$params$step <- 1
+    res_gamma$params$iter <- iter
+    res_gamma$params$diff <- diff
+    all_params <- rbind(all_params, res_gamma$params)
+    # convergence check
+    if (verbose > 0)
+      message(sprintf("verror: %.4f | Beta: %.4f | Gamma: %.4f | Laplace: %.4f | Diff: %.6f | Time: %.2fs",
+                      res_gamma$params$verror, cur_beta, cur_gamma, res_gamma$params$lambda_laplace, diff, iter_time_secs))
+
+    if (diff < tune_tol){
+      if(one_more_fit || !final_fit){
+        best_fit <- res_gamma$fit
+        break
+      }
+      one_more_fit <- TRUE
+    }
+    #------------------------------
+    # if you reach the final iteration, do one more.
+    if(iter >= tune_maxit){
+      if(final_fit){
+        one_more_fit <- TRUE
+      }else
+        keep_iterating = FALSE
+    }
+    iter = iter + 1
+  }
+  #---------------------------------------------------------------------------
+  t_total <- difftime(Sys.time(), t_start_global)
+  if(verbose > 0){
+    if(iter >= tune_maxit) {
+      message(">> Alternating tuning reached maxed iterations. <<")
+    }else
+      message(">> Alternating tuning converged. <<")
+    message(sprintf("\nTotal Tuning Time: %s", format(t_total)))
+  }
+  #---------------------------------------------------------------------------
+  return(list(params = all_params,
+              history = all_history,
+              fit = if(final_fit) best_fit else NULL,
+              time = t_total))
 }
 
 

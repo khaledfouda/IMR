@@ -19,7 +19,11 @@ data <- IMR::prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
                           similarity_rows = NULL, similarity_cols = NULL);data
 grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,1,2));grid
 convergence <- IMR::imr_convergence(600, 1e-5, FALSE,ls_initial = T); convergence
-grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=1); grid
+
+grid$beta$max <- 1.695
+grid$gamma$max <- 1.815
+grid$laplace$max <- 92
+#grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=1); grid
 
 cv_out <- imr_tune_laplace(data, grid, intercept_row = FALSE, intercept_col = FALSE,
                          shared_beta = FALSE, shared_gamma = FALSE,
@@ -33,8 +37,20 @@ cv_out_g <- imr_tune_lasso(data, grid, "gamma", intercept_row = FALSE, intercept
                          shared_beta = FALSE, shared_gamma = FALSE,
                          fixed_other_lasso = 0.08921, warm_start = cv_out_b$fit,
                          final_fit = TRUE, convergence=convergence, verbose=3, seed=2025)
+
+
+grid$beta$length = 5;
+grid$gamma$length = 5
+grid$laplace$length <- 1
+cv_out_g <- imr_tune(data, grid, intercept_row = FALSE, intercept_col = FALSE,
+                           shared_beta = FALSE, shared_gamma = FALSE,
+                            warm_start = NULL, n_cores = 9,
+                           final_fit = TRUE, convergence=convergence, verbose=1, seed=2025)
+
+
+cv_out_g$params$verror
 cv_out$params
-fit <- cv_out$fit
+fit <- cv_out_g$fit
 
 
 # fit <- IMR::imr_fit(data, rank = 5, lambda_m = 5,
@@ -67,11 +83,13 @@ intercept_col = FALSE
 shared_beta = shared_gamma = shared_effects = FALSE
 bisection_iter = 15
 verbose = 2
-n_cores = 1
+n_cores = 9
 seed = 2021
+iter = 1
 fixed_other_lasso = 0
 warm_start = NULL
 error_function = IMR::error_metrics$rmse
+default_lambda_beta = default_lambda_gamma = 0
 #====
 function(data,
          grid,
