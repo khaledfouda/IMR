@@ -12,11 +12,15 @@ generate_simulated_data(n, m, 3, 5, 5, 0.7,sparsity_beta = .50, sparsity_gamma =
 
 #======
 # d1 <-  matrix(rbinom(n*n,n,.2), n, n);d1 <- (d1 + t(d1)) / 2
-# d2 <-  matrix(rbinom(m*m,m,.2), m, m);d2 <- (d2 + t(d2)) / 2
+d2 <-  matrix(rbinom(m*m,m,.2), m, m);d2 <- (d2 + t(d2)) / 2
 # S <- generate_similarity(d1, invert = T, jitter = 1);S
-# S2 <- generate_similarity(d2, invert = T, jitter = 1);S2
-data <- IMR::prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
-                          similarity_rows = NULL, similarity_cols = NULL);data
+S2 <- generate_similarity(d2, invert = T, jitter = 1);S2
+data <- IMR:::imr_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
+                          similarity_rows = NULL, similarity_cols = S2);data
+update.imr_data(data,with_col_similarity = FALSE, with_row_similarity = FALSE,
+                shared_beta = TRUE, intercept_row = T)
+
+data
 grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,1,2));grid
 convergence <- IMR::imr_convergence(600, 1e-5, FALSE,ls_initial = T); convergence
 

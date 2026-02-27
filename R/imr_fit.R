@@ -37,19 +37,20 @@ imr_fit <- function(
   if (inherits(warm_start, "imr_fit")) {
     warm_start <- warm_start$coefficients
   }
+  model <- data$model
 
   result_list <- imr_solver(
-    Y = if(training) data$y_train else data$Y,
-    X = data$Xq,
-    Z = data$Zq,
-    r = rank,
-    lambda_m = lambda_m,
+    Y = if (training) data$y_train else data$Y,
+    X = if(model$with_row_covariates) data$Xq else NULL,
+    Z = if(model$with_col_covariates) data$Zq else NULL,
+    r = if(model$with_low_rank_component) rank else NULL,
+    lambda_m = if(model$with_low_rank_component) lambda_m else NULL,
     lambda_beta = lambda_beta,
     lambda_gamma = lambda_gamma,
-    Ur = data$similarity_row$U,
-    dr = data$similarity_row$d,
-    Uc = data$similarity_col$U,
-    dc = data$similarity_col$d,
+    Ur = if(model$with_low_rank_component && model$with_row_similarity) data$similarity_row$U else NULL,
+    dr = if(model$with_low_rank_component && model$with_row_similarity) data$similarity_row$d else NULL,
+    Uc = if(model$with_low_rank_component && model$with_col_similarity) data$similarity_col$U else NULL,
+    dc = if(model$with_low_rank_component && model$with_col_covariates) data$similarity_col$d else NULL,
     intercept_row = intercept_row,
     intercept_col = intercept_col,
     shared_beta = shared_beta,
@@ -80,7 +81,7 @@ imr_fit <- function(
         converged = result_list$n_iter < convergence$maxit,
         training = training,
         # statistic for print function
-        tss = if(training) 0 else sum((data$Y@x - mean(data$Y@x))^2)
+        tss = if (training) 0 else sum((data$Y@x - mean(data$Y@x))^2)
       ),
       convergence = convergence
     ),

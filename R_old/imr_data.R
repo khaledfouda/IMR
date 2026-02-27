@@ -97,30 +97,22 @@ imr_data <- function(Y,
   )
   # --- Model Structure ----
   out$model <- list(
-    row_covariates = out$meta$has_X,
-    col_covariates = out$meta$has_Z,
-    low_rank_component = TRUE,
-    row_similarity = out$meta$has_sim_row,
-    col_similarity = out$meta$has_sim_col,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
-    shared_beta = FALSE,
-    shared_gamma = FALSE
+    with_row_covariates = out$meta$has_X,
+    with_col_covariates = out$meta$has_Z,
+    with_low_rank_component = TRUE,
+    with_row_similarity = out$meta$has_sim_row,
+    with_col_similarity = out$meta$has_sim_col
   )
 
   structure(out, class = "imr_data")
 }
 #----------------------------------------
 update.imr_data <- function(object,
-                            row_covariates = NULL,
-                            col_covariates = NULL,
-                            low_rank_component = NULL,
-                            row_similarity = NULL,
-                            col_similarity = NULL,
-                            intercept_row = NULL,
-                            intercept_col = NULL,
-                            shared_beta = NULL,
-                            shared_gamma = NULL,
+                            with_row_covariates = NULL,
+                            with_col_covariates = NULL,
+                            with_low_rank_component = NULL,
+                            with_row_similarity = NULL,
+                            with_col_similarity = NULL,
                             ...) {
 
   update_flag <- function(obj, flag_val, flag_name, dependency_name) {
@@ -137,32 +129,13 @@ update.imr_data <- function(object,
     return(obj)
   }
 
-  object <- update_flag(object, row_covariates, "row_covariates", "has_X")
-  object <- update_flag(object, col_covariates, "col_covariates", "has_Z")
-  object <- update_flag(object, row_similarity, "row_similarity", "has_sim_row")
-  object <- update_flag(object, col_similarity, "col_similarity", "has_sim_col")
+  object <- update_flag(object, with_row_covariates, "with_row_covariates", "has_X")
+  object <- update_flag(object, with_col_covariates, "with_col_covariates", "has_Z")
+  object <- update_flag(object, with_row_similarity, "with_row_similarity", "has_sim_row")
+  object <- update_flag(object, with_col_similarity, "with_col_similarity", "has_sim_col")
 
-  toggle <- function(obj, val, name) {
-    if (!is.null(val)) obj$model[[name]] <- as.logical(val[1])
-    return(obj)
-  }
-
-  object <- toggle(object, low_rank_component, "low_rank_component")
-  object <- toggle(object, intercept_row, "intercept_row")
-  object <- toggle(object, intercept_col, "intercept_col")
-
-  if (!is.null(shared_beta)) {
-    if (shared_beta && !object$model$row_covariates) {
-      warning("Setting shared_beta = TRUE does nothing if row covariates are inactive.")
-    }
-    object$model$shared_beta <- as.logical(shared_beta[1])
-  }
-
-  if (!is.null(shared_gamma)) {
-    if (shared_gamma && !object$model$col_covariates) {
-      warning("Setting shared_gamma = TRUE does nothing if col covariates are inactive.")
-    }
-    object$model$shared_gamma <- as.logical(shared_gamma[1])
+  if (!is.null(with_low_rank_component)) {
+    object$model$with_low_rank_component <- with_low_rank_component
   }
 
   return(object)
@@ -192,42 +165,73 @@ print.imr_data <- function(x, ...) {
   cat("\n-- Model Configuration --\n")
 
   # Helper function to align text and format the active/inactive tags
-  format_status <- function(has_data, is_active, data_desc, is_shared = NULL) {
+  format_status <- function(has_data, is_active, data_desc) {
     if (!has_data) return(sprintf("[None]"))
     status_tag <- if (is_active) "[ACTIVE]" else ""
-    shared_tag <- ""
-    if (!is.null(is_shared) && is_active) {
-      shared_tag <- if (is_shared) " (Shared)" else " (Unshared)"
-    }
-    return(sprintf("%-15s %s%s", data_desc, status_tag, shared_tag))
+    return(sprintf("%-15s %s", data_desc, status_tag))
   }
 
   # Low-rank is a purely algorithmic component (doesn't depend on external data)
   cat(sprintf("%-20s:  %23s\n", "Low-Rank Matrix (M)",
-              if (a$low_rank_component) "[ACTIVE]" else ""))
-  cat(sprintf("%-20s: %24s\n", "Row Intercepts", if (a$intercept_row) "[ACTIVE]" else ""))
-  cat(sprintf("%-20s: %24s\n", "Col Intercepts", if (a$intercept_col) "[ACTIVE]" else ""))
+              if (a$with_low_rank_component) "[ACTIVE]" else ""))
 
   # Covariates
   cat(sprintf("%-20s: %s\n", "Row Covariates (X)",
-              format_status(m$has_X, a$row_covariates, sprintf("%d vars", m$num_X_vars),
-                            a$shared_beta)))
+              format_status(m$has_X, a$with_row_covariates, sprintf("%d vars", m$num_X_vars))))
 
   cat(sprintf("%-20s: %s\n", "Col Covariates (Z)",
-              format_status(m$has_Z, a$col_covariates, sprintf("%d vars", m$num_Z_vars),
-                            a$shared_gamma)))
+              format_status(m$has_Z, a$with_col_covariates, sprintf("%d vars", m$num_Z_vars))))
 
   # Similarities
   cat(sprintf("%-20s: %s\n", "Row Similarity",
-              format_status(m$has_sim_row, a$row_similarity, "Provided")))
+              format_status(m$has_sim_row, a$with_row_similarity, "Provided")))
 
   cat(sprintf("%-20s: %s\n", "Col Similarity",
-              format_status(m$has_sim_col, a$col_similarity, "Provided")))
+              format_status(m$has_sim_col, a$with_col_similarity, "Provided")))
 
   cat("==========================\n")
   invisible(x)
 }
-
+# print.imr_data <- function(x, ...) {
+#   m <- x$meta # Alias for cleaner code
+#
+#   cat("\n== IMR Data Object ==\n")
+#
+#   # Base Dimensions
+#   cat(sprintf("Target Matrix (Y): %d rows x %d cols\n", m$dimensions[1], m$dimensions[2]))
+#   cat(sprintf(
+#     "Observed Entries:  %d (%.2f%% Sparsity)\n",
+#     m$total_obs, m$sparsity * 100
+#   ))
+#
+#   # Train/Valid Split info
+#   if (m$split_data) {
+#     cat(sprintf("  - Training:      %d (%.1f%%)\n", m$n_train, 100 * (1 - m$val_prop)))
+#     cat(sprintf("  - Validation:    %d (%.1f%%)\n", m$n_valid, 100 * m$val_prop))
+#   } else {
+#     cat("  - Training:      Using 100% of data (No validation split)\n")
+#   }
+#
+#   # Covariates
+#   cat("\n-- Covariates --\n")
+#   cat(sprintf(
+#     "Row Covariates (X): %s\n",
+#     if (m$has_X) sprintf("%d variables", m$num_X_vars) else "[None]"
+#   ))
+#   cat(sprintf(
+#     "Col Covariates (Z): %s\n",
+#     if (m$has_Z) sprintf("%d variables", m$num_Z_vars) else "[None]"
+#   ))
+#
+#   # Similarities
+#   cat("\n-- Similarity Matrices (Decomposed) --\n")
+#   cat(sprintf("Row Similarity: %s\n", if (m$has_sim_row) "Provided" else "[None]"))
+#   cat(sprintf("Col Similarity: %s\n", if (m$has_sim_col) "Provided" else "[None]"))
+#
+#   cat("=====================\n")
+#   invisible(x)
+# }
+#'
 
 
 #' @export
