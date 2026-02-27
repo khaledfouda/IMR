@@ -1,6 +1,6 @@
 #----------------------------------------------------------
 #' @export
-imr_cv_laplace <- function(data,
+imr_tune_laplace <- function(data,
                            grid,
                            lambda_beta  = 0,
                            lambda_gamma = 0,
@@ -8,7 +8,7 @@ imr_cv_laplace <- function(data,
                            intercept_col = FALSE,
                            shared_beta = FALSE,
                            shared_gamma = FALSE,
-                           final_fit = FALSE,
+                           final_fit = TRUE,
                            convergence = IMR::imr_convergence(),
                            error_function = IMR::error_metrics$rmse,
                            warm_start = NULL,
@@ -26,7 +26,7 @@ imr_cv_laplace <- function(data,
   stopifnot(grid$rank$min >0,
             grid$rank$max >= grid$rank$min,
             grid$rank$step >= 0,
-            grid$laplace$length > 1,
+            grid$laplace$length >= 1,
             grid$laplace$max >= grid$laplace$min)
   #---------------------------------------------------
   # indices
@@ -140,6 +140,180 @@ imr_cv_laplace <- function(data,
 
 }
 #==============================================================================================
+#' @export
+imr_tune_lasso <- function(data,
+                           grid,
+                           target = c("beta", "gamma"),
+                           fixed_other_lasso = 0,
+                           intercept_row = FALSE,
+                           intercept_col = FALSE,
+                           shared_beta = FALSE,
+                           shared_gamma = FALSE,
+                           final_fit    = TRUE,
+                           use_warm_in_final = TRUE,
+                           convergence = IMR::imr_convergence(),
+                           error_function = IMR::error_metrics$rmse,
+                           warm_start = NULL,
+                           verbose = 1,
+                           n_cores = 4,
+                           seed = NULL){
+
+  #-----------------------------------------------------
+  # input verification and seed
+  if((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
+  stopifnot(inherits(data, "imr_data"),
+            inherits(grid, "imr_tune_grid"),
+            inherits(convergence, "imr_convergence"))
+  stopifnot(is.Incomplete(data$y_valid),
+            is.Incomplete(data$y_train))
+  target <- stringr::str_to_lower(target)
+  stopifnot(target %in% c("beta", "gamma"))
+  is_beta <- target == "beta"
+  lambda_obj <- if(is_beta) grid$beta else grid$gamma
+  stopifnot(is.numeric(lambda_obj$max),
+            lambda_obj$min >= 0,
+            lambda_obj$max >= lambda_obj$min,
+            lambda_obj$length >= 1)
+  #---------------------------------------------------
+  # Fallback for Windows [mclapply not supported on windows]
+  if (.Platform$OS.type == "windows" && n_cores > 1) {
+    warning("mclapply forking is not supported on Windows. Falling back to sequential execution.")
+    n_cores <- 1L
+  }
+  if (verbose > 0) {
+    message(sprintf("Parallel Nested Search: %d %s values using %d cores...",
+                    lambda_obj$length, target, n_cores))
+  }
+  #--------------------------------------------------
+  # Run the loop
+  #if(!final_fit) use_warm_in_final = FALSE # not needed.
+  lambda_seq <- seq(lambda_obj$min, lambda_obj$max, length.out= lambda_obj$length)
+  results_list <- parallel::mclapply(seq_along(lambda_seq), function(i){
+
+    lambda = lambda_seq[i]
+    if (verbose >= 2) {
+      cat(sprintf("Worker started: %s = %.4f\n", target, lambda))
+    }
+    # run full tune_laplace
+    laplace_res <- imr_tune_laplace(
+      data = data,
+      grid = grid,
+      lambda_beta = if(is_beta) lambda else fixed_other_lasso,
+      lambda_gamma = if(is_beta) fixed_other_lasso else lambda,
+      intercept_row = intercept_row,
+      intercept_col = intercept_col,
+      shared_beta = shared_beta,
+      shared_gamma = shared_gamma,
+      final_fit = FALSE,
+      convergence = convergence,
+      error_function = error_function,
+      warm_start = warm_start,
+      verbose = 0,
+      seed = seed
+    )
+    # return best results
+    best_inner <- laplace_res$params
+    best_inner[[paste0("lambda_",target)]] <- lambda
+    best_inner[[paste0("lambda_",if(is_beta) "gamma" else "beta")]] <- fixed_other_lasso
+    # we also return the full history for diagnostics/plots
+    history <- laplace_res$history
+    history[[paste0("lambda_",target)]] <- lambda
+    history[[paste0("lambda_",if(is_beta) "gamma" else "beta")]] <- fixed_other_lasso
+
+    out <- list(
+      best_inner = best_inner,
+      history = history
+    )
+    if(use_warm_in_final)
+      out$fit <- laplace_res$fit
+
+    return(out)
+
+  }, mc.cores =  n_cores,
+  mc.preschedule = FALSE,
+  mc.set.seed = seed,
+  mc.silent = if(n_cores > 1) TRUE else FALSE,
+  mc.cleanup = TRUE)
+  #-----------------------------------------------
+  # Aggregate results
+  best_inner <- do.call(rbind, lapply(results_list, function(x) x$best_inner))
+  history <- do.call(rbind, lapply(results_list, function(x) x$history))
+  #------------------------
+  # find best values
+  best_idx = which.min(best_inner$verror)
+  best_params <- best_inner[best_idx,]
+  if (verbose > 0) {
+    message(sprintf("Global Best found! %s: %.5f | Laplace: %.4f | Error: %.5f",
+                    target, best_params[[paste0("lambda_", target)]],
+                    best_params$lambda_laplace, best_params$verror))
+  }
+  #---------------------------------------------
+  # (optional) final fit on full dataset
+  if(final_fit){
+    if (verbose > 0) message("Fitting final model on full dataset...")
+    if(use_warm_in_final)
+      warm_start = results_list[[best_idx]]$fit
+    best_fit_obj <- IMR::imr_fit(data,
+                                 rank = best_params$rank_in,
+                                 lambda_m = best_params$lambda_laplace,
+                                 lambda_beta = best_params$lambda_beta,
+                                 lambda_gamma = best_params$lambda_gamma,
+                                 intercept_row = intercept_row,
+                                 intercept_col = intercept_col,
+                                 shared_beta = shared_beta,
+                                 shared_gamma = shared_gamma,
+                                 convergence = convergence,
+                                 warm_start = warm_start)
+  }else
+    best_fit_obj <- NULL
+
+  list(fit = best_fit_obj, params = best_params, history = history)
+}
+#=============================================================================================
+#' @export
+imr_tune <- function(data,
+                     grid,
+                     default_lambda_beta = 0,
+                     default_lambda_gamma = 0,
+                     intercept_row = FALSE,
+                     intercept_col = FALSE,
+                     shared_beta = FALSE,
+                     shared_gamma = FALSE,
+                     final_fit    = TRUE,
+                     use_warm_in_final = TRUE,
+                     convergence = IMR::imr_convergence(),
+                     error_function = IMR::error_metrics$rmse,
+                     warm_start = NULL,
+                     verbose = 1,
+                     n_cores = 4,
+                     seed = NULL,
+                     tune_maxit = 10,
+                     tune_tol = 1e-4
+){
+  if(! is.null(seed) && is.numeric(seed)) set.seed(seed)
+  stopifnot(inherits(data, "imr_data"), inherits(grid, "imr_tune_grid"))
+
+  # --- Determine which parameters to tune
+  tune_beta  <- data$meta$has_X && grid$beta$length > 1
+  tune_gamma <- data$meta$has_Z && grid$gamma$length > 1
+
+  #----------------------------------------------------------
+  # Scenario 1: Tune Laplace Only
+  if(!tune_beta && !tune_gamma){
+    if (verbose > 0) message("Tuning Laplace (M) only...")
+    return(imr_tune_laplace(
+      data = data, grid = grid,
+      lambda_beta = fixed_lambda_beta, lambda_gamma = fixed_lambda_gamma,
+      intercept_row = intercept_row, intercept_col = intercept_col,
+      shared_beta = shared_beta, shared_gamma = shared_gamma,
+      final_fit = final_fit, convergence = convergence,
+      error_function = error_function, warm_start = warm_start,
+      verbose = verbose, seed = seed
+    ))
+  }
+
+}
+
 
 
 #

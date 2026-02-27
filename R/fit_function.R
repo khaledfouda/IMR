@@ -38,7 +38,6 @@ imr_fit <- function(
     warm_start <- warm_start$coefficients
   }
 
-
   result_list <- imr_solver(
     Y = if(training) data$y_train else data$Y,
     X = data$Xq,
