@@ -21,13 +21,13 @@ update.imr_data(data,with_col_similarity = FALSE, with_row_similarity = FALSE,
                 shared_beta = TRUE, intercept_row = T)
 
 data
-grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,1,2));grid
+grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,2));grid
 convergence <- IMR::imr_convergence(600, 1e-5, FALSE,ls_initial = T); convergence
 
 grid$beta$max <- 1.695
 grid$gamma$max <- 1.815
 grid$laplace$max <- 92
-#grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=1); grid
+grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=1); grid
 
 cv_out <- imr_tune_laplace(data, grid, intercept_row = FALSE, intercept_col = FALSE,
                          shared_beta = FALSE, shared_gamma = FALSE,
@@ -57,11 +57,10 @@ cv_out$params
 fit <- cv_out_g$fit
 
 
-# fit <- IMR::imr_fit(data, rank = 5, lambda_m = 5,
-#                     lambda_beta = 0.2, lambda_gamma = 0.2,
-#                     intercept_row = F, intercept_col = T,
-#                     shared_beta = F, shared_gamma = T, warm_start = NULL,
-#                     convergence = convergence);fit
+fit <- IMR::imr_fit(data, rank = 5, lambda_m = 5,
+                    lambda_beta = 0.2, lambda_gamma = 0.2,
+                     warm_start = NULL,
+                    convergence = convergence);fit
 
 rec <- IMR::reconstruct(fit, data)
 dat$test <- (dat$theta * (1 - dat$mask)) %>% IMR::as.Incomplete()

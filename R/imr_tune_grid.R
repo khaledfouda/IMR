@@ -51,7 +51,7 @@ print.imr_tune_grid <- function(x, ...) {
 
     sprintf(
       "Range: %s -> %s (Grid: %d points)",
-      param$min, if (is.numeric(param$max)) round(param$max, 6) else param$max, param$length,
+      param$min, if (is.numeric(param$max)) round(param$max, 6) else param$max, param$length
     )
   }
 
@@ -83,10 +83,6 @@ print.imr_tune_grid <- function(x, ...) {
 #' @export
 imr_set_grid_limits <- function(data,
                                 grid,
-                                intercept_row = FALSE,
-                                intercept_col = FALSE,
-                                shared_beta = FALSE,
-                                shared_gamma = FALSE,
                                 default_rank = 2,
                                 default_lambda_m = 0,
                                 default_lambda_beta = 0,
@@ -98,9 +94,6 @@ imr_set_grid_limits <- function(data,
     grid$beta$max <- IMR::get_lambda_lasso_max(data, "beta",
       rank = default_rank,
       lambda_m = default_lambda_m,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
-      shared_effects = shared_beta,
       convergence = convergence,
       bisection_iter = bisection_iter,
       verbose = verbose
@@ -110,9 +103,6 @@ imr_set_grid_limits <- function(data,
     grid$gamma$max <- IMR::get_lambda_lasso_max(data, "gamma",
       rank = default_rank,
       lambda_m = default_lambda_m,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
-      shared_effects = shared_gamma,
       convergence = convergence,
       bisection_iter = bisection_iter,
       verbose = verbose
@@ -120,13 +110,9 @@ imr_set_grid_limits <- function(data,
   }
   if (grid$laplace$max == "auto") {
     grid$laplace$max <- IMR::get_lambda_m_max(data,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
       rank = default_rank,
       lambda_beta = default_lambda_beta,
       lambda_gamma = default_lambda_gamma,
-      shared_beta = shared_beta,
-      shared_gamma = shared_gamma,
       convergence = convergence,
       bisection_iter = bisection_iter,
       verbose = verbose
@@ -139,13 +125,9 @@ imr_set_grid_limits <- function(data,
 #' @export
 get_lambda_m_max <-
   function(data,
-           intercept_row = FALSE,
-           intercept_col = FALSE,
            lambda_beta = 0,
            lambda_gamma = 0,
            rank = 2,
-           shared_beta = FALSE,
-           shared_gamma = FALSE,
            bisection_iter = 15,
            convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE),
            verbose = 0) {
@@ -159,10 +141,6 @@ get_lambda_m_max <-
         rank = 0,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        shared_beta = shared_beta,
-        shared_gamma = shared_gamma,
         convergence = convergence
       )
       # return largest singular value
@@ -179,10 +157,6 @@ get_lambda_m_max <-
         lambda_m = lam,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
-        shared_beta = shared_beta,
-        shared_gamma = shared_gamma,
         convergence = convergence,
         warm_start = baseline_fit
       )
@@ -243,9 +217,6 @@ get_lambda_lasso_max <- function(
   target = c("beta", "gamma"),
   rank = 2,
   lambda_m = 0,
-  intercept_row = TRUE,
-  intercept_col = TRUE,
-  shared_effects = FALSE, # Maps shared_beta/shared_gamma flags
   bisection_iter = 15,
   convergence = imr_convergence(),
   verbose = 0
@@ -268,10 +239,6 @@ get_lambda_lasso_max <- function(
     lambda_m = lambda_m,
     lambda_beta = 0,
     lambda_gamma = 0,
-    intercept_row = intercept_row,
-    intercept_col = intercept_col,
-    shared_beta = shared_effects,
-    shared_gamma = shared_effects,
     convergence = convergence
   )
 
@@ -301,10 +268,6 @@ get_lambda_lasso_max <- function(
       lambda_m = lambda_m,
       lambda_beta = if (is_beta) lam else 0,
       lambda_gamma = if (!is_beta) lam else 0,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
-      shared_beta = shared_effects,
-      shared_gamma = shared_effects,
       warm_start = baseline_fit,
       convergence = convergence
     )
@@ -362,94 +325,3 @@ get_lambda_lasso_max <- function(
 }
 
 #-----------------------------------------------------------------------
-#' @export
-adaptive_tuner <- function(
-  eval_fun,
-  step_sizes = c(1, 0.1, 0.01),
-  start_value = 0,
-  end_value = 20, # if start < end then it's ascending.
-  inc_streak_to_stop = 2,
-  .warm_start = NULL,
-  ... # all the other parameters being passed to eval_fun
-) {
-  results <- data.frame()
-  best_overall <- list(parameter = NA, error = Inf, fit = NULL)
-  ascending <- start_value < end_value
-  direction <- if (ascending) 1 else -1
-  current_start <- start_value
-  fit <- .warm_start
-  for (k in seq_along(step_sizes)) {
-    if (ascending & current_start > end_value) {
-      stop("For ascending search, start_value must be <= end_value.")
-    }
-    if (!ascending & current_start < end_value) {
-      stop("For descending search, start_value must be >= end_value.")
-    }
-    step_size <- step_sizes[k]
-    parameter <- current_start
-    prev_error <- Inf
-    inc_streak <- 0
-
-    step_history <- data.frame(
-      parameter = numeric(),
-      error     = numeric(),
-      step_size = numeric()
-    )
-
-    while ((ascending && parameter <= end_value) ||
-      (!ascending && parameter >= end_value)) {
-      out <- eval_fun(parameter, fit = fit, ...)
-      fit <- out$fit
-      # print(fit$d[1])
-      error <- out$error
-
-      step_history <- rbind(
-        step_history,
-        data.frame(
-          parameter = parameter,
-          error     = error,
-          step_size = step_size
-        )
-      )
-
-      if (error < best_overall$error) {
-        best_overall$parameter <- parameter
-        best_overall$error <- error
-        best_overall$fit <- out$fit
-      }
-
-      if (error >= prev_error) {
-        inc_streak <- inc_streak + 1
-      } else {
-        inc_streak <- 0
-      }
-
-      if (inc_streak >= inc_streak_to_stop) {
-        break
-      }
-
-      prev_error <- error
-      parameter <- parameter + direction * step_size
-    }
-
-    results <- rbind(results, step_history)
-    ord <- order(step_history$error)
-    best_idx <- ord[1]
-    best_param <- step_history$parameter[best_idx]
-
-    if (ascending) {
-      current_start <- max(best_param - step_size, start_value)
-      end_value <- min(best_param + step_size, end_value)
-    } else {
-      current_start <- min(best_param + step_size, start_value)
-      end_value <- max(best_param - step_size, end_value)
-    }
-  }
-  fit <- NULL # reset just in case
-  list(
-    best_parameter = best_overall$parameter,
-    best_error     = best_overall$error,
-    best_fit       = best_overall$fit,
-    history        = results
-  )
-}
