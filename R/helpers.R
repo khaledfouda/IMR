@@ -34,10 +34,6 @@ inv <- function(X, tol = sqrt(.Machine$double.eps)) {
 }
 
 #-------------------------------------
-
-# trim_eig <- function(d, tol = 1e-10) d[d > 0 & !is.nan(d) & !is.na(d)]
-
-#' @export
 mask_train_test_split <-
   function(obs_mask,
            testp = 0.2,

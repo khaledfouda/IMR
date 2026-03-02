@@ -91,7 +91,7 @@ imr_set_grid_limits <- function(data,
                                 bisection_iter = 15,
                                 verbose = 0) {
   if (data$meta$has_X && grid$beta$max == "auto") {
-    grid$beta$max <- IMR::get_lambda_lasso_max(data, "beta",
+    grid$beta$max <- IMR:::get_lambda_lasso_max(data, "beta",
       rank = default_rank,
       lambda_m = default_lambda_m,
       convergence = convergence,
@@ -100,7 +100,7 @@ imr_set_grid_limits <- function(data,
     )
   }
   if (data$meta$has_Z && grid$gamma$max == "auto") {
-    grid$gamma$max <- IMR::get_lambda_lasso_max(data, "gamma",
+    grid$gamma$max <- IMR:::get_lambda_lasso_max(data, "gamma",
       rank = default_rank,
       lambda_m = default_lambda_m,
       convergence = convergence,
@@ -109,7 +109,7 @@ imr_set_grid_limits <- function(data,
     )
   }
   if (grid$laplace$max == "auto") {
-    grid$laplace$max <- IMR::get_lambda_m_max(data,
+    grid$laplace$max <- IMR:::get_lambda_m_max(data,
       rank = default_rank,
       lambda_beta = default_lambda_beta,
       lambda_gamma = default_lambda_gamma,
@@ -122,7 +122,6 @@ imr_set_grid_limits <- function(data,
 }
 
 #------------------------------------------------------
-#' @export
 get_lambda_m_max <-
   function(data,
            lambda_beta = 0,
@@ -211,7 +210,6 @@ get_lambda_m_max <-
   }
 #------------------------------------------------
 #' Find the minimum Lasso lambda that forces all covariates to zero
-#' @export
 get_lambda_lasso_max <- function(
   data, # Must be an 'imr_data' S3 object
   target = c("beta", "gamma"),

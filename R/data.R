@@ -111,6 +111,7 @@ imr_data <- function(Y,
   structure(out, class = "imr_data")
 }
 #----------------------------------------
+#' @export
 update.imr_data <- function(object,
                             row_covariates = NULL,
                             col_covariates = NULL,
@@ -366,7 +367,7 @@ reconstruct_partial <- function(fit, data, target, trace = FALSE) {
 
 #----------------------------------------------------------------
 #' @export
-generate_similarity <- function(x,
+imr_similarity <- function(x,
                                 d = NULL,
                                 matern_params = list(smoothness = 1.5, range = 1),
                                 rbf_params = list(ell = 1),
