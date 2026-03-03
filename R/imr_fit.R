@@ -56,6 +56,39 @@ imr_fit <- function(
   )
 
   # 5. Construct Final Object
+  if(!training){
+    ss <- function(x) sum((x-mean(x))^2)
+    sum_squares <- list(
+      sst = ss(data$Y@x),
+      sse = ss(result_list$residuals@x))
+    if(data$model$row_covariates){
+      coefs <- if(data$model$shared_beta)
+        matrix(result_list$beta,data$meta$num_X_vars, data$meta$dimensions[2]) else
+          result_list$beta
+      sum_squares$ssrc <- ss(partial_crossprod(data$Xq, coefs,data$Y@i,data$Y@p))
+    }else sum_squares$ssrc = 0
+    if(data$model$col_covariates){
+      coefs <- if(data$model$shared_gamma)
+        matrix(result_list$gamma,data$meta$dimensions[1],data$meta$num_Z_vars,TRUE) else
+          result_list$gamma
+      sum_squares$sscc <- ss(partial_crossprod(coefs, data$Zq,  data$Y@i,data$Y@p,TRUE))
+    }else sum_squares$sscc = 0
+    if(data$model$intercept_row){
+      sum_squares$ssri <- ss(partial_crossprod(as.matrix(result_list$beta0),
+                                               diag(1,1,data$meta$dimensions[2]),
+                                              data$Y@i, data$Y@p))
+    }else sum_squares$ssri = 0
+    if(data$model$intercept_col){
+      sum_squares$ssci <- ss(partial_crossprod( diag(1,data$meta$dimensions[1],1),
+                                                t(as.matrix(result_list$gamma0)),
+                                               data$Y@i, data$Y@p))
+    }else sum_squares$ssci = 0
+    if(data$model$low_rank_component){
+      sum_squares$ssm <- ss(IMR:::partial_crossprod(result_list$u,
+                                                    t(t(result_list$v)*result_list$d),
+                                             data$Y@i, data$Y@p, TRUE))
+    }else sum_squares$ssm = 0
+  } else sum_squares = NULL
   structure(
     list(
       coefficients = list(
@@ -77,9 +110,11 @@ imr_fit <- function(
         converged = result_list$n_iter < convergence$maxit,
         training = training,
         # statistic for print function
-        tss = if (training) 0 else sum((data$Y@x - mean(data$Y@x))^2)
+        sum_squares = sum_squares
       ),
-      convergence = convergence
+      convergence = convergence,
+      model = data$model,
+      meta_data = data$meta
     ),
     class = "imr_fit"
   )
@@ -474,21 +509,23 @@ print.imr_fit <- function(x, ...) {
   }
 
   # --- 3. Fit Statistics ---
-  if (!is.null(x$residuals)) {
-    rss <- sum(x$residuals@x^2)
-    tss <- x$meta$tss
+  if (!is.null(x$meta$sum_squares)) {
+    sse <- x$meta$sum_squares$sse
+    sst <- x$meta$sum_squares$sst
     n <- length(x$residuals@x)
-    mse <- rss / n
+    mse <- sse / n
     rmse <- sqrt(mse)
-    r2 <- 1 - (rss / tss)
+    r2 <- 1 - (sse / sst)
 
-    # Ensure R2 isn't negative (possible in non-OLS or heavy regularization)
+    prepare_d <- function(x) ifelse(round(x,4) >= 1e-4, sprintf("%.4f",x), "< 1e-4")
+
+    # Ensure R2 isn't negative
     r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else sprintf("%.4f", r2)
 
     cat("\n-- Fit Statistics --\n")
-    cat(sprintf("RMSE:      %.5f\n", rmse))
-    cat(sprintf("MSE:       %.5f\n", mse))
-    cat(sprintf("R-squared: %s\n", r2_str))
+    cat(sprintf("RMSE       : %s\n", prepare_d(rmse)))
+    cat(sprintf("MSE        : %s\n", prepare_d(mse)))
+    cat(sprintf("Pseudo R2  : %s\n", r2_str))
   }
 
   # --- 4. Hyperparameters ---
@@ -524,6 +561,11 @@ print.imr_convergence <- function(x, ...) {
 
   cat("================================\n")
   invisible(x)
+}
+
+#'@export
+coef.imr_fit <- coefficients.imr_fit <- function(x, ...){
+  return(x$coefficients)
 }
 
 

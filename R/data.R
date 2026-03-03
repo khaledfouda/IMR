@@ -69,6 +69,7 @@ imr_data <- function(Y,
     stopifnot(is.matrix(X), nrow(X) == nrow(Y))
     xqr <- qr(X)
     out$Xq <- qr.Q(xqr)
+    colnames(out$Xq) <- colnames(X)
     out$Xr <- qr.R(xqr)
   }
 
@@ -76,6 +77,7 @@ imr_data <- function(Y,
     stopifnot(is.matrix(Z), nrow(Z) == ncol(Y))
     Zqr <- qr(Z)
     out$Zq <- qr.Q(Zqr)
+    colnames(out$Zq) <- colnames(Z)
     out$Zr <- qr.R(Zqr)
   }
 
@@ -90,8 +92,10 @@ imr_data <- function(Y,
     val_prop = if (split_data) val_prop else 0,
     has_X = !is.null(X),
     num_X_vars = if (!is.null(X)) ncol(X) else 0,
+    names_X_vars = if (!is.null(X)) colnames(X) else NULL,
     has_Z = !is.null(Z),
     num_Z_vars = if (!is.null(Z)) ncol(Z) else 0,
+    names_Z_vars = if (!is.null(Z)) colnames(Z) else NULL,
     has_sim_row = !is.null(out$similarity_rows),
     has_sim_col = !is.null(out$similarity_cols)
   )
