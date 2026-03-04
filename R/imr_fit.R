@@ -101,6 +101,8 @@ imr_fit <- function(
         gamma0 = result_list$gamma0
       ),
       residuals = result_list$residuals,
+      Xr = if(model$row_covariates) data$Xr else NULL,
+      Zr = if(model$col_covariates) data$Zr else NULL,
       meta = list(
         rank = rank,
         lambdas = c(M = lambda_m, beta = lambda_beta, gamma = lambda_gamma),
@@ -646,14 +648,19 @@ summary.imr_fit <- function(object, ...) {
 
   }
 
-  if(object$model$row_covariates)
-    summarize_covariates(t(object$coefficients$beta), object$meta_data$names_X_vars,
+  if(object$model$row_covariates){
+    beta = IMR:::inv(object$Xr) %*% object$coefficients$beta
+    summarize_covariates(t(beta), object$meta_data$names_X_vars,
                          TRUE,
                          object$meta_data$dimensions[2])
-  if(object$model$col_covariates)
-    summarize_covariates(object$coefficients$gamma, object$meta_data$names_Z_vars,
+
+  }
+  if(object$model$col_covariates){
+    gamma = tcrossprod(object$coefficients$gamma, IMR:::inv(object$Zr))
+    summarize_covariates(gamma, object$meta_data$names_Z_vars,
                          FALSE,
                          object$meta_data$dimensions[1])
+  }
 
   if(object$model$intercept_row || object$model$intercept_col){
     cat("\n-- Intercepts --")
@@ -698,7 +705,7 @@ print.imr_convergence <- function(x, ...) {
   cat(sprintf("Trace Progress: %s\n", trace_status))
 
   cat("================================\n")
-  invisible(x)
+  invisible()
 }
 
 #'@export

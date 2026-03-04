@@ -1,7 +1,7 @@
 library(devtools)
 #clean_dll(); Rcpp::compileAttributes(); document();
 load_all()
-# devtools::uninstall(); devtools::install()
+#devtools::uninstall(); devtools::install()
 require(tidyverse)
 source("./article_results/simulation/generate_simu_dat.R")
 
@@ -38,7 +38,9 @@ fit
 summary(fit)
 data
 
-fit <- IMR::imr_fit(data=data, rank = 3, lambda_m =.002,
+data$
+
+fit <- imr_fit(data=data, rank = 3, lambda_m =.002,
                     lambda_beta = 0, lambda_gamma = 0,
                      warm_start = NULL,
                     convergence = convergence);
@@ -113,6 +115,8 @@ baseline_fit <- imr_fit(
   convergence = convergence
 )
 
+
+plot_tuning_trace(history, "path", "last", 9)
 plot_tuning_trace(history, "convergence", "all", 13)
 #' Plot IMR tuning diagnostics
 #' @export
@@ -231,3 +235,123 @@ plot_tuning_trace <- function(history,
     return(p)
   }
 }
+
+cv_out$history
+ploti(cv_out, "trace")
+ploti(cv_out, "profile")
+
+type = "profile"
+x <- cv_out
+
+ploti <- function(x, type = c("profile", "trace"), ...) {
+
+    if (!requireNamespace("ggplot2", quietly = TRUE)) {
+      stop("Package 'ggplot2' is required to plot the tuning trace.")
+    }
+
+    type <- match.arg(type)
+
+    # =========================================================================
+    # COMMON SETUP
+    # =========================================================================
+    h <- x$history
+    prm <- x$params
+
+    if (is.null(h) || nrow(h) == 0 || is.null(prm) || nrow(prm) == 0) {
+      stop("Missing tuning history or params in the model object.")
+    }
+
+    # Derive step and target for the History (used for Profile plot)
+    h$tuning_target <- ifelse(h$iter %% 1 == 0, "Beta", "Gamma")
+    h$step <- h$iter * 2 - 1
+
+    # Derive step and target for the Params (used for Trace plot)
+    prm$tuning_target <- ifelse(prm$iter %% 1 == 0, "Beta", "Gamma")
+    prm$step <- prm$iter * 2 - 1
+
+    # =========================================================================
+    # TYPE 1: THE MICRO LOSS-SURFACE (Profile)
+    # =========================================================================
+    if (type == "profile") {
+
+      # Create a unique ID for every single sweep
+      h$sweep_id <- paste(h$step, h$tuning_target, h$lambda_beta, h$lambda_gamma, sep = "_")
+      best_global <- h[which.min(h$verror), ]
+
+      # Highlight only the BEST path from each step
+      best_paths <- do.call(rbind, lapply(split(h, h$step), function(df) {
+        best_sweep_id <- df$sweep_id[which.min(df$verror)]
+        df[df$sweep_id == best_sweep_id, ]
+      }))
+
+      p <- ggplot2::ggplot(best_paths, ggplot2::aes(x = lambda_laplace, y = verror,
+                                                    group = sweep_id,
+                                                    color = step,
+                                                    linetype = tuning_target)) +
+        ggplot2::geom_line(linewidth = 0.8, alpha = 0.8) +
+        ggplot2::scale_x_log10() +
+        ggplot2::scale_color_viridis_c(name = "Chronological Step", option = "plasma",
+                                       breaks = unique(best_paths$step)) +
+        ggplot2::scale_linetype_manual(name = "Tuning Phase", values = c("Beta" = "solid", "Gamma" = "dashed")) +
+        ggplot2::geom_vline(xintercept = best_global$lambda_laplace,
+                            color = "red", linetype = "dotted", alpha = 0.6) +
+        ggplot2::geom_point(data = best_global, color = "red", size = 4, shape = 18) +
+        ggplot2::labs(
+          title = "Laplace Validation Profiles",
+          subtitle = "Showing the optimal Laplace path for each alternating step",
+          x = "Laplace Penalty (\u03BB_M) [Log Scale]",
+          y = "Validation Error"
+        ) +
+        ggplot2::theme_bw() +
+        ggplot2::theme(legend.position = "right")
+
+      return(p)
+    }
+
+    # =========================================================================
+    # TYPE 2: THE MACRO CONVERGENCE (Trace)
+    # =========================================================================
+    if (type == "trace") {
+
+      # No need to search the history anymore! Just use the pre-calculated params.
+      best_df <- prm[order(prm$step), ]
+
+      # Reshape into long format for facet_grid
+      n_steps <- nrow(best_df)
+
+      long_df <- data.frame(
+        step = rep(best_df$step, 4),
+        iter = rep(best_df$iter, 4),
+        target = rep(best_df$tuning_target, 4),
+        value = c(best_df$verror, best_df$lambda_beta, best_df$lambda_gamma, best_df$rank_out),
+        metric = factor(rep(c("1. Val Error", "2. \u03BB_\u03B2", "3. \u03BB_\u03B3", "4. Latent Rank"),
+                            each = n_steps))
+      )
+
+      # Custom x-axis labels (e.g., "1.0\n(Beta)", "1.5\n(Gamma)")
+      x_labels <- sprintf("%.1f\n(%s)", best_df$iter, substr(best_df$tuning_target, 1, 1))
+
+      p <- ggplot2::ggplot(long_df, ggplot2::aes(x = step, y = value)) +
+        ggplot2::geom_line(color = "steelblue", linewidth = 1) +
+        ggplot2::geom_point(ggplot2::aes(color = target), size = 3) +
+        ggplot2::scale_color_manual(name = "Active Tune", values = c("Beta" = "firebrick", "Gamma" = "darkorange")) +
+        ggplot2::facet_grid(metric ~ ., scales = "free_y", switch = "y") +
+        ggplot2::scale_x_continuous(breaks = best_df$step, labels = x_labels) +
+        ggplot2::labs(
+          title = "Alternating Optimization Convergence Trace",
+          subtitle = "Tracking optimal hyperparameters across block coordinate descent",
+          x = "Iteration & Tuning Target",
+          y = NULL
+        ) +
+        ggplot2::theme_bw() +
+        ggplot2::theme(
+          strip.background = ggplot2::element_blank(),
+          strip.placement = "outside",
+          strip.text.y.left = ggplot2::element_text(face = "bold", angle = 0),
+          panel.grid.minor.x = ggplot2::element_blank(),
+          legend.position = "bottom"
+        )
+
+      return(p)
+    }
+  }
