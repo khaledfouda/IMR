@@ -86,12 +86,13 @@ imr_tune_laplace <- function(data,
     history$rank_in[i] <- rank_max
     history$rank_out[i] <- rank_out
     # track best model & early stopping
-    if (verror <= best_verror) {
+    completely_sparse <- rank_out == 0
+    if (verror < best_verror) {
       best_fit_obj <- mfit
       best_verror <- verror
       best_params <- history[i, ]
       no_improve_count <- 0
-    } else {
+    } else if(!completely_sparse){
       no_improve_count <- no_improve_count + 1
     }
 

@@ -168,21 +168,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// partial_crossprod_fast
-Rcpp::NumericVector partial_crossprod_fast(Rcpp::NumericMatrix u, Rcpp::NumericMatrix v, Rcpp::IntegerVector irow, Rcpp::IntegerVector pcol, bool vtranspose);
-RcppExport SEXP _IMR_partial_crossprod_fast(SEXP uSEXP, SEXP vSEXP, SEXP irowSEXP, SEXP pcolSEXP, SEXP vtransposeSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type u(uSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type v(vSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type irow(irowSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type pcol(pcolSEXP);
-    Rcpp::traits::input_parameter< bool >::type vtranspose(vtransposeSEXP);
-    rcpp_result_gen = Rcpp::wrap(partial_crossprod_fast(u, v, irow, pcol, vtranspose));
-    return rcpp_result_gen;
-END_RCPP
-}
 // svd_small_nc_cpp
 Rcpp::List svd_small_nc_cpp(SEXP mS);
 RcppExport SEXP _IMR_svd_small_nc_cpp(SEXP mSSEXP) {
@@ -218,7 +203,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},
     {"_IMR_update_B_sim_cpp", (DL_FUNC) &_IMR_update_B_sim_cpp, 6},
     {"_IMR_partial_crossprod", (DL_FUNC) &_IMR_partial_crossprod, 5},
-    {"_IMR_partial_crossprod_fast", (DL_FUNC) &_IMR_partial_crossprod_fast, 5},
     {"_IMR_svd_small_nc_cpp", (DL_FUNC) &_IMR_svd_small_nc_cpp, 1},
     {"_IMR_svd_small_nr_cpp", (DL_FUNC) &_IMR_svd_small_nr_cpp, 1},
     {NULL, NULL, 0}

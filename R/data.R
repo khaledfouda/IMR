@@ -116,6 +116,7 @@ imr_data <- function(Y,
 }
 #----------------------------------------
 #' @export
+#' @method update imr_data
 update.imr_data <- function(object,
                             row_covariates = NULL,
                             col_covariates = NULL,

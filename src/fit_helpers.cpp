@@ -181,21 +181,6 @@ double frob_ratio_cpp(const arma::mat& Uold,  const arma::vec& Dsqold, const arm
   return num / std::max(denom, 1e-9);
 }
 
-//
-// // Build an arma::sp_mat from a Matrix::dgCMatrix (n x m)
-//   static arma::sp_mat as_spmat_dgc(const S4& y) {
-//     IntegerVector Dim = y.slot("Dim");
-//     IntegerVector i   = y.slot("i");
-//     IntegerVector p   = y.slot("p");
-//     NumericVector x   = y.slot("x");
-//
-//     arma::uvec ai = arma::conv_to<arma::uvec>::from( as< std::vector<unsigned int> >(i) );
-//     arma::uvec ap = arma::conv_to<arma::uvec>::from( as< std::vector<unsigned int> >(p) );
-//     arma::vec  ax = as<arma::vec>(x);
-//
-//     return arma::sp_mat(ai, ap, ax, Dim[0], Dim[1]); // n x m
-//   }
-//
 // The following two functions compute the least-squares updates for A and B
 
 
@@ -230,29 +215,6 @@ arma::mat update_A_cpp(SEXP yS4,
 
   return A;
 }
-
-//
-// arma::mat update_A_sim_cpp(SEXP yS4,              // dgCMatrix (n x m)
-//                            const arma::mat& U,    // n x J
-//                            const arma::mat& V,    // m x J
-//                            const arma::vec& Dsq,  // length J
-//                            const double lambda_M,
-//                            const arma::mat& Ur,   // n x n
-//                            const arma::vec& dr) { // length n
-//   // y: sparse matrix
-//   S4 y(yS4);
-//   arma::sp_mat Y = as_spmat_dgc(y);     // n x m
-//   arma::mat A = Ur.t() * ( Y * V + U.each_row() % Dsq.t());  // n x J
-//   A = A.each_row() % Dsq.t();
-//
-//   for (arma::uword j = 0; j < U.n_cols; ++j) {
-//     const double d = Dsq(j);
-//     arma::vec a = 1 / (dr + d );
-//     A.col(j) = Ur * (a % A.col(j));
-//   }
-//
-//   return A; // n x J
-// }
 
 
 

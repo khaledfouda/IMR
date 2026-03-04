@@ -91,7 +91,7 @@ imr_set_grid_limits <- function(data,
                                 bisection_iter = 15,
                                 verbose = 0) {
   if (data$meta$has_X && grid$beta$max == "auto") {
-    grid$beta$max <- IMR:::get_lambda_lasso_max(data, "beta",
+    grid$beta$max <- imr_get_lambda_lasso_max(data, "beta",
       rank = default_rank,
       lambda_m = default_lambda_m,
       convergence = convergence,
@@ -100,7 +100,7 @@ imr_set_grid_limits <- function(data,
     )
   }
   if (data$meta$has_Z && grid$gamma$max == "auto") {
-    grid$gamma$max <- IMR:::get_lambda_lasso_max(data, "gamma",
+    grid$gamma$max <- imr_get_lambda_lasso_max(data, "gamma",
       rank = default_rank,
       lambda_m = default_lambda_m,
       convergence = convergence,
@@ -109,7 +109,7 @@ imr_set_grid_limits <- function(data,
     )
   }
   if (grid$laplace$max == "auto") {
-    grid$laplace$max <- IMR:::get_lambda_m_max(data,
+    grid$laplace$max <- imr_get_lambda_m_max(data,
       rank = default_rank,
       lambda_beta = default_lambda_beta,
       lambda_gamma = default_lambda_gamma,
@@ -122,7 +122,7 @@ imr_set_grid_limits <- function(data,
 }
 
 #------------------------------------------------------
-get_lambda_m_max <-
+imr_get_lambda_m_max <-
   function(data,
            lambda_beta = 0,
            lambda_gamma = 0,
@@ -134,20 +134,21 @@ get_lambda_m_max <-
 
 
     if (!need_fit) {
-      lambda_kkt <- IMR::svd_opt(data$Y, 1)$d[1]
+      lambda_kkt <- svd_opt(data$Y, 1)$d[1]
     } else {
-      fit <- IMR::imr_fit(data,
+      data$model$low_rank_component = FALSE
+      fit <- imr_fit(data,
         rank = 0,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
         convergence = convergence
       )
+      data$model$low_rank_component = TRUE
       # return largest singular value
       lambda_kkt <- IMR::svd_opt(fit$residuals, 1)$d[1]
     }
     lower <- 0
     upper <- lambda_kkt
-    baseline_fit <- NULL
 
     # helper, fits a single model
     fit_test <- function(lam) {
@@ -160,6 +161,7 @@ get_lambda_m_max <-
         warm_start = baseline_fit
       )
     }
+    baseline_fit <- NULL
     baseline_fit <- fit_test(0)
 
     # we begin by adjusting the upperbound (in case the KKT bound isn't enough)
@@ -172,7 +174,9 @@ get_lambda_m_max <-
         break
       } else {
         # It is not fully sparse. We must try a HIGHER lambda.
-        upper <- lambda_kkt * (i + 1)
+        #upper <- lambda_kkt * (i + 1)
+        lower <- upper
+        upper <- upper * 1.5
       }
       if (verbose >= 2) {
         message(sprintf("lambda = %.4f, zero ratio = %.2f", upper, zero_ratio))
@@ -210,7 +214,7 @@ get_lambda_m_max <-
   }
 #------------------------------------------------
 #' Find the minimum Lasso lambda that forces all covariates to zero
-get_lambda_lasso_max <- function(
+imr_get_lambda_lasso_max <- function(
   data, # Must be an 'imr_data' S3 object
   target = c("beta", "gamma"),
   rank = 2,
@@ -223,7 +227,11 @@ get_lambda_lasso_max <- function(
   target <- match.arg(target, c("beta", "gamma"))
   is_beta <- target == "beta"
   # remove the other set of covariates from the data.
-  if (is_beta) data$Zq <- NULL else data$Xq <- NULL
+  if (is_beta) {
+    data$model$row_covariates = FALSE
+    }else {
+      data$model$col_covariates = FALSE
+    }
 
   if (is_beta && !data$meta$has_X) stop("Target is 'beta' but no X matrix found in data.")
   if (!is_beta && !data$meta$has_Z) stop("Target is 'gamma' but no Z matrix found in data.")
@@ -239,6 +247,13 @@ get_lambda_lasso_max <- function(
     lambda_gamma = 0,
     convergence = convergence
   )
+
+  #-- put them back in the model
+  if (is_beta) {
+    data$model$row_covariates = TRUE
+  }else {
+    data$model$col_covariates = TRUE
+  }
 
   # --- Calculate training Residuals for KKT Conditions ---
   resids <- baseline_fit$residuals
@@ -270,6 +285,8 @@ get_lambda_lasso_max <- function(
       convergence = convergence
     )
   }
+  baseline_fit <- NULL
+  baseline_fit <- fit_test(0)
   # we begin by adjusting the upperbound (in case the KKT bound isn't enough)
   for (i in seq_len(bisection_iter)) {
     test_model <- fit_test(upper)
@@ -282,7 +299,9 @@ get_lambda_lasso_max <- function(
       break
     } else {
       # It is not fully sparse. We must try a HIGHER lambda.
-      upper <- lambda_kkt * (i + 1)
+      #upper <- lambda_kkt * (i + 1)
+      lower <- upper
+      upper <- upper * 1.5
     }
     if (verbose >= 2) {
       message(sprintf("lambda = %.4f, zero ratio = %.2f", upper, zero_ratio))
