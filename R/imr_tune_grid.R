@@ -21,7 +21,7 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
         length  = if (len == 1) 1 else if (len >= 3) p[3] else 20
       )
       if (is_laplace) {
-        out$streaks <- if (len >= 5) p[5] else 1
+        out$streaks <- if (len >= 4) p[4] else 1
       }
       out
     }

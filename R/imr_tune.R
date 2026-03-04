@@ -33,10 +33,12 @@ imr_tune_laplace <- function(data,
   # indices
   if (grid$laplace$max <= 0) grid$laplace$max <- 1e-4
   if (grid$laplace$min <= 0) grid$laplace$min <- 1e-6
-  lambda_seq <- exp(seq(log(grid$laplace$max),
-    log(grid$laplace$min),
-    length.out = grid$laplace$length
-  ))
+  # lambda_seq <- exp(seq(log(grid$laplace$max),
+  #   log(grid$laplace$min),
+  #   length.out = grid$laplace$length
+  # ))
+  lambda_seq <- seq(grid$laplace$max,grid$laplace$min,
+                        length.out = grid$laplace$length)
   virow <- data$y_valid@i
   vpcol <- data$y_valid@p
   reference <- data$y_valid@x
@@ -339,8 +341,9 @@ imr_tune <- function(data,
   if (verbose > 0) message("Scenario 3: Alternating optimization for all 3 parameters...")
 
   # Initialize
-  cur_gamma <- grid$gamma$max
-  cur_beta <- diff_beta <- diff_gamma <- Inf
+  cur_gamma <- grid$gamma$min
+  #cur_beta <- diff_beta <- diff_gamma <- Inf
+  old_verror <- 9999
   all_history <- all_params <- data.frame()
   one_more_fit <- FALSE # this is an extra for for the purpose of final_fit=TRUE
   keep_iterating <- TRUE
@@ -348,8 +351,8 @@ imr_tune <- function(data,
   while (keep_iterating) {
     if (verbose > 0) message(sprintf("\n--- Tune Iteration %d ---", iter))
 
-    old_beta <- cur_beta
-    old_gamma <- cur_gamma
+    #old_beta <- cur_beta
+    #old_gamma <- cur_gamma
 
     # --- Step A: Tune Beta (given current Gamma) ---
     t_start_iter <- Sys.time()
@@ -365,14 +368,16 @@ imr_tune <- function(data,
     iter_time_secs <- as.numeric(difftime(Sys.time(), t_start_iter, units = "secs"))
     #---------------------------------------------------------------------------
     # track parameter squared difference for convergence.
-    diff_beta <- (cur_beta - old_beta)^2
-    diff <- diff_beta + diff_gamma
+    #diff_beta <- (cur_beta - old_beta)^2
+    #diff <- diff_beta + diff_gamma
+    diff <- abs(res_beta$params$verror - old_verror) / old_verror
+    old_verror <- res_beta$params$verror
     # track history for debugging/plotting
-    res_beta$history$step <- 1
+    #res_beta$history$step <- 1
     res_beta$history$iter <- iter
     all_history <- rbind(all_history, res_beta$history)
     # track best performance rows as well
-    res_beta$params$step <- 1
+    #res_beta$params$step <- 1
     res_beta$params$iter <- iter
     res_beta$params$diff <- diff
     all_params <- rbind(all_params, res_beta$params)
@@ -406,15 +411,17 @@ imr_tune <- function(data,
     iter_time_secs <- as.numeric(difftime(Sys.time(), t_start_iter, units = "secs"))
     #--------------------------------------------------
     # track parameter squared difference for convergence.
-    diff_gamma <- (cur_gamma - old_gamma)^2
-    diff <- diff_beta + diff_gamma
+    # diff_gamma <- (cur_gamma - old_gamma)^2
+    # diff <- diff_beta + diff_gamma
+    diff <- abs(res_gamma$params$verror - old_verror) / old_verror
+    old_verror <- res_gamma$params$verror
     # track history for debugging/plotting
-    res_gamma$history$step <- 1
-    res_gamma$history$iter <- iter
+    #res_gamma$history$step <- 1
+    res_gamma$history$iter <- iter + 0.5
     all_history <- rbind(all_history, res_gamma$history)
     # track best performance rows as well
-    res_gamma$params$step <- 1
-    res_gamma$params$iter <- iter
+    #res_gamma$params$step <- 1
+    res_gamma$params$iter <- iter + 0.5
     res_gamma$params$diff <- diff
     all_params <- rbind(all_params, res_gamma$params)
     # convergence check
