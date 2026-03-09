@@ -72,7 +72,7 @@ sparsity_beta = 0.5
 models <- c("IMR", "SImpute", "MCCI")
 all_res <- res <- data.frame()
 convergence <- IMR::imr_convergence(maxit=1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
-grid <- IMR::imr_tune_grid(rank = c(2, 10, 2), beta = 0, laplace = c(0,40,60,3))
+grid <- IMR::imr_tune_grid(rank = c(2, 10, 1, 2), beta = 0, laplace = c(0,40,40,2))
 
 for(b in 1:500){
   seed = 2025 + b
@@ -106,7 +106,8 @@ for(b in 1:500){
 
 
 
-    fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, seed = seed, n_cores = 9, verbose = 1)
+    fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, fast_laplace = FALSE,
+                            seed = seed, n_cores = 9, verbose = 1)
 
 
     fitmcci <- MCCI.cv(Y = dat$Y, X = dat$X, W = dat$mask, n_folds = 5,numCores = 9,
@@ -172,7 +173,7 @@ increase_sparsity <- function(dat, step=0.05){
 
 
 convergence <- IMR::imr_convergence(maxit=1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
-grid <- IMR::imr_tune_grid(rank = c(2, 10, 2), beta=c(0), gamma=c(0), laplace=c(0,120,80,3));
+grid <- IMR::imr_tune_grid(rank = c(2, 10, 1, 2), beta=c(0), gamma=c(0), laplace=c(0,120,60,2));
 
 n = m = 1000
 p = 5;
@@ -217,7 +218,8 @@ for(b in 1:500){
 
 
 
-    fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, seed = seed, n_cores = 9, verbose = 1)
+    fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, seed = seed, fast_laplace = FALSE,
+                            n_cores = 9, verbose = 1)
 
     #print(fitimr$fit)
     #summary(fitimr$fit)

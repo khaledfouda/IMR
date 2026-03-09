@@ -71,7 +71,7 @@ mask_train_test_split <-
 
 #-------------------------
 # Do not export
-verify_low_rank <- function(M, J, min_eigv = 1e-6) {
+verify_low_rank <- function(M, J, min_eigv = .Machine$double.eps) {
   D <- M$d
   # Count valid singular values, cap at length(D)
   JD <- sum(D >= min_eigv)
@@ -111,7 +111,7 @@ verify_low_rank <- function(M, J, min_eigv = 1e-6) {
 }
 
 # Do not export
-verify_warm_start <- function(M, J, min_eigv = 1e-16) {
+verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
   if (is.null(M) || is.null(M$d) || is.null(M$u) || is.null(M$v)) {
     warning("warm start verification failed - missing u, d, or v. Reinitializing...")
     return(NULL)

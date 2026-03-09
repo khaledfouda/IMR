@@ -21,18 +21,20 @@ data <- IMR:::imr_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
 data <- update(data, col_similarity = FALSE, row_similarity = FALSE,
                 shared_beta = FALSE, intercept_row = T, intercept_col = T);data
 
-grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,3),
+grid <- IMR::imr_tune_grid(laplace = c(0,NA,30,2), beta = 0, gamma = 0,
                            rank = c(2,15, 1));grid
 convergence <- IMR::imr_convergence(600, 1e-5, FALSE,ls_initial = T); convergence
 
 # grid$beta$max <- 1.695
 # grid$gamma$max <- 1.815
 # grid$laplace$max <- 92
-grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=2); grid
+grid <- imr_set_grid_limits(data, grid, convergence=convergence, verbose=2,bisection_iter = 3); grid
 
-cv_out <- imr_tune(data, grid, warm_start = NULL, n_cores = 9,
+
+
+cv_out <- imr_tune(data, grid, warm_start = NULL, n_cores = 9,fast_laplace = TRUE,
                            final_fit = TRUE, convergence=convergence,
-                     verbose=1, seed=2025)
+                     verbose=2, seed=2025)
 fit <- cv_out$fit
 fit
 summary(fit)

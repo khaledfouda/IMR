@@ -1,5 +1,5 @@
 #----------------------------------------------------------
-imr_tune_laplace <- function(data,
+imr_tune_laplace_fast <- function(data,
                              grid,
                              lambda_beta = 0,
                              lambda_gamma = 0,
@@ -116,7 +116,7 @@ imr_tune_laplace <- function(data,
   if (verbose > 0) {
     message(sprintf(
       "Best fit: lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
-      best_params$lambda_seq[i],
+      best_params$lambda_laplace,
       best_params$rank_in,
       best_params$rank_out,
       best_verror,
@@ -142,6 +142,186 @@ imr_tune_laplace <- function(data,
   list(fit = best_fit_obj, params = best_params, history = history)
 }
 # ==============================================================================================
+#----------------------------------------------------------
+imr_tune_laplace_slow <- function(data,
+                             grid,
+                             lambda_beta = 0,
+                             lambda_gamma = 0,
+                             final_fit = TRUE,
+                             convergence = IMR::imr_convergence(),
+                             error_function = IMR::error_metrics$rmse,
+                             warm_start = NULL,
+                             verbose = 1,
+                             seed = NULL) {
+  #-----------------------------------------------------
+  # input verification
+  if ((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
+  stopifnot(
+    inherits(data, "imr_data"),
+    inherits(grid, "imr_tune_grid"),
+    inherits(convergence, "imr_convergence")
+  )
+  stopifnot(
+    is.Incomplete(data$y_valid),
+    is.Incomplete(data$y_train)
+  )
+  stopifnot(is.numeric(grid$laplace$max))
+  stopifnot(
+    grid$rank$min > 0,
+    grid$rank$max >= grid$rank$min,
+    grid$rank$step >= 0,
+    grid$laplace$length >= 1,
+    grid$laplace$max >= grid$laplace$min
+  )
+  #---------------------------------------------------
+  # training grids
+  if (grid$laplace$max <= 0) grid$laplace$max <- 1e-4
+  if (grid$laplace$min <= 0) grid$laplace$min <- 1e-6
+  lambda_seq <- exp(seq(log(grid$laplace$max),
+                        log(grid$laplace$min),
+                        length.out = grid$laplace$length
+  ))
+  # lambda_seq <- seq(grid$laplace$max,grid$laplace$min,
+  #                       length.out = grid$laplace$length)
+  rank_seq <- seq(grid$rank$min, grid$rank$max, grid$rank$step)
+  #-----------------------------------------------------------
+  # indices
+
+  virow <- data$y_valid@i
+  vpcol <- data$y_valid@p
+  reference <- data$y_valid@x
+  # initial values
+  mfit <- warm_start
+  history <- expand.grid(
+    rank = rank_seq,
+    lambda_laplace = lambda_seq
+  )
+  history <- history[, c("lambda_laplace", "rank")]
+  history$verror   <- rep(NA_real_, nrow(history))
+  history$rank_in  <- rep(NA_integer_, nrow(history))
+  history$rank_out <- rep(NA_integer_, nrow(history))
+  n_ranks <- length(rank_seq)
+  best_fit_obj_1 <- NULL
+  best_params_1 <- NULL
+  best_verror_1 <- Inf
+  no_improve_count_1 <- 0
+  # main loop
+  for (i in seq_along(lambda_seq)) {
+    current_lambda <- lambda_seq[i]
+    best_fit_obj_2 <- NULL
+    best_params_2 <- NULL
+    best_verror_2 <- Inf
+    no_improve_count_2 <- 0
+
+    for(j in seq_along(rank_seq)) {
+      current_rank <- rank_seq[j]
+      row_idx <- (i - 1) * n_ranks + j
+
+      mfit <- IMR::imr_fit(data,
+                         rank = current_rank,
+                         lambda_m = current_lambda,
+                         lambda_beta = lambda_beta,
+                         lambda_gamma = lambda_gamma,
+                         convergence = convergence,
+                         training = TRUE,
+                         warm_start = mfit)
+      # compute validation error
+      vestim <- IMR::reconstruct_partial(mfit, data, data$valid_mask)@x
+      verror <- error_function(vestim, reference)
+      # compute rank
+      rank_out <- sum(mfit$coefficients$d > 1e-4)
+      # verbose
+      if (verbose >= 2) {
+        message(sprintf(
+          "%2d lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
+          i,
+          lambda_seq[i],
+          current_rank,
+          rank_out,
+          verror,
+          mfit$meta$n_iter
+        ))
+      }
+      # update history
+      history$verror[row_idx] <- verror
+      history$rank_in[row_idx] <- current_rank
+      history$rank_out[row_idx] <- rank_out
+      # track best model & early stopping
+      completely_sparse <- rank_out == 0
+      if (verror < best_verror_2) {
+        best_fit_obj_2 <- mfit
+        best_verror_2 <- verror
+        best_params_2 <- history[row_idx, ]
+        no_improve_count_2 <- 0
+      } else if(!completely_sparse){
+        no_improve_count_2 <- no_improve_count_2 + 1
+      }
+
+      if (no_improve_count_2 >= grid$rank$streaks) {
+        if (verbose >= 2) {
+          message(
+            sprintf(
+              "Early Stopping in inner loop: no improvement in last %d iterations.",
+              no_improve_count_2
+            )
+          )
+        }
+        break
+      }
+    }
+    #----
+    if (best_verror_2 < best_verror_1) {
+      best_fit_obj_1 <- best_fit_obj_2
+      best_verror_1 <- best_verror_2
+      best_params_1 <- best_params_2
+      no_improve_count_1 <- 0
+    } else if(best_params_2$rank_out != 0){
+      no_improve_count_1 <- no_improve_count_1 + 1
+    }
+
+    if (no_improve_count_1 >= grid$laplace$streaks) {
+      if (verbose >= 2) {
+        message(
+          sprintf(
+            "Early Stopping in outer loop: no improvement in last %d iterations.",
+            no_improve_count_1
+          )
+        )
+      }
+      break
+    }
+  }
+
+   if (verbose > 0) {
+      message(sprintf(
+        "Best fit: lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
+        best_params_1$lambda_laplace,
+        best_params_1$rank_in,
+        best_params_1$rank_out,
+        best_verror_1,
+        best_fit_obj_1$meta$n_iter
+      ))
+  }
+  # (optional) final fit on full dataset
+  if (final_fit) {
+    if (verbose > 0) message("Fitting final model on full dataset...")
+    best_fit_obj_1 <- IMR::imr_fit(data,
+                                 rank = best_params_1$rank_in,
+                                 lambda_m = best_params_1$lambda_laplace,
+                                 lambda_beta = lambda_beta,
+                                 lambda_gamma = lambda_gamma,
+                                 convergence = convergence,
+                                 training = FALSE,
+                                 warm_start = best_fit_obj_1
+    )
+  }
+  # Clean history of NAs from early stopping
+  history <- history[!is.na(history$verror), ]
+
+  list(fit = best_fit_obj_1, params = best_params_1, history = history)
+}
+# ==============================================================================================
+
 imr_tune_lasso <- function(data,
                            grid,
                            target = c("beta", "gamma"),
@@ -153,6 +333,7 @@ imr_tune_lasso <- function(data,
                            warm_start = NULL,
                            verbose = 1,
                            n_cores = 4,
+                           fast_laplace = TRUE,
                            seed = NULL) {
   #-----------------------------------------------------
   # input verification and seed
@@ -190,6 +371,7 @@ imr_tune_lasso <- function(data,
   }
   #--------------------------------------------------
   # Run the loop
+  laplace_function = if(fast_laplace) imr_tune_laplace_fast else imr_tune_laplace_slow
   # if(!final_fit) use_warm_in_final = FALSE # not needed.
   lambda_seq <- seq(lambda_obj$min, lambda_obj$max, length.out = lambda_obj$length)
   results_list <- parallel::mclapply(seq_along(lambda_seq), function(i) {
@@ -198,7 +380,7 @@ imr_tune_lasso <- function(data,
       cat(sprintf("Worker started: %s = %.4f\n", target, lambda))
     }
     # run full tune_laplace
-    laplace_res <- imr_tune_laplace(
+    laplace_res <- laplace_function(
       data = data,
       grid = grid,
       lambda_beta = if (is_beta) lambda else fixed_other_lasso,
@@ -279,6 +461,7 @@ imr_tune <- function(data,
                      default_lambda_gamma = 0,
                      final_fit = TRUE,
                      use_warm_in_final = TRUE,
+                     fast_laplace = TRUE,
                      convergence = IMR::imr_convergence(),
                      error_function = IMR::error_metrics$rmse,
                      warm_start = NULL,
@@ -299,7 +482,8 @@ imr_tune <- function(data,
   #------------------------------------------------------------
   if (!tune_beta && !tune_gamma) {
     if (verbose > 0) message("Tuning  Laplace (M) only...")
-    out_obj <- imr_tune_laplace(
+    laplace_function = if(fast_laplace) imr_tune_laplace_fast else imr_tune_laplace_slow
+    out_obj <- laplace_function(
       data = data, grid = grid,
       lambda_beta = default_lambda_beta, lambda_gamma = default_lambda_gamma,
       final_fit = final_fit, convergence = convergence,
@@ -325,7 +509,7 @@ imr_tune <- function(data,
       data = data, grid = grid, target = target, fixed_other_lasso = fixed_other,
       final_fit = final_fit, use_warm_in_final = use_warm_in_final,
       convergence = convergence, error_function = error_function,
-      warm_start = warm_start, verbose = verbose,
+      warm_start = warm_start, verbose = verbose, fast_laplace = fast_laplace,
       n_cores = n_cores, seed = seed
     )
     t_total <- difftime(Sys.time(), t_start_global)
@@ -345,7 +529,8 @@ imr_tune <- function(data,
   #cur_beta <- diff_beta <- diff_gamma <- Inf
   old_verror <- 9999
   all_history <- all_params <- data.frame()
-  one_more_fit <- FALSE # this is an extra for for the purpose of final_fit=TRUE
+  #one_more_fit <- FALSE # this is an extra for for the purpose of final_fit=TRUE
+  last_output <- NULL
   keep_iterating <- TRUE
   iter <- 1
   while (keep_iterating) {
@@ -359,7 +544,7 @@ imr_tune <- function(data,
     res_beta <- imr_tune_lasso(
       data = data, grid = grid, target = "beta", fixed_other_lasso = cur_gamma,
       final_fit = if (one_more_fit) final_fit else FALSE,
-      use_warm_in_final = use_warm_in_final,
+      use_warm_in_final = use_warm_in_final, fast_laplace = fast_laplace,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
       n_cores = n_cores, seed = seed
@@ -402,7 +587,7 @@ imr_tune <- function(data,
     res_gamma <- imr_tune_lasso(
       data = data, grid = grid, target = "gamma", fixed_other_lasso = cur_beta,
       final_fit = if (one_more_fit) final_fit else FALSE,
-      use_warm_in_final = use_warm_in_final,
+      use_warm_in_final = use_warm_in_final, fast_laplace = fast_laplace,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
       n_cores = n_cores, seed = seed

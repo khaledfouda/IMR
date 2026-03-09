@@ -1,8 +1,8 @@
 #' @export
 imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
                           gamma = c(0, NA, 20),
-                          laplace = c(0, NA, 10, 3), # min, max, length, streak
-                          rank = c(2, 30, 2) # min, max, step
+                          laplace = c(0, NA, 20, 2), # min, max, length, streak
+                          rank = c(2, 30, 2, 2) # min, max, step, streak
 ) {
   parse_param <- function(p, is_rank = FALSE, is_laplace = FALSE) {
     len <- length(p)
@@ -12,7 +12,8 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
       list(
         min  = p[1],
         max  = if (len == 1) p[1] else p[2],
-        step = if (len >= 3) p[3] else 2
+        step = if (len >= 3) p[3] else 2,
+        streaks = if (len >= 4) p[4] else 2
       )
     } else {
       out <- list(
@@ -21,7 +22,7 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
         length  = if (len == 1) 1 else if (len >= 3) p[3] else 20
       )
       if (is_laplace) {
-        out$streaks <- if (len >= 4) p[4] else 1
+        out$streaks <- if (len >= 4) p[4] else 2
       }
       out
     }
@@ -67,11 +68,12 @@ print.imr_tune_grid <- function(x, ...) {
     x$laplace$streaks
   ))
   cat(sprintf(
-    "%-18s Range: %d -> %d (Step: %s)\n",
+    "%-18s Range: %d -> %d   (Step: %s, Streaks: %d)\n",
     "Rank:",
     x$rank$min,
     x$rank$max,
-    x$rank$step
+    x$rank$step,
+    x$rank$streaks
   ))
 
   cat("===========================================================\n\n")

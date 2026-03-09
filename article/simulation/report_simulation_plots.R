@@ -173,7 +173,7 @@ results3 %>%
     mean_time = mean(time, na.rm = TRUE),
     mean_error = mean(test, na.rm = TRUE),
     .groups = "drop"
-  ) %>%
+  ) %>% arrange(obs_rate, mean_time)
   pivot_wider(
     names_from = model,
     values_from = c(mean_time, mean_error)

@@ -45,13 +45,15 @@ train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
 # ====================================================================
 rep = 1; prefix = 1; train_size = train_seq[1]; i=1
 #---
-grid <- IMR::imr_tune_grid(laplace = c(0,NA,30, 2), rank = c(2,30, 1)); grid
+grid <- IMR::imr_tune_grid(laplace = c(0,NA,30, 2), rank = c(2, 30, 1,2)); grid
 convergence <- IMR::imr_convergence(maxit = 600, thresh=1e-5, trace=FALSE, ls_initial = TRUE)
+
+#rep = 1; prefix = 1; i = 1; train_size=train_seq[1]
 
 total_results <- data.frame()
 for (rep in 1:10) {
   seed <- 4000 + rep
-  for (prefix in 11:50) {
+  for (prefix in 1:50) {
     for (train_size in train_seq) {
       for (i in 1:nrow(model_combn)) {
         dat <- prepare_bixi_data(total_miss, "Feb_last", seed,
@@ -79,37 +81,16 @@ for (rep in 1:10) {
                              shared_beta = FALSE, shared_gamma = FALSE,
                              intercept_row = FALSE, intercept_col = FALSE,
                              row_similarity = TRUE, col_similarity = TRUE); model_data
-        grid <- IMR::imr_tune_grid(laplace = c(0,NA,120, 8), rank = c(2,30, 2));
-        grid <- IMR::imr_set_grid_limits(model_data, grid, default_rank=8, convergence=convergence,
-                                         verbose=2,bisection_iter = 15); grid
+        grid <- IMR::imr_tune_grid(laplace = c(0,NA,30, 2), rank = c(2,30,1, 2));
+        grid <- IMR::imr_set_grid_limits(model_data, grid, default_rank=2, convergence=convergence,
+                                         verbose=2,bisection_iter = 3); grid
         start <- Sys.time()
         bench::bench_time(fitimr <- IMR::imr_tune(model_data, grid, final_fit = TRUE,
+                                                  fast_laplace = FALSE,
                                                   convergence=convergence, n_cores=9,
                                                   seed = seed, verbose=4)) -> time.imr
         time <- Sys.time() - start
 
-        # hparam <- IMR::get_imr_default_hparams()
-        # hparam$beta
-        # hparam$rank
-        # hparam$laplace
-        #
-        # hparam$rank$min <- 1
-        #
-        # hparam$laplace$min <- 0
-        # hparam$laplace$max <- 2
-        # hparam$laplace$step_sizes <- c(0.1)
-
-
-        # bench::bench_time(fitimr <- IMR:::imr.cv_21(model_data,
-        #   intercept_row = model_combn$Intercepts[i],
-        #   intercept_col = model_combn$Intercepts[i],
-        #   hpar = hparam,
-        #   thresh = 1e-4, maxit = 800,
-        #   shared_information = TRUE,
-        #   final_thresh = 1e-6, final_maxit = 1000,
-        #   # init_thresh = 1e-4, init_maxit = 500,
-        #   trace = 1, num_cores = 9, seed = seed
-        # )) -> time.imr
         print(fitimr$fit)
         summary(fitimr$fit)
         s0 <- output_wrapper_bixi(fitimr$fit, dat, shared_information = T)
@@ -139,10 +120,32 @@ for (rep in 1:10) {
           time2.2 = as.numeric(time.imr[2]),
           metric = "RMSE",
           train_size = train_size
-        )
+        );res
 
         res$note <- "covariates+M+intercepts, not shared - no similarity";
-        res5 <- res; fit5 <- fitimr$fit
+        res6 <- res; fit6 <- fitimr$fit
+        # hparam <- IMR::get_imr_default_hparams()
+        # hparam$beta
+        # hparam$rank
+        # hparam$laplace
+        #
+        # hparam$rank$min <- 1
+        #
+        # hparam$laplace$min <- 0
+        # hparam$laplace$max <- 2
+        # hparam$laplace$step_sizes <- c(0.1)
+
+
+        # bench::bench_time(fitimr <- IMR:::imr.cv_21(model_data,
+        #   intercept_row = model_combn$Intercepts[i],
+        #   intercept_col = model_combn$Intercepts[i],
+        #   hpar = hparam,
+        #   thresh = 1e-4, maxit = 800,
+        #   shared_information = TRUE,
+        #   final_thresh = 1e-6, final_maxit = 1000,
+        #   # init_thresh = 1e-4, init_maxit = 500,
+        #   trace = 1, num_cores = 9, seed = seed
+        # )) -> time.imr
 
 
         #--
