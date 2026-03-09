@@ -7,13 +7,9 @@ require(magrittr)
 source("./article/simulation/generate_simu_dat.R")
 source("./other_models/SoftImpute_cv.R")
 source("./other_models/MCCI.R")
-
-
-
-
 #==============================================
 sim1_res <- function(dat, fit, name="",
-                     error_metric=IMR:::error_metrics$rrmse,
+                     error_metric=IMR:::error_metric$rel.rmse,
                      coeffs_transformed = TRUE){
   # prepare data : we need values for: M, beta, theta
   # expect fit$ to contain (u, d, and v) or (M)
@@ -52,7 +48,7 @@ sim1_res <- function(dat, fit, name="",
   stopifnot(all(estimates!=0))
   out$theta <- error_metric(estimates, dat$theta)
   test.obs <- dat$Y == 0
-  out$test_rel <- IMR:::error_metrics$rrmse(estimates[test.obs], dat$theta[test.obs])
+  out$test_rel <- IMR:::error_metric$rel.rmse(estimates[test.obs], dat$theta[test.obs])
   out$test <- error_metric(estimates[test.obs], dat$theta[test.obs])
   train.obs <- dat$Y != 0
   out$train <- error_metric(estimates[train.obs], dat$theta[train.obs])
@@ -61,87 +57,6 @@ sim1_res <- function(dat, fit, name="",
 }
 
 #===========================================================================================
-# setting 1)
-#===========================================================================================
-dims <- c(400, 600, 800, 1000)
-p = 10;
-q = 0;
-r = 4;
-missing_pct = 0.8
-sparsity_beta = 0.5
-models <- c("IMR", "SImpute", "MCCI")
-all_res <- res <- data.frame()
-convergence <- IMR::imr_convergence(maxit=1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
-grid <- IMR::imr_tune_grid(rank = c(2, 10, 2), beta = 0, laplace = c(0,40,60,3))
-
-for(b in 1:500){
-  seed = 2025 + b
-  set.seed(seed)
-  for(d in dims){
-
-    n = m = d
-    dat <-
-      generate_simulated_data(n, m, r, p, 0, .8,
-                              sparsity_beta = 0,
-                              intercept = FALSE,
-                              structured_error_A = F, SNR = 1,
-                              structured_error_B = F,
-                              prepare_for_fitting = F, mv_coeffs = T, seed = seed)
-
-
-    mdat <- IMR::imr_data(Y = dat$Y, X = dat$X, seed = seed, val_prop = 0.2);
-
-    fitsi <- simpute.cv(y_full = mdat$Y,
-                        y_train = mdat$y_train,
-                        y_valid = mdat$y_valid,
-                        trace = FALSE,
-                        print.best = FALSE,
-                        tol = grid$laplace$streaks,
-                        n.lambda = grid$laplace$length,
-                        maxit = convergence$maxit,
-                        thresh = convergence$thresh,
-                        test_error = IMR:::error_metrics$rmse,
-                        seed = seed)
-
-
-
-
-    fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, seed = seed, n_cores = 9, verbose = 1)
-
-
-    fitmcci <- MCCI.cv(Y = dat$Y, X = dat$X, W = dat$mask, n_folds = 5,numCores = 9,
-                       seed = seed,
-                       test_error = IMR:::error_metrics$rmse,
-                       lambda_1_grid = c(0),#seq(0, 1, length = 10),
-                       lambda_2_grid = seq(2.9, 0.1, length = 18),
-                       alpha_grid = c(1),#seq(0.992, 1, length = 10),
-                       n1n2_optimized = TRUE,
-                       return_diagn = FALSE)
-
-    dat$Xr <- mdat$Xr
-    errorm <- IMR:::error_metrics$rmse
-    sim1_res(dat, fitsi$fit, "SI", errorm) %>% rbind(
-      sim1_res(dat, fitmcci$fit, "MCCI", errorm, coeffs_transformed = FALSE),
-      sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)
-    ) -> res
-    errorm <- IMR:::error_metrics$rrmse
-    res %<>% rbind(sim1_res(dat, fitsi$fit, "SI", errorm) %>% rbind(
-      sim1_res(dat, fitmcci$fit, "MCCI", errorm, coeffs_transformed = FALSE),
-      sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)
-    ))
-    res$dim = d
-    all_res %<>% rbind(res)
-    print(d)
-  }
-  print(b)
-  print(res)
-  saveRDS(all_res, "./article/simulation/data/sim1_res.rds")
-}
-
-
-
-
-#===================================================
 # setting 2)
 #==================================================================
 #' we now work on second part of the simulation
@@ -171,8 +86,6 @@ increase_sparsity <- function(dat, step=0.05){
 # --=--=-=-=-=
 
 
-convergence <- IMR::imr_convergence(maxit=1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
-grid <- IMR::imr_tune_grid(rank = c(2, 10, 2), beta=c(0), gamma=c(0), laplace=c(0,120,80,3));
 
 n = m = 1000
 p = 5;
@@ -199,44 +112,67 @@ for(b in 1:500){
     if(pct > 1)
       dat <- increase_sparsity(dat, .05)
 
-    mdat <- IMR::imr_data(Y = dat$Y, X = dat$X, Z = dat$Z,  seed = seed, val_prop = 0.2);
+    mdat <- IMR::prepare_data(Y = dat$Y, X = dat$X, Z = dat$Z,  seed = seed, val_prop = 0.2)
 
     fitsi <- simpute.cv(y_full = mdat$Y,
                         y_train = mdat$y_train,
                         y_valid = mdat$y_valid,
                         trace = FALSE,
                         print.best = FALSE,
-                        tol = grid$laplace$streaks,
-                        maxit = convergence$maxit,
-                        thresh = convergence$thresh,
-                        n.lambda = grid$laplace$length,
-                        test_error = IMR:::error_metrics$rmse,
+                        tol = 2,
+                        maxit = 1000,
+                        thresh = 1e-6,
+                        n.lambda = 20,
+                        test_error = IMR:::error_metric$rmse,
                         seed = seed)
 
+    hparam <- IMR::get_imr_default_hparams()
+
+
+    hparam$rank$max = 10
+    hparam$beta$length = 5
+    hparam$gamma$length = 5
+    hparam$beta$max <- hparam$gamma$max <- 0.5
+    #hparam$beta$max = 0
+
+    # first tune with a single laplace value
+    hparam$laplace$min = hparam$laplace$max = 18.9; hparam$laplace$step_sizes = c(1)
+    fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
+                            hpar = hparam, thresh = 1e-6, maxit = 1000,
+                            trace = 1, ls_initial = TRUE, shared_information = FALSE,
+                            seed = seed, num_cores = 10)
+
+    # then we refit to re-tune lammbda_laplace
+    hparam$beta$value = fitimr$fit$params$lambda_beta
+    hparam$gamma$value = fitimr$fit$params$lambda_gamma
+    hparam$laplace$step_sizes = c(5,1,0.1)
+    hparam$laplace$min = 10
+    hparam$laplace$max = 25
+
+    fitimr = IMR::imr.cv_laplace(mdat, intercept_row = FALSE, intercept_col = FALSE,
+                                 hpar = hparam, thresh = 1e-6, maxit = 1000,
+                                 trace = 1, ls_initial = TRUE, shared_information = FALSE,
+                                 seed = seed, num_cores = 10,final_fit = TRUE,
+                                 warm_start = fitimr$fit)
 
 
 
-
-    fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, seed = seed, n_cores = 9, verbose = 1)
-
-    #print(fitimr$fit)
-    #summary(fitimr$fit)
-
+    fitimr$best_fit$lambda_laplace
 
 
     dat$Xr <- mdat$Xr
     dat$Zr <- mdat$Zr
-    errorm <- IMR:::error_metrics$rmse
+    errorm <- IMR:::error_metric$rmse
     sim1_res(dat, fitsi$fit, "SI", errorm) %>%
-      rbind(sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)) %>%
+      rbind(sim1_res(dat, fitimr$best_fit, "IMR", errorm)) %>%
       mutate(metric = "RMSE")->
       res
 
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- IMR:::error_metric$rel.rmse
 
     res %<>%
       rbind(sim1_res(dat, fitsi$fit, "SI", errorm) %>%
-              rbind(sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)) %>%
+              rbind(sim1_res(dat, fitimr$best_fit, "IMR", errorm)) %>%
               mutate(metric = "Rel.RMSE")
       )
     res$dim = n
@@ -244,10 +180,9 @@ for(b in 1:500){
     res$q = q
     res$miss_pct = mean(dat$mask == 0)
     res$r = r
-    res$lambda_beta = fitimr$fit$meta$lambdas["beta"]
-    res$lambda_gamma = fitimr$fit$meta$lambdas["gamma"]
-    res$lambda_laplace = fitimr$fit$meta$lambdas["M"]
-    res$rank_m = fitimr$fit$meta$rank
+    res$lambda_beta = hparam$beta$value
+    res$lambda_gamma = hparam$gamma$value
+    res$lambda_laplace = fitimr$best_fit$lambda_laplace
 
     all_res %<>% rbind(res)
     print(paste(pct, " in ", round(Sys.time() - start2)))
@@ -263,12 +198,11 @@ results2 <- readRDS("article/simulation/data/sim2_res.rds")
 
 results2 %>%
   filter(model == "IMR", metric == "RMSE") %>%
-  dplyr::select(lambda_beta, lambda_gamma, lambda_laplace, rank_m, miss_pct) %>%
+  dplyr::select(lambda_beta, lambda_gamma, lambda_laplace, miss_pct) %>%
   mutate(miss_pct = round(miss_pct, 2)) %>%
   filter(miss_pct != .95) %>%
   #group_by(miss_pct) %>%
   summarise_all(mean) %>%
-  mutate(rank_m = round(rank_m)) %>%
   ungroup() -> best_hparams
 
 results2 %>%
@@ -284,8 +218,6 @@ p = 5;
 q = 5;
 r = 5;
 missing_pct = seq(.7, .98, .05)
-convergence <- IMR::imr_convergence(maxit=1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
-
 models <- c("IMR", "SImpute")
 all_res <- res <- data.frame()
 #simpute_ranks <- c(13, 12, 12, 12, 11, 10)
@@ -307,38 +239,47 @@ for(b in 1:500){
     if(pct > 1)
       dat <- increase_sparsity(dat, .05)
 
-    mdat <- IMR::imr_data(Y = dat$Y, X = dat$X, Z = dat$Z,  seed = seed, val_prop = 0.2)
+    mdat <- IMR::prepare_data(Y = dat$Y, X = dat$X, Z = dat$Z,  seed = seed, val_prop = 0.2)
 
     start = Sys.time()
     fitsi <- softImpute::softImpute(dat$Y,
                                     rank.max = simpute_rank$rank,
                                     lambda = best_hparams$lambda_laplace,
-                                    thresh = convergence$thresh,
-                                    maxit = convergence$maxit,
+                                    thresh = 1e-6,
+                                    maxit = 1000,
                                     trace.it = FALSE,final.svd = TRUE, type = "als")
     time.si = as.numeric(Sys.time() -  start, units = "secs")
     start = Sys.time()
-
-    fitimr <- IMR::imr_fit(mdat, rank = best_hparams$rank_m,
+    fitimr <- IMR::imr.fit(Y = mdat$Y,
+                           X = mdat$Xq,
+                           Z = mdat$Zq,
+                           intercept_row = FALSE,
+                           intercept_col = FALSE,
+                           r = r,
                            lambda_m = best_hparams$lambda_laplace,
                            lambda_beta = best_hparams$lambda_beta,
                            lambda_gamma = best_hparams$lambda_gamma,
-                           convergence=convergence)
+                           maxit = 1000,
+                           thresh = 1e-6,
+                           trace=FALSE,
+                           shared_information = FALSE,
+                           ls_initial = TRUE
+    );
     time.imr = as.numeric(Sys.time() -  start, units = "secs")
 
     dat$Xr <- mdat$Xr
     dat$Zr <- mdat$Zr
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- IMR:::error_metric$rel.rmse
     mutate(sim1_res(dat, fitsi, "SI", errorm),time=time.si) %>%
-      rbind(mutate(sim1_res(dat, fitimr$coefficients, "IMR", errorm), time=time.imr)) %>%
+      rbind(mutate(sim1_res(dat, fitimr, "IMR", errorm), time=time.imr)) %>%
       mutate(metric = "RMSE")->
       res
 
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- IMR:::error_metric$rel.rmse
 
     res %<>%
       rbind(mutate(sim1_res(dat, fitsi, "SI", errorm),time=time.si) %>%
-              rbind(mutate(sim1_res(dat, fitimr$coefficients, "IMR", errorm), time=time.imr)) %>%
+              rbind(mutate(sim1_res(dat, fitimr, "IMR", errorm), time=time.imr)) %>%
               mutate(metric = "Rel.RMSE")
       )
     res$dim = n
@@ -346,7 +287,6 @@ for(b in 1:500){
     res$q = q
     res$miss_pct = mean(dat$mask == 0)
     res$r = r
-    res$rank_m = best_hparams$rank_m
     res$lambda_beta = best_hparams$lambda_beta
     res$lambda_gamma = best_hparams$lambda_gamma
     res$lambda_laplace = best_hparams$lambda_laplace

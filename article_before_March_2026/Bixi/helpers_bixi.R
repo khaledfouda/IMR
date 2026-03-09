@@ -220,7 +220,7 @@ prepare_output_bixi <- function(
     beta.estim  = NA,
     gamma.estim = NA,
     M.estim     = NA,
-    test_error  = IMR:::error_metrics$rmse,
+    test_error  = IMR:::error_metric$rmse,
     digits = 5
 ) {
   # Core metrics
@@ -282,11 +282,10 @@ prepare_output_bixi <- function(
 
 
 output_wrapper_bixi <- function(fit, dat, shared_information = FALSE,
-                                test_error  = IMR:::error_metrics$rmse){
+                                test_error  = IMR:::error_metric$rmse){
 
 
-
-  out <- IMR:::reconstruct(fit, dat$modd,trace = TRUE)
+  out <- IMR:::reconstruct(fit, dat$modd,shared_information =  shared_information)
 
   return(list(
     rec = out,

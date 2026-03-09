@@ -7,7 +7,7 @@ source("./article_results/simulation/generate_simu_dat.R")
 
 n = 800; m = 900;
 dat <-
-generate_simulated_data(n, m, 3, 5, 5, 0.9,sparsity_beta = 0, sparsity_gamma = 0,
+generate_simulated_data(n, m, 3, 5, 5, 0.9,sparsity_beta = 0.5, sparsity_gamma = 0.5,
                         prepare_for_fitting = F,mv_coeffs = T,seed = 2025)
 colnames(dat$X) <- paste0("R",  1:ncol(dat$X))
 colnames(dat$Z) <- paste0("C",  1:ncol(dat$Z))
@@ -19,7 +19,7 @@ S2 <- imr_similarity(d2, invert = T, jitter = 1);S2
 data <- IMR:::imr_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
                           similarity_rows = NULL, similarity_cols = S2);data
 data <- update(data, col_similarity = FALSE, row_similarity = FALSE,
-                shared_beta = FALSE, intercept_row = F, intercept_col = F);data
+                shared_beta = FALSE, intercept_row = T, intercept_col = T);data
 
 grid <- IMR::imr_tune_grid(laplace = c(0,NA,40,3),
                            rank = c(2,15, 1));grid
@@ -38,8 +38,6 @@ fit
 summary(fit)
 data
 
-data$
-
 fit <- imr_fit(data=data, rank = 3, lambda_m =.002,
                     lambda_beta = 0, lambda_gamma = 0,
                      warm_start = NULL,
@@ -50,11 +48,21 @@ data$model$row_covariates <- FALSE
 fit <- softImpute::softImpute(data$Y, cv_out$fit$meta$rank, cv_out$fit$meta$lambdas["M"])
 fit <- structure(list(coefficients=fit), class = "imr_fit")
 
-
+coefs <- coef(fit)
 rec <- IMR::reconstruct(fit, data)
 dat$test <- (dat$theta * (1 - dat$mask)) %>% IMR::as.Incomplete()
 recp <- IMR::reconstruct_partial(fit, data, dat$test, TRUE)
 IMR::evaluate(recp@x, dat$test@x, "all") %>% as_tibble()
+
+beta.estim <- IMR:::inv(data$Xr) %*% fit$coefficients$beta
+gamma.estim <- tcrossprod(fit$coefficients$gamma, IMR:::inv(data$Zr))
+IMR::evaluate(beta.estim, dat$beta)
+IMR::evaluate(gamma.estim, dat$gamma)
+IMR::evaluate(coefs$u %*% (t(coefs$v) * (coefs$d)), dat$M )
+
+mean(dat$beta == 0 & beta.estim == 0)
+
+beta.estim[dat$beta==0]
 
 cv_out$history -> history
 history %>% head(20)

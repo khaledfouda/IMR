@@ -437,17 +437,12 @@ prepare_bixi_data <- function(miss_p = 0.5,
                                       train_prefix = train_prefix,
                                       file_dir =file_dir,...)
   output <- list()
-
-  output$modd <- IMR::imr_data(Y, as.matrix(X), as.matrix(Z),
-                               similarity_rows = imr_similarity(kernels$temporal),
-                               similarity_cols = imr_similarity(kernels$spatial),
-                               val_prop = val_prop, seed = seed )
-  # output$modd <- IMR::prepare_data(Y,
-  #   X = as.matrix(X), Z = as.matrix(Z),
-  #   similarity_rows = kernels$temporal,
-  #   similarity_cols = kernels$spatial,
-  #   seed = seed, val_prop = val_prop
-  # )
+  output$modd <- IMR::prepare_data(Y,
+    X = as.matrix(X), Z = as.matrix(Z),
+    similarity_rows = kernels$temporal,
+    similarity_cols = kernels$spatial,
+    seed = seed, val_prop = val_prop
+  )
 
   output$test_mask <- IMR::as.Incomplete((test_set != 0) * 1)
   output$test <- test_set

@@ -33,12 +33,12 @@ imr_tune_laplace <- function(data,
   # indices
   if (grid$laplace$max <= 0) grid$laplace$max <- 1e-4
   if (grid$laplace$min <= 0) grid$laplace$min <- 1e-6
-  # lambda_seq <- exp(seq(log(grid$laplace$max),
-  #   log(grid$laplace$min),
-  #   length.out = grid$laplace$length
-  # ))
-  lambda_seq <- seq(grid$laplace$max,grid$laplace$min,
-                        length.out = grid$laplace$length)
+  lambda_seq <- exp(seq(log(grid$laplace$max),
+    log(grid$laplace$min),
+    length.out = grid$laplace$length
+  ))
+  # lambda_seq <- seq(grid$laplace$max,grid$laplace$min,
+  #                       length.out = grid$laplace$length)
   virow <- data$y_valid@i
   vpcol <- data$y_valid@p
   reference <- data$y_valid@x
@@ -291,8 +291,8 @@ imr_tune <- function(data,
   stopifnot(inherits(data, "imr_data"), inherits(grid, "imr_tune_grid"))
   t_start_global <- Sys.time()
   # --- Determine which parameters to tune
-  tune_beta <- data$meta$has_X && grid$beta$length > 1
-  tune_gamma <- data$meta$has_Z && grid$gamma$length > 1
+  tune_beta <- data$model$row_covariates && data$meta$has_X && grid$beta$length > 1
+  tune_gamma <- data$model$col_covariates && data$meta$has_Z && grid$gamma$length > 1
 
   #----------------------------------------------------------
   # Scenario 1: Tune Laplace Only

@@ -231,9 +231,11 @@ svd_opt <- function(mat,
   # If the matrix is thin, use fastsvd
   if (rthin || cthin || is.null(k)) {
     if (rthin) {
-      dec <- IMR:::svd_small_nr_cpp_fast(mat)
+      if (inherits(mat, "sparseMatrix")) mat <- as.matrix(mat)
+      dec <- IMR:::svd_small_nr_cpp(mat)
     } else if (cthin) {
-      dec <- IMR:::svd_small_nc_cpp_fast(mat)
+      if (inherits(mat, "sparseMatrix")) mat <- as.matrix(mat)
+      dec <- IMR:::svd_small_nc_cpp(mat)
     } else {
       dec <- base::svd(mat)
     }

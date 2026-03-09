@@ -90,7 +90,7 @@ imr_set_grid_limits <- function(data,
                                 convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE),
                                 bisection_iter = 15,
                                 verbose = 0) {
-  if (data$meta$has_X && grid$beta$max == "auto") {
+  if (data$model$row_covariates && data$meta$has_X && grid$beta$max == "auto") {
     grid$beta$max <- imr_get_lambda_lasso_max(data, "beta",
       rank = default_rank,
       lambda_m = default_lambda_m,
@@ -99,7 +99,7 @@ imr_set_grid_limits <- function(data,
       verbose = verbose
     )
   }
-  if (data$meta$has_Z && grid$gamma$max == "auto") {
+  if (data$model$col_covariates && data$meta$has_Z && grid$gamma$max == "auto") {
     grid$gamma$max <- imr_get_lambda_lasso_max(data, "gamma",
       rank = default_rank,
       lambda_m = default_lambda_m,
@@ -108,7 +108,7 @@ imr_set_grid_limits <- function(data,
       verbose = verbose
     )
   }
-  if (grid$laplace$max == "auto") {
+  if (data$model$low_rank_component && grid$laplace$max == "auto") {
     grid$laplace$max <- imr_get_lambda_m_max(data,
       rank = default_rank,
       lambda_beta = default_lambda_beta,

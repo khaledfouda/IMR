@@ -1,0 +1,20 @@
+\begin{table}[t]
+\caption*{
+{\fontsize{20}{25}\selectfont  Comparsion of Training Time\fontsize{12}{15}\selectfont }
+}
+\fontsize{12.0pt}{14.0pt}\selectfont
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}rrrrrr}
+\toprule
+ & \multicolumn{1}{c}{{\bfseries BKTR}} & \multicolumn{2}{c}{{\bfseries IMR-Similarity}} & \multicolumn{2}{c}{{\bfseries IMR-Identity}} \\
+\cmidrule(lr){2-2} \cmidrule(lr){3-4} \cmidrule(lr){5-6}
+Train Size & Time (min) & Time (s) & Speedup & Time (s) & Speedup \\
+\midrule\addlinespace[2.5pt]
+55\% & 21.73 (2.08) & 0.57 (0.04) & {\bfseries \textcolor[HTML]{2F4F4F}{×2,283}} & 0.39 (0.02) & {\bfseries \textcolor[HTML]{2F4F4F}{×3,338}} \\
+60\% & 22.04 (1.84) & 0.61 (0.04) & {\bfseries \textcolor[HTML]{2F4F4F}{×2,152}} & 0.41 (0.02) & {\bfseries \textcolor[HTML]{2F4F4F}{×3,194}} \\
+65\% & 23.3 (1.82) & 0.66 (0.06) & {\bfseries \textcolor[HTML]{2F4F4F}{×2,115}} & 0.46 (0.07) & {\bfseries \textcolor[HTML]{2F4F4F}{×3,065}} \\
+70\% & 24.76 (1.15) & 0.69 (0.05) & {\bfseries \textcolor[HTML]{2F4F4F}{×2,151}} & 0.47 (0.03) & {\bfseries \textcolor[HTML]{2F4F4F}{×3,147}} \\
+75\% & 25.05 (0.78) & 0.72 (0.03) & {\bfseries \textcolor[HTML]{2F4F4F}{×2,083}} & 0.5 (0.05) & {\bfseries \textcolor[HTML]{2F4F4F}{×2,989}} \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
