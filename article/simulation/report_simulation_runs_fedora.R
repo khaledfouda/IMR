@@ -107,7 +107,7 @@ for(b in 1:500){
 
 
     fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, fast_laplace = FALSE,
-                            seed = seed, n_cores = 9, verbose = 1)
+                            seed = seed, n_cores = 7, verbose = 1)
 
 
     fitmcci <- MCCI.cv(Y = dat$Y, X = dat$X, W = dat$mask, n_folds = 5,numCores = 9,
@@ -219,7 +219,7 @@ for(b in 1:500){
 
 
     fitimr <- IMR::imr_tune(mdat, grid, convergence=convergence, seed = seed, fast_laplace = FALSE,
-                            n_cores = 9, verbose = 1)
+                            n_cores = 7, verbose = 1)
 
     #print(fitimr$fit)
     #summary(fitimr$fit)

@@ -353,6 +353,8 @@ prepare_bixi_data <- function(miss_p = 0.5,
                               ),
                               bktr_variables = FALSE,
                               file_dir = "./article_results/bixi/data/splits/",
+                              temporal = "none",
+                              spatial = "none",
                               ...
                               # these parameters are sent to the kernel generation
 ) {
@@ -439,8 +441,8 @@ prepare_bixi_data <- function(miss_p = 0.5,
   output <- list()
 
   output$modd <- IMR::imr_data(Y, as.matrix(X), as.matrix(Z),
-                               similarity_rows = imr_similarity(kernels$temporal),
-                               similarity_cols = imr_similarity(kernels$spatial),
+                               similarity_rows = if(temporal =="none") NULL else imr_similarity(kernels$temporal,invert = FALSE),
+                               similarity_cols = if(spatial == "none") NULL else imr_similarity(kernels$spatial, invert = FALSE),
                                val_prop = val_prop, seed = seed )
   # output$modd <- IMR::prepare_data(Y,
   #   X = as.matrix(X), Z = as.matrix(Z),

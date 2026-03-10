@@ -543,7 +543,7 @@ imr_tune <- function(data,
     t_start_iter <- Sys.time()
     res_beta <- imr_tune_lasso(
       data = data, grid = grid, target = "beta", fixed_other_lasso = cur_gamma,
-      final_fit = if (one_more_fit) final_fit else FALSE,
+      final_fit = final_fit, #if (one_more_fit) final_fit else FALSE,
       use_warm_in_final = use_warm_in_final, fast_laplace = fast_laplace,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
@@ -574,19 +574,20 @@ imr_tune <- function(data,
       ))
     }
 
-    if (diff < tune_tol) {
-      if (one_more_fit || !final_fit) {
-        best_fit <- res_beta$fit
-        break
-      }
-      one_more_fit <- TRUE
+    if (diff <= tune_tol) {
+      #if (one_more_fit || !final_fit) {
+      best_fit <- res_beta$fit
+      last_output <- res_beta
+      break
+      #}
+      #one_more_fit <- TRUE
     }
     #---------------------------------------------------------------------------
     # --- Step B: Tune Gamma (given current Beta) ---
     t_start_iter <- Sys.time()
     res_gamma <- imr_tune_lasso(
       data = data, grid = grid, target = "gamma", fixed_other_lasso = cur_beta,
-      final_fit = if (one_more_fit) final_fit else FALSE,
+      final_fit = final_fit, #if (one_more_fit) final_fit else FALSE,
       use_warm_in_final = use_warm_in_final, fast_laplace = fast_laplace,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
@@ -617,21 +618,22 @@ imr_tune <- function(data,
       ))
     }
 
-    if (diff < tune_tol) {
-      if (one_more_fit || !final_fit) {
-        best_fit <- res_gamma$fit
-        break
-      }
-      one_more_fit <- TRUE
+    if (diff <= tune_tol) {
+      # if (one_more_fit || !final_fit) {
+      best_fit <- res_gamma$fit
+      last_output <- res_gamma
+      break
+      # }
+      # one_more_fit <- TRUE
     }
     #------------------------------
     # if you reach the final iteration, do one more.
     if (iter >= tune_maxit) {
-      if (final_fit) {
-        one_more_fit <- TRUE
-      } else {
+      #if (final_fit) {
+      #  one_more_fit <- TRUE
+      #} else {
         keep_iterating <- FALSE
-      }
+      #}
     }
     iter <- iter + 1
   }
@@ -649,7 +651,8 @@ imr_tune <- function(data,
   return(list(
     params = all_params,
     history = all_history,
-    fit = if (final_fit) best_fit else NULL,
+    fit = last_output$fit, #if (final_fit) best_fit else NULL,
+    best_params = last_output$params,
     time = t_total
   ))
 }

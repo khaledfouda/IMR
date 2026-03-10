@@ -7,8 +7,10 @@ source("./article_results/simulation/generate_simu_dat.R")
 
 n = 800; m = 900;
 dat <-
-generate_simulated_data(n, m, 3, 5, 5, 0.9,sparsity_beta = 0.5, sparsity_gamma = 0.5,
-                        prepare_for_fitting = F,mv_coeffs = T,seed = 2025)
+generate_simulated_data(n, m, 3, 0, 0, 0.9,sparsity_beta = 0.5, sparsity_gamma = 0.5,
+                        prepare_for_fitting = F,
+                        structured_error_A = FALSE,structured_error_B = FALSE,
+                        mv_coeffs = T,seed = 2025)
 colnames(dat$X) <- paste0("R",  1:ncol(dat$X))
 colnames(dat$Z) <- paste0("C",  1:ncol(dat$Z))
 #======
@@ -16,10 +18,13 @@ colnames(dat$Z) <- paste0("C",  1:ncol(dat$Z))
 d2 <-  matrix(rbinom(m*m,m,.2), m, m);d2 <- (d2 + t(d2)) / 2
 # S <- generate_similarity(d1, invert = T, jitter = 1);S
 S2 <- imr_similarity(d2, invert = T, jitter = 1);S2
+
+S1 <- imr_similarity(dat$similarity_rows, invert=TRUE); S1
+S2 <- imr_similarity(dat$similarity_cols, invert=TRUE); S2
 data <- IMR:::imr_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
-                          similarity_rows = NULL, similarity_cols = S2);data
+                          similarity_rows = S1, similarity_cols = S2);data
 data <- update(data, col_similarity = FALSE, row_similarity = FALSE,
-                shared_beta = FALSE, intercept_row = T, intercept_col = T);data
+                shared_beta = FALSE, intercept_row = F, intercept_col = F);data
 
 grid <- IMR::imr_tune_grid(laplace = c(0,NA,30,2), beta = 0, gamma = 0,
                            rank = c(2,15, 1));grid

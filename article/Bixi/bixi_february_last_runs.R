@@ -35,22 +35,22 @@ if (generate_data) {
 # we now train >>
 
 model_combn <- expand.grid(
-  kernels = c("simulated", "none"),
-  covariates = c(T, F),
-  Intercepts = c(T, F),
+  similarity = c(TRUE, FALSE),
+  covariates = F, #c(T, F),
+  Intercepts = T, #c(T, F),
   stringsAsFactors = FALSE
 )
-model_combn <- model_combn[c(7, 8), ]
+#model_combn <- model_combn[c(7, 8), ]
 train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
 # ====================================================================
-rep = 1; prefix = 1; train_size = train_seq[1]; i=1
+#rep = 1; prefix = 1; train_size = train_seq[1]; i=1
 #---
-grid <- IMR::imr_tune_grid(laplace = c(0,NA,30, 2), rank = c(2, 30, 1,2)); grid
 convergence <- IMR::imr_convergence(maxit = 600, thresh=1e-5, trace=FALSE, ls_initial = TRUE)
+grid <- IMR::imr_tune_grid(laplace = c(0,10,60, 3), rank = c(2,30,1, 3)); grid
 
 #rep = 1; prefix = 1; i = 1; train_size=train_seq[1]
 
-total_results <- data.frame()
+total_results <- all_res <-  data.frame()
 for (rep in 1:10) {
   seed <- 4000 + rep
   for (prefix in 1:50) {
@@ -62,53 +62,49 @@ for (rep in 1:10) {
           val_prop = 0.2,
           bktr_variables = TRUE,
           file_dir = "./article/bixi/data/splits2/",
-          temporal = model_combn$kernels[i],
-          spatial = model_combn$kernels[i],
+          temporal = ifelse(model_combn$similarity[i],"simulated", "none"),
+          spatial = ifelse(model_combn$similarity[i],"simulated", "none"),
           temporal_jitter = TRUE,
           spatial_jitter = TRUE,
           jitter_kappa_max = 1e3,
           jitter_tau_max = 1e-2
         )
         model_data <- dat$modd
-        print(model_data)
+        #print(model_data)
 
-        if (!model_combn$covariates[i]) {
-          dat$X <- dat$Z <- dat$modd$Xq <- dat$modd$Xr <-
-            dat$modd$Zq <- dat$modd$Zr <- NULL
-        }
+        model_data <- update(model_data,
+                             row_covariates = model_combn$covariates[i],
+                             col_covariates = model_combn$covariates[i],
+                             shared_beta = TRUE, shared_gamma = TRUE,
+                             intercept_row = model_combn$Intercepts[i],
+                             intercept_col = model_combn$Intercepts[i],
+                             row_similarity = model_combn$similarity[i],
+                             col_similarity = model_combn$similarity[i]); print(model_data)
 
-        model_data <- update(model_data, row_covariates = TRUE, col_covariates = TRUE,
-                             shared_beta = FALSE, shared_gamma = FALSE,
-                             intercept_row = FALSE, intercept_col = FALSE,
-                             row_similarity = TRUE, col_similarity = TRUE); model_data
-        grid <- IMR::imr_tune_grid(laplace = c(0,NA,30, 2), rank = c(2,30,1, 2));
         grid <- IMR::imr_set_grid_limits(model_data, grid, default_rank=2, convergence=convergence,
-                                         verbose=2,bisection_iter = 3); grid
+                                         verbose=1,bisection_iter = 5); grid
         start <- Sys.time()
         bench::bench_time(fitimr <- IMR::imr_tune(model_data, grid, final_fit = TRUE,
                                                   fast_laplace = FALSE,
-                                                  convergence=convergence, n_cores=9,
-                                                  seed = seed, verbose=4)) -> time.imr
+                                                  convergence=convergence, n_cores=7,
+                                                  seed = seed, verbose=1)) -> time.imr
         time <- Sys.time() - start
 
-        print(fitimr$fit)
-        summary(fitimr$fit)
         s0 <- output_wrapper_bixi(fitimr$fit, dat, shared_information = T)
-        # s0$res
 
         res <- data.frame(
           test = s0$res$error.test,
           time = time,
           model = paste0(
-            model_combn$kernels[i],
+            ifelse(model_combn$similarity[i], "similarity", "original"),
             ifelse(model_combn$covariates[i], "+covariates", ""),
             ifelse(model_combn$Intercepts[i], "+Intercept", "")
           ),
           total_miss = total_miss,
           prefix = prefix,
           test_pct = test_pct,
-          # lambda_beta = fitimr$fit$params$lambda_beta,
-          # lambda_gamma = fitimr$fit$params$lambda_gamma,
+          #lambda_beta = fitimr$fit$meta$lambdas["beta"],
+          #lambda_gamma = fitimr$fit$meta$lambdas["gamma"],
           lambda_laplace = fitimr$fit$meta$lambdas["M"],
           rank_estim = fitimr$fit$meta$rank,
           rank_M = s0$res$rank_M,
@@ -122,36 +118,6 @@ for (rep in 1:10) {
           train_size = train_size
         );res
 
-        res$note <- "covariates+M+intercepts, not shared - no similarity";
-        res6 <- res; fit6 <- fitimr$fit
-        # hparam <- IMR::get_imr_default_hparams()
-        # hparam$beta
-        # hparam$rank
-        # hparam$laplace
-        #
-        # hparam$rank$min <- 1
-        #
-        # hparam$laplace$min <- 0
-        # hparam$laplace$max <- 2
-        # hparam$laplace$step_sizes <- c(0.1)
-
-
-        # bench::bench_time(fitimr <- IMR:::imr.cv_21(model_data,
-        #   intercept_row = model_combn$Intercepts[i],
-        #   intercept_col = model_combn$Intercepts[i],
-        #   hpar = hparam,
-        #   thresh = 1e-4, maxit = 800,
-        #   shared_information = TRUE,
-        #   final_thresh = 1e-6, final_maxit = 1000,
-        #   # init_thresh = 1e-4, init_maxit = 500,
-        #   trace = 1, num_cores = 9, seed = seed
-        # )) -> time.imr
-
-
-        #--
-        rbind(res1,res2,res3,res4,res5) %>% arrange(test)
-        #---
-
         s0 <- output_wrapper_bixi(fitimr$fit, dat,
           shared_information = T,
           test_error = IMR:::error_metrics$rrmse
@@ -161,7 +127,7 @@ for (rep in 1:10) {
             test = s0$res$error.test,
             time = time,
             model = paste0(
-              model_combn$kernels[i],
+              ifelse(model_combn$similarity[i], "similarity", "original"),
               ifelse(model_combn$covariates[i], "+covariates", ""),
               ifelse(model_combn$Intercepts[i], "+Intercept", "")
             ),
@@ -188,6 +154,7 @@ for (rep in 1:10) {
       }
       saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2_2.rds")
     }
+    print(paste0("Rep:", rep, ", prefix: ", prefix))
   }
 }
 

@@ -17,6 +17,72 @@ source("./article_results/bixi/helpers.R")
 # BKTR_Bixi_Wrapper(dat, "25Sep", 2025, 0.6)
 
 
+#------- temporary
+
+all_res_bixi <- data.frame()
+
+for (rep in 10:10) {
+  seed <- 4000 + rep
+  for (prefix in 50:50) {
+    for (train_size in train_seq) {
+        dat2 <- prepare_bixi_data(total_miss, "Feb_last", seed,
+                                 prefix = prefix,
+                                 train_prefix = train_size,
+                                 val_prop = 0.2,
+                                 bktr_variables = TRUE,
+                                 file_dir = "./article/bixi/data/splits2/",
+                                 temporal = "simulated",
+                                 spatial = "simulated",
+                                 temporal_jitter = TRUE,
+                                 spatial_jitter = TRUE,
+                                 jitter_kappa_max = 1e3,
+                                 jitter_tau_max = 1e-2
+        )
+        bktr_out <- BKTR_Bixi_Wrapper(
+          dat = dat,
+          miss = total_miss,
+          timestamp = "Feb_last",
+          prefix = prefix,
+          train_prefix = train_size,
+          file_dir = "./article/bixi/data/splits2/",
+          seed = seed,
+          return_fit = TRUE,
+          burn_in_iter = 1000,
+          sampling_iter = 500,
+          test_error = IMR:::error_metrics$rmse
+        )
+
+
+        all_res_bixi %<>% rbind(as.data.frame(bktr_out$results[vars_to_keep]) %>%
+                             mutate(
+                               metric = "RMSE",
+                               train_size = train_size,
+                               rank_estim = bktr_out$fit$fit$rank_decomp
+                             ))
+}}}
+
+all_res %>%
+  rename(
+    time0 = time,
+    time1 = time2.1,
+    time2 = time2.2
+  ) %>%
+  arrange(model, train_size, prefix, metric) %>%
+  dplyr::select(model, train_size, metric, test, time0, time1, time2, rank_estim) %>%
+  rbind(
+    all_res_bixi %>%
+      dplyr::select(model, train_size, metric, error.test, time0, time1, time2, rank_estim) %>%
+      rename(test = error.test)
+  ) %>%
+  arrange(train_size, test) %>%
+  mutate(across(where(is.numeric), function(x)round(x,6))) %>%
+  select(test, model, rank_estim, time1, train_size) %>% view
+
+
+
+#----------- temporary end
+
+
 hpar <- IMR::get_imr_default_hparams()
 hpar$beta$n.lambda <-  30 # 30
 hpar$beta$lambda_max <- .1
