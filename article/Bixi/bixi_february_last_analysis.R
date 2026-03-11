@@ -22,12 +22,11 @@ test_pct
 # we now train >>
 
 model_combn <- expand.grid(
-  similarity = c("simulated", "none"),
-  covariates = c(T, F),
-  Intercepts = c(T, F),
+  similarity = c(TRUE, FALSE),
+  covariates = F, #c(T, F),
+  Intercepts = T, #c(T, F),
   stringsAsFactors = FALSE
 )
-model_combn <- model_combn[c(7, 8), ]
 
 total_results <- data.frame()
 train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
@@ -110,7 +109,7 @@ results <- readRDS("./article/Bixi/data/final_results/BKTR_results_final_25pct_2
 
 #=====================================================================
 results2 <- readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_2.rds") %>%
-  rbind(readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds")) %>%
+  rbind(readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_3.rds")) %>%
   rename(
     time0 = time,
     time1 = time2.1,
@@ -149,7 +148,8 @@ readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds") %>%
   view()
 
 # =========================================================
-results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2.rds") %>%
+results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_2.rds") %>%
+  rbind(readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_3.rds")) %>%
   rename(
     time0 = time,
     time1 = time2.1,
@@ -157,14 +157,14 @@ results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_
   ) %>%
   dplyr::select(model, train_size, metric, test, time0, time1, time2, rank_estim)
 
-results2 %<>% rbind(
+results3 %<>% rbind(
   results %>%
     dplyr::select(model, train_size, metric, error.test, time0, time1, time2, rank_estim) %>%
     rename(test = error.test)
 )
 
 
-results2 %>%
+results3 %>%
   filter(metric == "RRMSE") %>%
   group_by(model, train_size, metric) %>%
   summarise_all(mean) %>%

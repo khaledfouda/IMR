@@ -37,7 +37,7 @@ if (generate_data) {
 model_combn <- expand.grid(
   similarity = c(TRUE, FALSE),
   covariates = F, #c(T, F),
-  Intercepts = T, #c(T, F),
+  Intercepts = F, #c(T, F),
   stringsAsFactors = FALSE
 )
 #model_combn <- model_combn[c(7, 8), ]
@@ -188,13 +188,13 @@ for (prefix in 1:50) {
 # ==============================================================
 # we now fit IMR with fixed hyperparameters >>
 seed <- 4000
-
+convergence <- IMR::imr_convergence(maxit = 1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
 
 
 model_combn %<>%
   mutate(
-    lambda = if_else(similarity, 1.0325, 0.8562),
-    rank = if_else(similarity, 10, 10)
+    lambda = if_else(similarity, 1.178, 0.692),
+    rank = if_else(similarity, 20, 20)
   )
 
 for (prefix in 1:50) {
@@ -288,6 +288,6 @@ for (prefix in 1:50) {
       print(res)
       total_results <- rbind(total_results, res)
     }
-    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_2.rds")
+    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_4.rds")
   }
 }
