@@ -22,7 +22,7 @@ test_pct
 # we now train >>
 
 model_combn <- expand.grid(
-  kernels = c("simulated", "none"),
+  similarity = c("simulated", "none"),
   covariates = c(T, F),
   Intercepts = c(T, F),
   stringsAsFactors = FALSE

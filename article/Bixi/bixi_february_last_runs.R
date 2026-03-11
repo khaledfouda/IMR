@@ -152,7 +152,7 @@ for (rep in 1:10) {
         print(res)
         total_results <- rbind(total_results, res)
       }
-      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2_2.rds")
+      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2_3.rds")
     }
     print(paste0("Rep:", rep, ", prefix: ", prefix))
   }
@@ -163,14 +163,14 @@ total_results %>%
   group_by(model, train_size, metric) %>%
   summarise_all(mean) %>%
   as.data.frame() %>%
-  arrange(train_size, test) %>%
+  arrange(test) %>%
   mutate(across(where(is.numeric), \(x) round(x, 4))) %>%
   mutate(time = round(time, 2))
 
 # =================================================================
 # we now fit the same on BKTR
 seed <- 4000
-for (prefix in 11:50) {
+for (prefix in 1:50) {
   for (train_size in train_seq) {
     bktr_out <- fit_BKTR_to_Bixi(total_miss,
       "Feb_last",
@@ -189,13 +189,15 @@ for (prefix in 11:50) {
 # we now fit IMR with fixed hyperparameters >>
 seed <- 4000
 
+
+
 model_combn %<>%
   mutate(
-    lambda = if_else(kernels == "simulated", 0.6, 0.8),
-    rank = if_else(kernels == "simulated", 19, 10)
+    lambda = if_else(similarity, 1.0325, 0.8562),
+    rank = if_else(similarity, 10, 10)
   )
 
-for (prefix in 11:50) {
+for (prefix in 1:50) {
   for (train_size in train_seq) {
     for (i in 1:nrow(model_combn)) {
       dat <- prepare_bixi_data(total_miss, "Feb_last", seed,
@@ -204,53 +206,33 @@ for (prefix in 11:50) {
         val_prop = 0.2,
         bktr_variables = TRUE,
         file_dir = "./article/bixi/data/splits2/",
-        temporal = model_combn$kernels[i],
-        spatial = model_combn$kernels[i],
+        temporal = ifelse(model_combn$similarity[i],"simulated", "none"),
+        spatial = ifelse(model_combn$similarity[i],"simulated", "none"),
         temporal_jitter = TRUE,
         spatial_jitter = TRUE,
         jitter_kappa_max = 1e3,
         jitter_tau_max = 1e-2
       )
-
-      if (!model_combn$covariates[i]) {
-        dat$X <- dat$Z <- dat$modd$Xq <- dat$modd$Xr <-
-          dat$modd$Zq <- dat$modd$Zr <- NULL
-      }
-      if (!is.null(dat$modd$similarity_rows)) {
-        laplacian_row <- IMR::decompose_symmetric_matrix(
-          dat$modd$similarity_rows,
-          model_combn$lambda[i]
-        )
-      }
-      if (!is.null(dat$modd$similarity_cols)) {
-        laplacian_col <- IMR::decompose_symmetric_matrix(
-          dat$modd$similarity_cols,
-          model_combn$lambda[i]
-        )
-      }
+      model_data <- dat$modd
+      model_data <- update(model_data,
+                           row_covariates = model_combn$covariates[i],
+                           col_covariates = model_combn$covariates[i],
+                           shared_beta = TRUE, shared_gamma = TRUE,
+                           intercept_row = model_combn$Intercepts[i],
+                           intercept_col = model_combn$Intercepts[i],
+                           row_similarity = model_combn$similarity[i],
+                           col_similarity = model_combn$similarity[i]); print(model_data)
 
 
       start <- Sys.time()
 
-      bench::bench_time(fitimr <- IMR::imr.fit(
-        Y = dat$modd$Y,
-        X = NULL,
-        Z = NULL,
-        r = model_combn$rank[i],
+      bench::bench_time(fitimr <- IMR::imr_fit(
+        data = model_data,
+        rank = model_combn$rank[i],
         lambda_m = model_combn$lambda[i],
         lambda_beta = 0,
         lambda_gamma = 0,
-        intercept_row = FALSE,
-        intercept_col = FALSE,
-        Ur = laplacian_row$U,
-        dr = laplacian_row$d,
-        Uc = laplacian_col$U,
-        dc = laplacian_col$d,
-        warm_start = NULL,
-        trace = FALSE,
-        thresh = 1e-6,
-        maxit = 1000,
-        ls_initial = TRUE
+        convergence = convergence
       )) -> time.imr
 
       time <- Sys.time() - start
@@ -262,7 +244,7 @@ for (prefix in 11:50) {
         test = s0$res$error.test,
         time = time,
         model = paste0(
-          model_combn$kernels[i],
+          ifelse(model_combn$similarity[i], "similarity", "original"),
           ifelse(model_combn$covariates[i], "+covariates", ""),
           ifelse(model_combn$Intercepts[i], "+Intercept", "")
         ),
@@ -270,8 +252,8 @@ for (prefix in 11:50) {
         prefix = prefix,
         test_pct = test_pct,
         lambda_laplace = model_combn$lambda[i],
-        rank_estim = length(fitimr$d > 0),
-        rank_M = length(fitimr$d > 0),
+        rank_estim = length(fitimr$coefficients$d > 0),
+        rank_M = length(fitimr$coefficients$d > 0),
         time2.1 = as.numeric(time.imr[1]),
         time2.2 = as.numeric(time.imr[2]),
         metric = "RMSE",
@@ -280,14 +262,14 @@ for (prefix in 11:50) {
 
       s0 <- output_wrapper_bixi(fitimr, dat,
         shared_information = T,
-        test_error = IMR:::error_metric$rel.rmse
+        test_error = IMR:::error_metrics$rrmse
       )
       res <- rbind(
         res, data.frame(
           test = s0$res$error.test,
           time = time,
-          model = paste0(
-            model_combn$kernels[i],
+          model =paste0(
+            ifelse(model_combn$similarity[i], "similarity", "original"),
             ifelse(model_combn$covariates[i], "+covariates", ""),
             ifelse(model_combn$Intercepts[i], "+Intercept", "")
           ),
@@ -295,8 +277,8 @@ for (prefix in 11:50) {
           prefix = prefix,
           test_pct = test_pct,
           lambda_laplace = model_combn$lambda[i],
-          rank_estim = length(fitimr$d > 0),
-          rank_M = length(fitimr$d > 0),
+          rank_estim = length(fitimr$coefficients$d > 0),
+          rank_M = length(fitimr$coefficients$d > 0),
           time2.1 = as.numeric(time.imr[1]),
           time2.2 = as.numeric(time.imr[2]),
           metric = "RRMSE",
