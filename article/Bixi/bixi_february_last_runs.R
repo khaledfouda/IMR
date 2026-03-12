@@ -192,7 +192,7 @@ if(fit_bktr){
 # ==============================================================
 # we now fit IMR with fixed hyperparameters >>
 seed <- 4000
-convergence <- IMR::imr_convergence(maxit = 1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
+convergence <- IMR::imr_convergence(maxit = 2000, thresh=1e-7, trace=FALSE, ls_initial = TRUE)
 
 total_results %>%
   filter(metric == "RRMSE") %>%
@@ -216,7 +216,6 @@ total_results %>%
   # group_by()
 
 model_combn %<>%
-  select(-lambda, -rank) %>%
   left_join(hps, "similarity")
 #
 # model_combn %<>%
@@ -245,7 +244,6 @@ for (prefix in 1:50) {
       model_data <- update(model_data,
                            row_covariates = model_combn$covariates[i],
                            col_covariates = model_combn$covariates[i],
-                           shared_beta = TRUE, shared_gamma = TRUE,
                            intercept_row = model_combn$Intercepts[i],
                            intercept_col = model_combn$Intercepts[i],
                            row_similarity = model_combn$similarity[i],

@@ -108,16 +108,16 @@ results <- readRDS("./article/Bixi/data/final_results/BKTR_results_final_25pct_2
 
 
 #=====================================================================
-results2 <- readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_2.rds") %>%
-  rbind(readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_3.rds")) %>%
+results2 <- readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_4.rds") %>%
+  #rbind(readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_4.rds")) %>%
   rename(
     time0 = time,
     time1 = time2.1,
     time2 = time2.2
   ) %>%
   group_by(model, train_size, prefix, metric) %>%
-  # summarise_all(mean) %>%
-  slice_min(test, n = 1, with_ties = FALSE) %>%
+  summarise_all(mean) %>%
+  #slice_min(test, n = 1, with_ties = FALSE) %>%
   ungroup() %>%
   dplyr::select(model, train_size, metric, test, time0, time1, time2, rank_estim)
 
@@ -148,7 +148,7 @@ readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2.rds") %>%
   view()
 
 # =========================================================
-results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_3.rds") %>%
+results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_4.rds") %>%
   # rbind(readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_3.rds")) %>%
   rename(
     time0 = time,
