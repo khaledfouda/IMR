@@ -37,16 +37,16 @@ imr_fit <- function(
 
   result_list <- imr_solver(
     Y = if (training) data$y_train else data$Y,
-    X = if(model$row_covariates) data$Xq else NULL,
-    Z = if(model$col_covariates) data$Zq else NULL,
-    r = if(model$low_rank_component) rank else NULL,
-    lambda_m = if(model$low_rank_component) lambda_m else NULL,
+    X = if (model$row_covariates) data$Xq else NULL,
+    Z = if (model$col_covariates) data$Zq else NULL,
+    r = if (model$low_rank_component) rank else NULL,
+    lambda_m = if (model$low_rank_component) lambda_m else NULL,
     lambda_beta = lambda_beta,
     lambda_gamma = lambda_gamma,
-    Ur = if(model$low_rank_component && model$row_similarity) data$similarity_row$U else NULL,
-    dr = if(model$low_rank_component && model$row_similarity) data$similarity_row$d else NULL,
-    Uc = if(model$low_rank_component && model$col_similarity) data$similarity_col$U else NULL,
-    dc = if(model$low_rank_component && model$col_covariates) data$similarity_col$d else NULL,
+    Ur = if (model$low_rank_component && model$row_similarity) data$similarity_row$U else NULL,
+    dr = if (model$low_rank_component && model$row_similarity) data$similarity_row$d else NULL,
+    Uc = if (model$low_rank_component && model$col_similarity) data$similarity_col$U else NULL,
+    dc = if (model$low_rank_component && model$col_covariates) data$similarity_col$d else NULL,
     intercept_row = model$intercept_row,
     intercept_col = model$intercept_col,
     shared_beta = model$shared_beta,
@@ -56,39 +56,62 @@ imr_fit <- function(
   )
 
   # 5. Construct Final Object
-  if(!training){
-    ss <- function(x) sum((x-mean(x))^2)
+  if (!training) {
+    ss <- function(x) sum((x - mean(x))^2)
     sum_squares <- list(
       sst = ss(data$Y@x),
-      sse = ss(result_list$residuals@x))
-    if(data$model$row_covariates){
-      coefs <- if(data$model$shared_beta)
-        matrix(result_list$beta,data$meta$num_X_vars, data$meta$dimensions[2]) else
-          result_list$beta
-      sum_squares$ssrc <- ss(partial_crossprod(data$Xq, coefs,data$Y@i,data$Y@p))
-    }else sum_squares$ssrc = 0
-    if(data$model$col_covariates){
-      coefs <- if(data$model$shared_gamma)
-        matrix(result_list$gamma,data$meta$dimensions[1],data$meta$num_Z_vars,TRUE) else
-          result_list$gamma
-      sum_squares$sscc <- ss(partial_crossprod(coefs, data$Zq,  data$Y@i,data$Y@p,TRUE))
-    }else sum_squares$sscc = 0
-    if(data$model$intercept_row){
-      sum_squares$ssri <- ss(partial_crossprod(as.matrix(result_list$beta0),
-                                               diag(1,1,data$meta$dimensions[2]),
-                                              data$Y@i, data$Y@p))
-    }else sum_squares$ssri = 0
-    if(data$model$intercept_col){
-      sum_squares$ssci <- ss(partial_crossprod( diag(1,data$meta$dimensions[1],1),
-                                                t(as.matrix(result_list$gamma0)),
-                                               data$Y@i, data$Y@p))
-    }else sum_squares$ssci = 0
-    if(data$model$low_rank_component){
-      sum_squares$ssm <- ss(IMR:::partial_crossprod(result_list$u,
-                                                    t(t(result_list$v)*result_list$d),
-                                             data$Y@i, data$Y@p, TRUE))
-    }else sum_squares$ssm = 0
-  } else sum_squares = NULL
+      sse = ss(result_list$residuals@x)
+    )
+    if (data$model$row_covariates) {
+      coefs <- if (data$model$shared_beta) {
+        matrix(result_list$beta, data$meta$num_X_vars, data$meta$dimensions[2])
+      } else {
+        result_list$beta
+      }
+      sum_squares$ssrc <- ss(partial_crossprod(data$Xq, coefs, data$Y@i, data$Y@p))
+    } else {
+      sum_squares$ssrc <- 0
+    }
+    if (data$model$col_covariates) {
+      coefs <- if (data$model$shared_gamma) {
+        matrix(result_list$gamma, data$meta$dimensions[1], data$meta$num_Z_vars, TRUE)
+      } else {
+        result_list$gamma
+      }
+      sum_squares$sscc <- ss(partial_crossprod(coefs, data$Zq, data$Y@i, data$Y@p, TRUE))
+    } else {
+      sum_squares$sscc <- 0
+    }
+    if (data$model$intercept_row) {
+      sum_squares$ssri <- ss(partial_crossprod(
+        as.matrix(result_list$beta0),
+        diag(1, 1, data$meta$dimensions[2]),
+        data$Y@i, data$Y@p
+      ))
+    } else {
+      sum_squares$ssri <- 0
+    }
+    if (data$model$intercept_col) {
+      sum_squares$ssci <- ss(partial_crossprod(
+        diag(1, data$meta$dimensions[1], 1),
+        t(as.matrix(result_list$gamma0)),
+        data$Y@i, data$Y@p
+      ))
+    } else {
+      sum_squares$ssci <- 0
+    }
+    if (data$model$low_rank_component) {
+      sum_squares$ssm <- ss(IMR:::partial_crossprod(
+        result_list$u,
+        t(t(result_list$v) * result_list$d),
+        data$Y@i, data$Y@p, TRUE
+      ))
+    } else {
+      sum_squares$ssm <- 0
+    }
+  } else {
+    sum_squares <- NULL
+  }
   structure(
     list(
       coefficients = list(
@@ -101,8 +124,8 @@ imr_fit <- function(
         gamma0 = result_list$gamma0
       ),
       residuals = result_list$residuals,
-      Xr = if(model$row_covariates) data$Xr else NULL,
-      Zr = if(model$col_covariates) data$Zr else NULL,
+      Xr = if (model$row_covariates) data$Xr else NULL,
+      Zr = if (model$col_covariates) data$Zr else NULL,
       meta = list(
         rank = rank,
         lambdas = c(M = lambda_m, beta = lambda_beta, gamma = lambda_gamma),
@@ -490,8 +513,10 @@ print.imr_fit <- function(x, ...) {
   cat(sprintf("Formula :  Y ~ %s\n", paste(terms, collapse = " + ")))
   status <- if (x$meta$converged) "Converged" else "Did NOT converge"
   cat(sprintf("Status  : %s (in %d iterations)\n", status, x$meta$n_iter))
-  cat(sprintf("Target  : %d x %d matrix (%2.2f%% missing)\n", x$meta_data$dimensions[1],
-              x$meta_data$dimensions[2], x$meta_data$sparsity*100))
+  cat(sprintf(
+    "Target  : %d x %d matrix (%2.2f%% missing)\n", x$meta_data$dimensions[1],
+    x$meta_data$dimensions[2], x$meta_data$sparsity * 100
+  ))
 
   # --- 2. Coefficient Dimensions ---
   get_dim_str <- function(coef) {
@@ -526,7 +551,7 @@ print.imr_fit <- function(x, ...) {
     rmse <- sqrt(mse)
     r2 <- 1 - (sse / sst)
 
-    prepare_d <- function(x) ifelse(round(x,4) >= 1e-4 || x == 0, sprintf("%.4f",x), "< 1e-4")
+    prepare_d <- function(x) ifelse(round(x, 4) >= 1e-4 || x == 0, sprintf("%.4f", x), "< 1e-4")
 
     # Ensure R2 isn't negative
     r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else sprintf("%.4f", r2)
@@ -543,13 +568,15 @@ print.imr_fit <- function(x, ...) {
     cat(sprintf("Rank (r)          : %d\n", x$meta$rank))
     cat(sprintf("Lambda M          : %s\n", prepare_d(x$meta$lambdas["M"])))
   }
-  if (has_row_cov)
+  if (has_row_cov) {
     cat(sprintf("Lambda Beta       : %s\n", prepare_d(x$meta$lambdas["beta"])))
-  if (has_col_cov)
+  }
+  if (has_col_cov) {
     cat(sprintf("Lambda Gamma      : %s\n", prepare_d(x$meta$lambdas["gamma"])))
-  if(has_low_rank){
-    cat(sprintf("Row Similarity    : %s\n", ifelse(x$model$row_similarity,"Active", "None")))
-    cat(sprintf("Column Similarity : %s", ifelse(x$model$col_similarity,"Active", "None")))
+  }
+  if (has_low_rank) {
+    cat(sprintf("Row Similarity    : %s\n", ifelse(x$model$row_similarity, "Active", "None")))
+    cat(sprintf("Column Similarity : %s", ifelse(x$model$col_similarity, "Active", "None")))
   }
 
   cat("\n====================================================\n")
@@ -576,112 +603,123 @@ summary.imr_fit <- function(object, ...) {
   sss <- ssrc + sscc + ssri + ssci + ssm
 
 
-
-  exp_var <- 1-(sse/sst)
+  exp_var <- 1 - (sse / sst)
   n <- length(object$residuals@x)
   mse <- sse / n
   rmse <- sqrt(mse)
-  prepare_fmt <- function(x) ifelse(round(x,1) >= 0.1 || x == 0, sprintf("%2.1f%%",x), "< 0.1%")
-  prepare_d <- function(x) ifelse(round(x,4) >= 1e-4 || x == 0, sprintf("%.4f",x), "< 1e-4")
+  prepare_fmt <- function(x) ifelse(round(x, 1) >= 0.1 || x == 0, sprintf("%2.1f%%", x), "< 0.1%")
+  prepare_d <- function(x) ifelse(round(x, 4) >= 1e-4 || x == 0, sprintf("%.4f", x), "< 1e-4")
   cat("\nGoodness of Fit (on observed entries)")
   cat("\n-------------------------------------------------------------\n")
   cat(sprintf("RMSE                                   : %s\n", prepare_d(rmse)))
   cat(sprintf("MSE                                    : %s\n", prepare_d(mse)))
-  cat(sprintf("Total Explained Variance (1 - SSE/SST) : %s\n", prepare_fmt(100*exp_var)))
-  cat(sprintf("Unexplained Variance (SSE/SST)         : %s\n", prepare_fmt(100*(sse/sst))))
+  cat(sprintf("Total Explained Variance (1 - SSE/SST) : %s\n", prepare_fmt(100 * exp_var)))
+  cat(sprintf("Unexplained Variance (SSE/SST)         : %s\n", prepare_fmt(100 * (sse / sst))))
 
 
   cat("\nRelative Contribution to Explained Variance")
   cat("\n-------------------------------------------------------------\n")
-  cat(sprintf("Additive Components        : %2.1f%% of explained variance\n",100* sss/(sst-sse)))
-  if(object$model$low_rank_component)
-    cat(sprintf("    |-- Latent Matrix      :    %s\n", prepare_fmt(100*ssm/sss)))
-  if(object$model$row_covariates)
-    cat(sprintf("    |-- Row Covariates     :    %s\n", prepare_fmt(100*ssrc/sss)))
-  if(object$model$col_covariates)
-    cat(sprintf("    |-- Column Covariates  :    %s\n", prepare_fmt(100*sscc/sss)))
-  if(object$model$intercept_row)
-    cat(sprintf("    |-- Row Intercepts     :    %s\n", prepare_fmt(100*ssri/sss)))
-  if(object$model$intercept_col)
-    cat(sprintf("    |-- Column Intercepts  :    %s\n", prepare_fmt(100*ssci/sss)))
+  cat(sprintf("Additive Components        : %2.1f%% of explained variance\n", 100 * sss / (sst - sse)))
+  if (object$model$low_rank_component) {
+    cat(sprintf("    |-- Latent Matrix      :    %s\n", prepare_fmt(100 * ssm / sss)))
+  }
+  if (object$model$row_covariates) {
+    cat(sprintf("    |-- Row Covariates     :    %s\n", prepare_fmt(100 * ssrc / sss)))
+  }
+  if (object$model$col_covariates) {
+    cat(sprintf("    |-- Column Covariates  :    %s\n", prepare_fmt(100 * sscc / sss)))
+  }
+  if (object$model$intercept_row) {
+    cat(sprintf("    |-- Row Intercepts     :    %s\n", prepare_fmt(100 * ssri / sss)))
+  }
+  if (object$model$intercept_col) {
+    cat(sprintf("    |-- Column Intercepts  :    %s\n", prepare_fmt(100 * ssci / sss)))
+  }
 
-  cat(sprintf("\nRegularization & Overlap   : %s of explained variance\n", prepare_fmt(100*(1-(sss/(sst-sse))))))
+  cat(sprintf("\nRegularization & Overlap   : %s of explained variance\n", prepare_fmt(100 * (1 - (sss / (sst - sse))))))
   cat("(Measures the deviation from orthogonal additivity due to shrinkage penalties and missing data.)\n")
   cat("-------------------------------------------------------------\n")
 
   cat("\n Model Estimates")
   cat("\n-------------------------------------------------------------\n")
 
-  summarize_covariates <- function(coefs, names, rows=FALSE, len=NA){
-
+  summarize_covariates <- function(coefs, names, rows = FALSE, len = NA) {
     shared <- nrow(coefs) == 1
 
-    cat(sprintf("\n-- %s Covariates --\nMode: %s (%s)\n",
-                ifelse(rows, "Row", "Column"),
-                ifelse(shared, paste0("Shared across ",ifelse(rows, "columns", "rows")),
-                       paste0(ifelse(rows, "Column", "Row"),"-specific")),
-                ifelse(shared, sprintf("%s = %d", ifelse(rows,"p","q"), ncol(coefs)),
-                       sprintf("%d x %d matrix", nrow(coefs), ncol(coefs)))))
-    if(shared){
+    cat(sprintf(
+      "\n-- %s Covariates --\nMode: %s (%s)\n",
+      ifelse(rows, "Row", "Column"),
+      ifelse(shared, paste0("Shared across ", ifelse(rows, "columns", "rows")),
+        paste0(ifelse(rows, "Column", "Row"), "-specific")
+      ),
+      ifelse(shared, sprintf("%s = %d", ifelse(rows, "p", "q"), ncol(coefs)),
+        sprintf("%d x %d matrix", nrow(coefs), ncol(coefs))
+      )
+    ))
+    if (shared) {
       vec <- data.frame(Estimate = t(coefs))
       rownames(vec) <- names
       vec <- round(vec, 4)
       print(format(vec, justify = "right"))
-    }else{
-      cat(sprintf("Summary of effects across %d %s\n", len,
-                  ifelse(rows, "columns", "rows")))
+    } else {
+      cat(sprintf(
+        "Summary of effects across %d %s\n", len,
+        ifelse(rows, "columns", "rows")
+      ))
       summary <- data.frame(
         Mean = colMeans(coefs),
-        SD  = apply(coefs, 2, sd),
+        SD = apply(coefs, 2, sd),
         Min = apply(coefs, 2, min),
         Max = apply(coefs, 2, max),
-        Sparsity = sprintf("%.2f%%",colMeans(round(coefs,6)==0) * 100),
-        `L2-Norm` = apply(coefs, 2, function(x)sqrt(sum(x^2))),
+        Sparsity = sprintf("%.2f%%", colMeans(round(coefs, 6) == 0) * 100),
+        `L2-Norm` = apply(coefs, 2, function(x) sqrt(sum(x^2))),
         row.names = names
       )
-      summary <- summary[order(summary$L2.Norm, decreasing = TRUE),]
-      summary[,-5] <- round(summary[,-5], 4)
+      summary <- summary[order(summary$L2.Norm, decreasing = TRUE), ]
+      summary[, -5] <- round(summary[, -5], 4)
       print(format(summary, justify = "right"))
-
     }
-
-
   }
 
-  if(object$model$row_covariates){
-    beta = IMR:::inv(object$Xr) %*% object$coefficients$beta
-    summarize_covariates(t(beta), object$meta_data$names_X_vars,
-                         TRUE,
-                         object$meta_data$dimensions[2])
-
+  if (object$model$row_covariates) {
+    beta <- IMR:::inv(object$Xr) %*% object$coefficients$beta
+    summarize_covariates(
+      t(beta), object$meta_data$names_X_vars,
+      TRUE,
+      object$meta_data$dimensions[2]
+    )
   }
-  if(object$model$col_covariates){
-    gamma = tcrossprod(object$coefficients$gamma, IMR:::inv(object$Zr))
-    summarize_covariates(gamma, object$meta_data$names_Z_vars,
-                         FALSE,
-                         object$meta_data$dimensions[1])
+  if (object$model$col_covariates) {
+    gamma <- tcrossprod(object$coefficients$gamma, IMR:::inv(object$Zr))
+    summarize_covariates(
+      gamma, object$meta_data$names_Z_vars,
+      FALSE,
+      object$meta_data$dimensions[1]
+    )
   }
 
-  if(object$model$intercept_row || object$model$intercept_col){
+  if (object$model$intercept_row || object$model$intercept_col) {
     cat("\n-- Intercepts --")
-    if(object$model$intercept_row){
+    if (object$model$intercept_row) {
       coefs <- object$coefficients$beta0
       cat(sprintf("\nRow Intercepts    (n=%d) | ", length(coefs)))
-      cat(sprintf("Mean: %.4f | SD: %.4f | Min: %.4f | Max: %.4f\n",
-                  mean(coefs), sd(coefs), min(coefs), max(coefs)))
-
+      cat(sprintf(
+        "Mean: %.4f | SD: %.4f | Min: %.4f | Max: %.4f\n",
+        mean(coefs), sd(coefs), min(coefs), max(coefs)
+      ))
     }
-    if(object$model$intercept_col){
+    if (object$model$intercept_col) {
       coefs <- object$coefficients$gamma0
       cat(sprintf("Column Intercepts (m=%d) | ", length(coefs)))
-      cat(sprintf("Mean: %.4f | SD: %.4f | Min: %.4f | Max: %.4f\n",
-                  mean(coefs), sd(coefs), min(coefs), max(coefs)))
-
+      cat(sprintf(
+        "Mean: %.4f | SD: %.4f | Min: %.4f | Max: %.4f\n",
+        mean(coefs), sd(coefs), min(coefs), max(coefs)
+      ))
     }
   }
-  if(object$model$low_rank_component){
+  if (object$model$low_rank_component) {
     cat("\n-- Latent Component --")
-    cat(sprintf("\nRank (r): %d\nSingular Values:\n", length(object$coefficients$d) ))
+    cat(sprintf("\nRank (r): %d\nSingular Values:\n", length(object$coefficients$d)))
     print(object$coefficients$d)
   }
 
@@ -708,9 +746,9 @@ print.imr_convergence <- function(x, ...) {
   invisible()
 }
 
-#'@export
+#' @export
 #' @method coef imr_fit
-coef.imr_fit <- function(x, ...){
+coef.imr_fit <- function(x, ...) {
   return(x$coefficients)
 }
 #' @export

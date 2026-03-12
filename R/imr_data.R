@@ -128,15 +128,16 @@ update.imr_data <- function(object,
                             shared_beta = NULL,
                             shared_gamma = NULL,
                             ...) {
-
   update_flag <- function(obj, flag_val, flag_name, dependency_name) {
     if (!is.null(flag_val)) {
       # Ensure it's a single boolean
       flag_val <- as.logical(flag_val[1])
 
       if (flag_val && !obj$meta[[dependency_name]]) {
-        stop(sprintf("Cannot set '%s = TRUE' because the underlying data ('%s') was not provided.",
-                     flag_name, dependency_name), call. = FALSE)
+        stop(sprintf(
+          "Cannot set '%s = TRUE' because the underlying data ('%s') was not provided.",
+          flag_name, dependency_name
+        ), call. = FALSE)
       }
       obj$model[[flag_name]] <- flag_val
     }
@@ -177,7 +178,7 @@ update.imr_data <- function(object,
 
 #' @export
 print.imr_data <- function(x, ...) {
-  m <- x$meta         # What data is available in memory
+  m <- x$meta # What data is available in memory
   a <- x$model # What the solver is instructed to use
 
   cat("\n== IMR Data Object ==\n")
@@ -199,7 +200,9 @@ print.imr_data <- function(x, ...) {
 
   # Helper function to align text and format the active/inactive tags
   format_status <- function(has_data, is_active, data_desc, is_shared = NULL) {
-    if (!has_data) return(sprintf("[None]"))
+    if (!has_data) {
+      return(sprintf("[None]"))
+    }
     status_tag <- if (is_active) "[ACTIVE]" else ""
     shared_tag <- ""
     if (!is.null(is_shared) && is_active) {
@@ -209,31 +212,44 @@ print.imr_data <- function(x, ...) {
   }
 
   # Low-rank is a purely algorithmic component (doesn't depend on external data)
-  cat(sprintf("%-20s:  %23s\n", "Low-Rank Matrix (M)",
-              if (a$low_rank_component) "[ACTIVE]" else ""))
+  cat(sprintf(
+    "%-20s:  %23s\n", "Low-Rank Matrix (M)",
+    if (a$low_rank_component) "[ACTIVE]" else ""
+  ))
   cat(sprintf("%-20s: %24s\n", "Row Intercepts", if (a$intercept_row) "[ACTIVE]" else ""))
   cat(sprintf("%-20s: %24s\n", "Col Intercepts", if (a$intercept_col) "[ACTIVE]" else ""))
 
   # Covariates
-  cat(sprintf("%-20s: %s\n", "Row Covariates (X)",
-              format_status(m$has_X, a$row_covariates, sprintf("%d vars", m$num_X_vars),
-                            a$shared_beta)))
+  cat(sprintf(
+    "%-20s: %s\n", "Row Covariates (X)",
+    format_status(
+      m$has_X, a$row_covariates, sprintf("%d vars", m$num_X_vars),
+      a$shared_beta
+    )
+  ))
 
-  cat(sprintf("%-20s: %s\n", "Col Covariates (Z)",
-              format_status(m$has_Z, a$col_covariates, sprintf("%d vars", m$num_Z_vars),
-                            a$shared_gamma)))
+  cat(sprintf(
+    "%-20s: %s\n", "Col Covariates (Z)",
+    format_status(
+      m$has_Z, a$col_covariates, sprintf("%d vars", m$num_Z_vars),
+      a$shared_gamma
+    )
+  ))
 
   # Similarities
-  cat(sprintf("%-20s: %s\n", "Row Similarity",
-              format_status(m$has_sim_row, a$row_similarity, "Provided")))
+  cat(sprintf(
+    "%-20s: %s\n", "Row Similarity",
+    format_status(m$has_sim_row, a$row_similarity, "Provided")
+  ))
 
-  cat(sprintf("%-20s: %s\n", "Col Similarity",
-              format_status(m$has_sim_col, a$col_similarity, "Provided")))
+  cat(sprintf(
+    "%-20s: %s\n", "Col Similarity",
+    format_status(m$has_sim_col, a$col_similarity, "Provided")
+  ))
 
   cat("==========================\n")
   invisible(x)
 }
-
 
 
 #' @export
@@ -373,11 +389,11 @@ reconstruct_partial <- function(fit, data, target, trace = FALSE) {
 #----------------------------------------------------------------
 #' @export
 imr_similarity <- function(x,
-                                d = NULL,
-                                matern_params = list(smoothness = 1.5, range = 1),
-                                rbf_params = list(ell = 1),
-                                jitter = 0,
-                                invert = FALSE) {
+                           d = NULL,
+                           matern_params = list(smoothness = 1.5, range = 1),
+                           rbf_params = list(ell = 1),
+                           jitter = 0,
+                           invert = FALSE) {
   S <- NULL
   source_type <- "User Matrix"
   params_used <- list()

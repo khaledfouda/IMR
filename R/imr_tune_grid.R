@@ -10,8 +10,8 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
     stopifnot(!(is_rank && len < 2))
     if (is_rank) {
       list(
-        min  = p[1],
-        max  = if (len == 1) p[1] else p[2],
+        min = p[1],
+        max = if (len == 1) p[1] else p[2],
         step = if (len >= 3) p[3] else 2,
         streaks = if (len >= 4) p[4] else 2
       )
@@ -138,14 +138,14 @@ imr_get_lambda_m_max <-
     if (!need_fit) {
       lambda_kkt <- svd_opt(data$Y, 1)$d[1]
     } else {
-      data$model$low_rank_component = FALSE
+      data$model$low_rank_component <- FALSE
       fit <- imr_fit(data,
         rank = 0,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
         convergence = convergence
       )
-      data$model$low_rank_component = TRUE
+      data$model$low_rank_component <- TRUE
       # return largest singular value
       lambda_kkt <- IMR::svd_opt(fit$residuals, 1)$d[1]
     }
@@ -176,7 +176,7 @@ imr_get_lambda_m_max <-
         break
       } else {
         # It is not fully sparse. We must try a HIGHER lambda.
-        #upper <- lambda_kkt * (i + 1)
+        # upper <- lambda_kkt * (i + 1)
         lower <- upper
         upper <- upper * 1.5
       }
@@ -230,10 +230,10 @@ imr_get_lambda_lasso_max <- function(
   is_beta <- target == "beta"
   # remove the other set of covariates from the data.
   if (is_beta) {
-    data$model$row_covariates = FALSE
-    }else {
-      data$model$col_covariates = FALSE
-    }
+    data$model$row_covariates <- FALSE
+  } else {
+    data$model$col_covariates <- FALSE
+  }
 
   if (is_beta && !data$meta$has_X) stop("Target is 'beta' but no X matrix found in data.")
   if (!is_beta && !data$meta$has_Z) stop("Target is 'gamma' but no Z matrix found in data.")
@@ -252,9 +252,9 @@ imr_get_lambda_lasso_max <- function(
 
   #-- put them back in the model
   if (is_beta) {
-    data$model$row_covariates = TRUE
-  }else {
-    data$model$col_covariates = TRUE
+    data$model$row_covariates <- TRUE
+  } else {
+    data$model$col_covariates <- TRUE
   }
 
   # --- Calculate training Residuals for KKT Conditions ---
@@ -301,7 +301,7 @@ imr_get_lambda_lasso_max <- function(
       break
     } else {
       # It is not fully sparse. We must try a HIGHER lambda.
-      #upper <- lambda_kkt * (i + 1)
+      # upper <- lambda_kkt * (i + 1)
       lower <- upper
       upper <- upper * 1.5
     }

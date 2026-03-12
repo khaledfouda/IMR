@@ -46,7 +46,7 @@ train_seq <- round(seq(1 - total_miss, by = -.05, length.out = 5) * 100)
 #rep = 1; prefix = 1; train_size = train_seq[1]; i=1
 #---
 convergence <- IMR::imr_convergence(maxit = 600, thresh=1e-5, trace=FALSE, ls_initial = TRUE)
-grid <- IMR::imr_tune_grid(laplace = c(0,10,60, 3), rank = c(2,30,1, 3)); grid
+grid <- IMR::imr_tune_grid(laplace = c(0,10,80, 5), rank = c(5,30,1, 5)); grid
 
 #rep = 1; prefix = 1; i = 1; train_size=train_seq[1]
 
@@ -86,6 +86,7 @@ for (rep in 1:10) {
         start <- Sys.time()
         bench::bench_time(fitimr <- IMR::imr_tune(model_data, grid, final_fit = TRUE,
                                                   fast_laplace = FALSE,
+                                                  laplace_log_scale = FALSE,
                                                   convergence=convergence, n_cores=7,
                                                   seed = seed, verbose=1)) -> time.imr
         time <- Sys.time() - start
@@ -152,7 +153,7 @@ for (rep in 1:10) {
         print(res)
         total_results <- rbind(total_results, res)
       }
-      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2_3.rds")
+      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pct_2_4.rds")
     }
     print(paste0("Rep:", rep, ", prefix: ", prefix))
   }
@@ -170,33 +171,60 @@ total_results %>%
 # =================================================================
 # we now fit the same on BKTR
 seed <- 4000
-for (prefix in 1:50) {
-  for (train_size in train_seq) {
-    bktr_out <- fit_BKTR_to_Bixi(total_miss,
-      "Feb_last",
-      prefix = prefix,
-      train_prefix = train_size,
-      file_dir = "./article/bixi/data/splits2/",
-      seed = seed,
-      burn_in_iter = 1000,
-      sampling_iter = 500
-    )
-    print(train_size)
+fit_bktr <- FALSE
+if(fit_bktr){
+  for (prefix in 1:50) {
+    for (train_size in train_seq) {
+      bktr_out <- fit_BKTR_to_Bixi(total_miss,
+        "Feb_last",
+        prefix = prefix,
+        train_prefix = train_size,
+        file_dir = "./article/bixi/data/splits2/",
+        seed = seed,
+        burn_in_iter = 1000,
+        sampling_iter = 500
+      )
+      print(train_size)
+    }
+    print(paste0("prefix=", prefix))
   }
-  print(paste0("prefix=", prefix))
 }
 # ==============================================================
 # we now fit IMR with fixed hyperparameters >>
 seed <- 4000
 convergence <- IMR::imr_convergence(maxit = 1000, thresh=1e-6, trace=FALSE, ls_initial = TRUE)
 
+total_results %>%
+  filter(metric == "RRMSE") %>%
+  group_by(model, train_size, prefix, metric) %>%
+  slice_min(test, n=1) %>%
+  ungroup() %>%
+  group_by(model, train_size, metric) %>%
+  summarise_all(mean) %>%
+  as.data.frame() %>%
+  arrange(test) %>%
+  #mutate(across(where(is.numeric), \(x) round(x, 4))) %>%
+  #mutate(time = round(time, 2)) %>%
+  group_by(model) %>%
+  slice_head(n=1) %>%
+  ungroup() %>%
+  select(model, lambda_laplace, rank_estim) %>%
+  transmute(similarity = model == "similarity",
+            lambda=lambda_laplace,
+            rank = round(rank_estim)) ->
+  hps;hps
+  # group_by()
 
 model_combn %<>%
-  mutate(
-    lambda = if_else(similarity, 1.178, 0.692),
-    rank = if_else(similarity, 20, 20)
-  )
-
+  select(-lambda, -rank) %>%
+  left_join(hps, "similarity")
+#
+# model_combn %<>%
+#   mutate(
+#     lambda = if_else(similarity, 1.2140, 0.7456),
+#     rank = if_else(similarity, 12, 10)
+#   )
+total_results <- data.frame()
 for (prefix in 1:50) {
   for (train_size in train_seq) {
     for (i in 1:nrow(model_combn)) {
