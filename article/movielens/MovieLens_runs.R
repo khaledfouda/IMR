@@ -85,63 +85,70 @@ print(model_data)
 model_combn <- data.frame(
   row_covariates = c(F,T,T),
   col_covariates = c(F,F,T),
-  intercepts = c(T,T,T),
+  intercepts = c(T,T,T)
 )
 #-----
 
-convergence <- imr_convergence(maxit=600, thresh=1e-5, trace=FALSE, ls_initial = TRUE)
+convergence <- imr_convergence(maxit=600, thresh=1e-5)
+convergence2 <- imr_convergence(maxit=2000, thresh=1e-7)
 
 
-grid <- imr_tune_grid(beta = c(0, NA, 20),
-                      gamma = c(0, NA, 20),
-                      laplace = c(0, NA, 20, 3),
-                      rank = c(10, 30, 1, 2))
+grid <- imr_tune_grid(beta = c(0, 0.5, 40),
+                      gamma = c(0, 0.6, 40),
+                      laplace = c(0, 20, 80, 2),
+                      rank = c(5, 20, 1, 2))
+
+for(model_id in seq_along(model_combn)){
+
+row_covariates <- model_combn$row_covariates[model_id]
+col_covariates <- model_combn$col_covariates[model_id]
 
 model_data <- update(model_data,
                      intercept_row = TRUE,
                      intercept_col = TRUE,
-                     col_intercepts = TRUE,
-                     row_covariates = TRUE,
-                     col_covariates = TRUE); model_data
+                     row_covariates = row_covariates,
+                     col_covariates = col_covariates); model_data
 
 # notes: max for model IMR-I: laplace = 120 but make it 45-16
 #       max for model IMR-IX: beta = 2,  laplace = 135
 #       max for model IMR-IXZ: beta: 1.9, laplace = 109, gamma = 4
-grid$beta$max = 2
-grid <- imr_set_grid_limits(model_data, grid,default_rank = 10,
-                            bisection_iter = 5,
-                            convergence=convergence, verbose=2)
-grid$laplace$max = 45
+# grid <- imr_set_grid_limits(model_data, grid,default_rank = 10,
+#                             bisection_iter = 5,
+#                             convergence=convergence, verbose=2)
 
-start <- Sys.time()
-bench::bench_time(fitimr2 <- IMR::imr_tune(model_data, grid, final_fit = TRUE,
+
+fitimr <- IMR::imr_tune(model_data, grid, final_fit = FALSE,
                                           fast_laplace = FALSE,
-                                          laplace_log_scale = TRUE,
+                                          laplace_log_scale = FALSE,
                                           convergence=convergence, n_cores=7,
-                                          seed = seed, verbose=2)) -> time.imr
-time <- Sys.time() - start
+                                          seed = seed, verbose=1)
 
-print(fitimr$fit)
-summary(fitimr$fit)
+saveRDS(fitimr, paste0("article/movielens/data/saved_models/March_IMR_I",
+               ifelse(row_covariates, "X",""),
+               ifelse(col_covariates, "Z", ""),
+               "_tune.rds"))
 
-convergence2 <- imr_convergence(maxit=2000, thresh=1e-7, trace=FALSE)
 start <- Sys.time()
-bench::bench_time(fitimr <- IMR::imr_fit(model_data, rank = fitimr$params$rank,
-                                         lambda_m = fitimr$params$lambda_laplace,
-                                          convergence=convergence2)) -> time.imr
+fitimr_fit <- IMR::imr_fit(model_data,
+                       rank = fitimr$params$rank,
+                       lambda_m = fitimr$params$lambda_laplace,
+                       lambda_beta = fitimr$params$lambda_beta,
+                       lambda_gamma = fitimr$params$lambda_gamma,
+                        convergence=convergence2)
 time <- Sys.time() - start
+fitimr_fit$time_secs <- as.numeric(time, "secs")
+saveRDS(fitimr_fit, paste0("article/movielens/data/saved_models/March_IMR_I",
+                       ifelse(row_covariates, "X",""),
+                       ifelse(col_covariates, "Z", ""),
+                       "_fit.rds"))
 
+print(fitimr_fit)
+print(summary(fitimr_fit))
+datrec <- reconstruct(fitimr_fit, model_data)
 
-print(fitimr)
-summary(fitimr)
-
-
-
-
-datrec <- reconstruct(fitimr, model_data)
-prepare_output_movielens(
-  "IMR-I",
-  time = time.imr[2],
+print(prepare_output_movielens(
+  "IMR-...",
+  time = fitimr_fit$time_secs,
   X = data$X,
   Z = data$Z,
   beta.estim = datrec$beta,
@@ -152,5 +159,7 @@ prepare_output_movielens(
   test_error = IMR:::error_metrics$rmse,
   obs.train = data$Y[data$Y != 0],
   M.estim = datrec$M,
-  rank.M = 12 # fitimr$rank_M
-)
+  rank.M = fitimr$params$rank
+))
+
+}

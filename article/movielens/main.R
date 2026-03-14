@@ -349,7 +349,7 @@ fmt_num <- function(x, digits) ifelse(is.na(x) | is.nan(x), "—", sprintf(paste
 
 disp <- res.df %>%
   mutate(
-    time          = fmt_num(time, 2),
+    time          = fmt_num(time/60, 2),
     error.test    = fmt_num(error.test, 3),
     corr.test     = fmt_num(corr.test, 3),
     error.train   = fmt_num(error.train, 3),
@@ -378,7 +378,7 @@ col_names <- c(
 )
 
 kbl(disp,
-    format   = "html",
+    format   = "simple",
     booktabs = TRUE,
     linesep  = "",
     escape   = FALSE,

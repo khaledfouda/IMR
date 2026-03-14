@@ -37,7 +37,6 @@ mapx <- as.data.frame(dat$X) %>%
   dplyr::select(user, group)
 
 
-IMR::initialize_parallel_workers(1)
 
 mapz %<>%
   group_by(movie) %>%
@@ -50,9 +49,9 @@ mapz %<>%
 
 
 movies <- unique(arr[, 1])
-subYh <- (out$out[[1]]$xbeta+out$out[[1]]$gammaz)[,movies]
-subYh <- out$out[[1]]$estimates[,movies] - subYh
-subYh  <- out$out[[1]]$estimates[,movies]
+subYh <- (out$out[[3]]$xbeta+out$out[[3]]$gammaz)[,movies]
+subYh <- out$out[[3]]$estimates[,movies] - subYh
+subYh  <- out$out[[3]]$estimates[,movies]
 colnames(subYh) = movies
 as.data.frame(subYh) %>%
   rownames_to_column("row") %>%
