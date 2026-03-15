@@ -89,16 +89,17 @@ model_combn <- data.frame(
 )
 #-----
 
+
 convergence <- imr_convergence(maxit=600, thresh=1e-5)
 convergence2 <- imr_convergence(maxit=2000, thresh=1e-7)
 
 
-grid <- imr_tune_grid(beta = c(0, 0.5, 40),
-                      gamma = c(0, 0.6, 40),
-                      laplace = c(0, 20, 80, 2),
-                      rank = c(5, 20, 1, 2))
+grid <- imr_tune_grid(beta = c(0, 0.4, 60),
+                      gamma = c(0, 0.4, 60),
+                      laplace = c(0, 20, 80, 3),
+                      rank = c(5, 20, 1, 3))
 
-for(model_id in seq_along(model_combn)){
+for(model_id in seq_along(model_combn)[c(1,3)]){
 
 row_covariates <- model_combn$row_covariates[model_id]
 col_covariates <- model_combn$col_covariates[model_id]

@@ -21,6 +21,8 @@ imrIX$rank_M <- imrIX$meta$rank
 imrIXZ$rank_M <- imrIXZ$meta$rank
 #-----------------------------------------------------------------------
 
+imrIXZ
+
 out <- list()
 out[[1]] <- IMR::reconstruct(imrI, model_data)
 out[[2]] <- IMR::reconstruct(imrIX, model_data)
