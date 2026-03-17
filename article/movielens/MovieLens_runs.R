@@ -91,7 +91,7 @@ model_combn <- data.frame(
 
 
 convergence <- imr_convergence(maxit=600, thresh=1e-5)
-convergence2 <- imr_convergence(maxit=2000, thresh=1e-7)
+convergence2 <- imr_convergence(maxit=5000, thresh=1e-7)
 
 
 grid <- imr_tune_grid(beta = c(0, 0.4, 60),
@@ -141,7 +141,7 @@ fitimr_fit$time_secs <- as.numeric(time, "secs")
 saveRDS(fitimr_fit, paste0("article/movielens/data/saved_models/March_IMR_I",
                        ifelse(row_covariates, "X",""),
                        ifelse(col_covariates, "Z", ""),
-                       "_fit.rds"))
+                       "_fit_1e7.rds"))
 
 print(fitimr_fit)
 print(summary(fitimr_fit))
@@ -164,3 +164,6 @@ print(prepare_output_movielens(
 ))
 
 }
+
+
+fitimr <- readRDS("article/movielens/data/saved_models/March_IMR_I_tune.rds")

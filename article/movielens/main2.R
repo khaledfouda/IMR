@@ -4,7 +4,7 @@ devtools::load_all()
 require(magrittr)
 source("article/movielens/preprocess.R")
 out <- prepare_results_for_analysis()
-dat = out$dat; fits=out$fits; res.df=dat$res
+dat = out_all$dat; fits=out_all$fits; res.df=out_all$res
 
 
 #f$lambda_gamma
@@ -49,9 +49,9 @@ mapz %<>%
 
 
 movies <- unique(arr[, 1])
-subYh <- (out$out[[3]]$xbeta+out$out[[3]]$gammaz)[,movies]
-subYh <- out$out[[3]]$estimates[,movies] - subYh
-subYh  <- out$out[[3]]$estimates[,movies]
+subYh <- (out$out[[2]]$xbeta+out$out[[2]]$gammaz)[,movies]
+subYh <- out$out[[2]]$estimates[,movies] - subYh
+subYh  <- out$out[[2]]$estimates[,movies]
 colnames(subYh) = movies
 as.data.frame(subYh) %>%
   rownames_to_column("row") %>%
