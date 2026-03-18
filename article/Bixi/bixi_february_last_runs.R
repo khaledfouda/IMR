@@ -159,6 +159,8 @@ for (rep in 1:10) {
   }
 }
 
+
+total_results <- readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct_2_4.rds")
 total_results %>%
   filter(metric == "RRMSE") %>%
   group_by(model, train_size, metric) %>%

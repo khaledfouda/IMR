@@ -1,4 +1,10 @@
 # first, we read the data and prepare it for the analysis (table and figure)
+require(tidyverse)
+devtools::load_all()
+require(magrittr)
+source("article/movielens/preprocess.R")
+
+
 data <- load_movielens1m()
 seed <- 2025
 model_data <- imr_data(data$Y, data$X, data$Z, seed = seed, val_prop = 0)
@@ -146,7 +152,7 @@ col_names <- c(
 
 kbl(
   disp,
-  format = "html",
+  format = "simple",
   booktabs = TRUE,
   linesep = "",
   escape = FALSE,
@@ -165,3 +171,237 @@ kbl(
 #===========================================================================================
 # we now create the plot:
 
+dat <- out_all$dat
+fits <- out_all$fits
+res_df <- out_all$res
+
+# f$lambda_gamma
+# f <- fit.imr3; f$fit <- NULL; f
+# --- movie→genre map for the 5 genres ------------------------------------
+genres <- c(
+  "Documentary", "Musical", "Drama", "Fantasy", "Children's",
+  "War", "Action", "Sci-Fi", "Horror", "Animation"
+)
+
+z_sel <- dat$Z[, genres, drop = FALSE]
+arr <- which(z_sel != 0, arr.ind = TRUE)
+
+map_z <- data.frame(
+  genre = colnames(z_sel)[arr[, 2]],
+  movie = as.character(arr[, 1]),
+  stringsAsFactors = FALSE
+) |>
+  dplyr::mutate(movie = as.numeric(movie))
+
+map_x <- as.data.frame(dat$X) |>
+  dplyr::mutate(user = seq_len(nrow(dat$X))) |>
+  dplyr::mutate(
+    group = dplyr::case_when(
+      .G == 1 & .A1 == 1 ~ "Male (25-34)",
+      .G == 0 & .A1 == 1 ~ "Female (25-34)",
+      .G == 1 & .A2 == 1 ~ "Male (35-49)",
+      .G == 0 & .A2 == 1 ~ "Female (35-49)",
+      .G == 1 & .A3 == 1 ~ "Male (50+)",
+      .G == 0 & .A3 == 1 ~ "Female (50+)",
+      .G == 1            ~ "Male (0-24)",
+      .G == 0            ~ "Female (0-24)"
+    )
+  ) |>
+  dplyr::select(user, group)
+
+map_z <- map_z |>
+  dplyr::group_by(movie) |>
+  dplyr::mutate(n = dplyr::n()) |>
+  dplyr::ungroup() |>
+  dplyr::filter(n == 1) |>
+  dplyr::select(-n)
+
+movies <- unique(arr[, 1])
+sub_yh <- (out_all$out[[2]]$xbeta + out_all$out[[2]]$gammaz)[, movies]
+sub_yh <- out_all$out[[2]]$estimates[, movies] - sub_yh
+sub_yh <- out_all$out[[2]]$estimates[, movies]
+colnames(sub_yh) <- movies
+
+ume <- as.data.frame(sub_yh) |>
+  tibble::rownames_to_column("row") |>
+  tidyr::pivot_longer(-row, names_to = "col", values_to = "value") |>
+  dplyr::mutate(dplyr::across(dplyr::everything(), as.numeric)) |>
+  dplyr::rename(movie = col, user = row, estimate = value) |>
+  dplyr::inner_join(map_z, by = "movie", relationship = "many-to-one") |>
+  dplyr::inner_join(map_x, by = "user", relationship = "many-to-one")
+
+ume |>
+  # count(movie, genre, group, name="n_cell") |>
+  dplyr::group_by(genre, movie, group) |>
+  dplyr::mutate(median_estim = median(estimate)) |>
+  head()
+
+q7 <- function(x, p) {
+  stats::quantile(x, probs = p, na.rm = TRUE, type = 7, names = FALSE)
+}
+
+pooled_iqr_tbl <- ume |>
+  dplyr::summarise(
+    q1 = q7(estimate, 0.25),
+    q3 = q7(estimate, 0.75),
+    pooled_iqr = q3 - q1,
+    .by = c(movie, genre)
+  ) |>
+  dplyr::select(movie, genre, pooled_iqr)
+
+median_gap_tbl <- ume |>
+  dplyr::summarise(
+    med = median(estimate, na.rm = TRUE),
+    .by = c(movie, genre, group)
+  ) |>
+  dplyr::summarise(
+    s_diff = diff(range(med)),
+    .by = c(movie, genre)
+  )
+
+# get movie titles:
+titles <- data.table::fread(
+  file = "article_results/movielens/data/movies_Z.dat",
+  sep = NULL,
+  encoding = "Latin-1",
+  header = FALSE
+) |>
+  tidyr::separate(
+    V1,
+    into = c("movie", "title", "genres"),
+    sep = "::"
+  ) |>
+  as.data.frame() |>
+  dplyr::mutate(movie = as.numeric(movie)) |>
+  dplyr::select(-genres) |>
+  dplyr::filter(movie %in% map_z$movie)
+
+selected_movies <- pooled_iqr_tbl |>
+  dplyr::inner_join(median_gap_tbl, by = c("movie", "genre")) |>
+  dplyr::mutate(
+    .by = genre,
+    z_iqr = as.numeric(scale(pooled_iqr)),
+    z_diff = as.numeric(scale(s_diff)),
+    s = 0.5 * z_diff + 0.5 * z_iqr
+  ) |>
+  dplyr::arrange(genre, dplyr::desc(s), dplyr::desc(s_diff), dplyr::desc(pooled_iqr), movie) |>
+  dplyr::group_by(genre) |>
+  dplyr::slice_max(order_by = s, n = 3, with_ties = FALSE) |>
+  dplyr::ungroup() |>
+  dplyr::filter(genre %in% c("Children's")) |>
+  dplyr::arrange(genre, dplyr::desc(s))
+
+movies_picked <- c(586, 1367, 1592)
+# c("Home Alone (1990)","101 Dalmatians (1996)", "Air Bud (1997)")
+
+selected_movies <- pooled_iqr_tbl |>
+  dplyr::inner_join(median_gap_tbl, by = c("movie", "genre")) |>
+  dplyr::mutate(
+    .by = genre,
+    z_iqr = as.numeric(scale(pooled_iqr)),
+    z_diff = as.numeric(scale(s_diff)),
+    s = 0.5 * z_diff + 0.5 * z_iqr
+  ) |>
+  dplyr::arrange(genre, dplyr::desc(s), dplyr::desc(s_diff), dplyr::desc(pooled_iqr), movie) |>
+  dplyr::filter(movie %in% movies_picked) |>
+  dplyr::filter(genre %in% c("Children's")) |>
+  dplyr::arrange(genre, dplyr::desc(s))
+
+selected_movies <- titles |>
+  dplyr::filter(movie %in% selected_movies$movie) |>
+  dplyr::inner_join(selected_movies, by = "movie", relationship = "one-to-one") |>
+  dplyr::select(-z_iqr, -z_diff)
+
+ume_sel <- ume |>
+  dplyr::semi_join(selected_movies, by = c("movie", "genre")) |>
+  dplyr::inner_join(titles, by = "movie", relationship = "many-to-one")
+
+gender_lv <- c("Female", "Male")
+age_lv <- c("0-24", "25-34", "35-49", "50+")
+# group_lv  <- as.vector(outer(gender_lv, age_lv, \(g,a) paste0(g, " (", a, ")")))
+group_lv <- c(
+  "Female (0-24)",
+  "Female (25-34)",
+  "Female (35-49)",
+  "Female (50+)",
+  "Male (0-24)",
+  "Male (25-34)",
+  "Male (35-49)",
+  "Male (50+)"
+)
+
+ume_sel <- ume_sel |>
+  dplyr::mutate(
+    group = factor(group, levels = group_lv),
+    age = stringr::str_extract(group, "(?<=\\().+(?=\\))") |> factor(levels = age_lv),
+    gender = ifelse(stringr::str_detect(group, "^Female.*"), "Female", "Male") |> factor()
+  )
+
+# Order movies within genre by selection score (if available)
+if (exists("selected_movies")) {
+  movie_order <- selected_movies |>
+    dplyr::arrange(genre, dplyr::desc(s)) |>
+    dplyr::distinct(genre, movie) |>
+    dplyr::group_by(genre) |>
+    dplyr::mutate(order = dplyr::row_number()) |>
+    dplyr::ungroup()
+
+  ume_sel <- ume_sel |>
+    dplyr::left_join(movie_order, by = c("movie", "genre"))
+}
+
+ume_sel$movie <- factor(
+  ume_sel$movie,
+  levels = unique(ume_sel$movie[order(ume_sel$genre, ume_sel$order)])
+)
+
+library(ggh4x)
+library(grid)
+
+g <- ggplot(ume_sel, aes(x = age, y = estimate, fill = age)) +
+  geom_boxplot(width = 0.7, outlier.shape = 16, outlier.size = 0.7, alpha = 0.9) +
+  ggh4x::facet_nested(
+    cols = vars(title, gender),
+    scales = "fixed",
+    # switch = "x",
+    strip = ggh4x::strip_nested(
+      text_x = ggh4x::elem_list_text(face = c("bold"))
+    )
+  ) +
+  scale_fill_brewer(palette = "Set2", name = "Age") +
+  scale_y_continuous(
+    "Estimated rating",
+    limits = c(0.5, 5),
+    breaks = seq(0.5, 5, 0.5),
+    expand = expansion(mult = c(0.02, 0.05))
+  ) +
+  scale_x_discrete(name = "Age group") +
+  theme_bw(base_size = 12) +
+  theme(
+    strip.placement = "outside",
+    strip.background.x = element_blank(),
+    panel.spacing.x = unit(0, "pt"),
+    panel.border = element_rect(colour = "grey70", fill = NA, linewidth = 0.4),
+    panel.grid.major.x = element_blank(),
+    # axis.text.x = element_text(angle = 0, hjust = 0),
+    legend.position = "none",
+    ggh4x.facet.nestline = element_line(colour = "grey70")
+  ) +
+  ggtitle(
+    "Fitted Movie Ratings (Full Model)",
+    subtitle = "Selected children's movies by gender and age group"
+  )
+
+print(g)
+
+# ggsave("./article_results/movielens/data/plot_intercept_model.png",
+#        g, width = 320/25.4, height = 150/25.4, dpi = 600)
+
+ggsave(
+  filename = "./article/movielens/data/plot_full_model.png",
+  plot = g,
+  width = 9,
+  height = 4,
+  scale = 1.2,
+  dpi = 300
+)

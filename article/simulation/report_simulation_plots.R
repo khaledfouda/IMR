@@ -70,7 +70,7 @@ bold_vector <- seq_len(nrow(wide)) %in% rows_to_bold
 # Build table
 kbl(
   wide %>% dplyr::select(-dim),
-  format    = "html",
+  format    = "latex",
   booktabs  = TRUE,
   escape    = FALSE,
   label =  "tab:sim1",
@@ -173,7 +173,7 @@ results3 %>%
     mean_time = mean(time, na.rm = TRUE),
     mean_error = mean(test, na.rm = TRUE),
     .groups = "drop"
-  ) %>% arrange(obs_rate, mean_time)
+  ) %>% arrange(obs_rate, mean_time) %>%
   pivot_wider(
     names_from = model,
     values_from = c(mean_time, mean_error)
@@ -190,13 +190,13 @@ results3 %>%
   ) %>%
   mutate(
     measure_label = case_when(
-      measure == "time_ratio" ~ "Relative Computational Cost (Ratio)",
+      measure == "time_ratio" ~ "Relative Computational Cost",
       measure == "error_improve" ~ "RRMSE Reduction (%) Relative to SoftImpute"
     )
   ) %>%
   mutate(measure_label = factor(measure_label, levels = c(
     "RRMSE Reduction (%) Relative to SoftImpute",
-    "Relative Computational Cost (Ratio)"
+    "Relative Computational Cost"
   )))-> plot_data
 
 bounds <- data.frame(
@@ -223,7 +223,7 @@ ggplot(plot_data, aes(x = (obs_rate), y = value)) +
   scale_y_continuous(
     name = NULL,
     labels = function(x) {
-      ifelse(x < 1 & x > -1, percent(x, accuracy = 1), number(x, accuracy = 0.1, suffix = "x"))
+      ifelse(x <= 1 & x > -1, percent(x, accuracy = 1), number(x, accuracy = 0.1, suffix = "x"))
     },
     breaks = function(limits) {
       if (limits[2] <= 0.8) {
@@ -242,3 +242,5 @@ ggplot(plot_data, aes(x = (obs_rate), y = value)) +
 
 ggsave("./article/simulation/data/sim2_plot2.png", diff_plot, width = 320/25.4, height = 150/25.4, dpi = 600)
 
+plot_data %>% filter(measure != "time_ratio") %>% arrange(value)
+plot_data %>% filter(obs_rate == .85) %>% arrange(value)

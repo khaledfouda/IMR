@@ -163,7 +163,8 @@ results3 %<>% rbind(
     rename(test = error.test)
 )
 
-
+require(kableExtra)
+require(knitr)
 results3 %>%
   filter(metric == "RRMSE") %>%
   group_by(model, train_size, metric) %>%
@@ -171,8 +172,14 @@ results3 %>%
   as.data.frame() %>%
   arrange(train_size, test) %>%
   mutate(across(where(is.numeric), \(x) round(x, 4))) %>%
-  mutate(time0 = round(time0, 2)) %>%
+  mutate(time0 = round(as.numeric(time0, "secs"), 2)) -> a
   select(model, train_size, test, time0, rank_estim) %>% kable()
+
+  a %>%
+    filter(model=="original") -> a3
+
+  c(a1$time0 / a3$time0,a1$time0 / a2$time0) %>% summary()
+
 # =============================================
 # article table >
 require(gt)
@@ -310,12 +317,12 @@ results3 |>
       cols_hide(columns = c(contains("_mean"), contains("_sd"))) %T>%
   gtsave("article/Bixi/data/final_results/table1.tex")
 
-table %>%
-  tab_header(
-    title ="Comparison of Test RRSME"
-  ) %>%
-  cols_hide(columns = c(contains("time"), contains("speed"))) %T>%
-  gtsave("article/Bixi/data/final_results/table1.tex")
+# table %>%
+#   tab_header(
+#     title ="Comparison of Test RRSME"
+#   ) %>%
+#   cols_hide(columns = c(contains("time"), contains("speed"))) %T>%
+#   gtsave("article/Bixi/data/final_results/table1.tex")
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
