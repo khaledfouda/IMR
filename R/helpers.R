@@ -210,7 +210,48 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 }
 
 
-# SVD operations. general purpose, selects the optimal function to call
+#' Optimized Singular Value Decomposition
+#'
+#' @description
+#' A general-purpose wrapper for Singular Value Decomposition (SVD) that
+#' selects the most computationally efficient backend based on the matrix dimensions,
+#' sparsity, and the desired number of singular components.
+#'
+#' @param mat A numeric matrix. Can be a base R dense matrix or a Sparse matrix.
+#' @param k Integer. The number of singular values and corresponding eigenvectors
+#'   to compute or retain. If `NULL` or greater than or equal to the maximum
+#'   possible rank of the matrix, a full SVD is computed.
+#' @param tol Numeric. A tolerance threshold for eigenvalue truncation. After
+#'   computation, any singular values less than or equal to `tol` (and their
+#'   corresponding eigenvectors in `u` and `v`) are removed. Defaults to `NULL`
+#'   (no threshold applied).
+#'
+#' @details
+#' To minimize computation time, `svd_opt` routes the SVD request to different
+#' algorithms depending on the scenario:
+#'
+#' \itemize{
+#'   \item \strong{Thin Matrices:} If the matrix is wide
+#'     (`ncol > 2 * nrow`) or tall (`nrow > 2 * ncol`), it utilizes
+#'     internal C++ functions (`IMR:::svd_small_nr_cpp` or `IMR:::svd_small_nc_cpp`).
+#'     Note: Sparse matrices are coerced to dense matrices for these fast paths.
+#'   \item \strong{Full SVD:} If `k` is `NULL` or requests the full rank, it uses
+#'     base R's standard \code{\link[base]{svd}} function.
+#'   \item \strong{Partial SVD (Sparse or `k <= 5`):} For large matrices where
+#'     only a few components are needed or if the matrix is sparse, it
+#'     uses the `irlba` package (\code{\link[irlba]{irlba}}).
+#'   \item \strong{Partial SVD (Dense and `k >= 5`):} For dense matrices where
+#'     a larger number of components are requested, it relies on the
+#'     `RSpectra` package (\code{\link[RSpectra]{svds}}).
+#' }
+#'
+#' @return A list containing the SVD components:
+#' \itemize{
+#'   \item \code{d}: A vector containing the computed singular values.
+#'   \item \code{u}: A matrix whose columns contain the left singular vectors.
+#'   \item \code{v}: A matrix whose columns contain the right singular vectors.
+#' }
+#'
 #' @export
 svd_opt <- function(mat,
                     k = NULL,

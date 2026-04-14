@@ -1,4 +1,49 @@
+#' Define Hyperparameter Tuning Grid for IMR
+#'
+#' @description
+#' Creates a configuration object defining the search space for hyperparameter
+#' tuning in an IMR model. This object
+#' is used by the `imr_tune` function to tuning and finding the optimal hyperparamters.
+#'
+#' @param beta Numeric vector defining the grid for the row covariate penalty
+#'   (`lambda_beta`). Format: `c(min, max, length)`. Defaults to `c(0, NA, 20)`.
+#' @param gamma Numeric vector defining the grid for the column covariate penalty
+#'   (`lambda_gamma`). Format: `c(min, max, length)`. Defaults to `c(0, NA, 20)`.
+#' @param laplace Numeric vector defining the grid for the low-rank component
+#'   penalty (`lambda_m`). Format: `c(min, max, length, streaks)`. The `streaks`
+#'   parameter dictates the patience for early stopping. Defaults to `c(0, NA, 20, 2)`.
+#' @param rank Numeric vector defining the grid for the rank of the low-rank
+#'   component. Format: `c(min, max, step, streaks)`. The `streaks` parameter
+#'   dictates the patience for early stopping. Defaults to `c(2, 30, 2, 2)`.
+#'
+#' @details
+#' Regarding the inputs for `beta`, `gamma`, and `laplace`:
+#' * **Automatic Maximum:** If the second element (`max`) is `NA`, the upper limit
+#'     can be automatically determined using the function `imr_set_grid_limits`.
+#' * **Fixed Value:** If a vector of length 1 is provided (e.g., `beta = 0.5`),
+#'     the parameter is held constant during tuning, bypassing the grid search
+#'     for that specific hyperparameter. This also holds for the `rank`.
+#' Generally, if the input vector is of length 1, then this value is used as a fixed
+#'    value. If the input vector is of length 2, then they are used as the minimum and
+#'    maximum and values and the rest are set to the default values.
+#'
+#' @return An object of class `"imr_tune_grid"`, which is a list containing the
+#'   parsed grid boundaries, lengths, step sizes, and early stopping criteria
+#'   for each parameter.
+#'
 #' @export
+#'
+#' @examples
+#' # Default grid (max limits to be calculated automatically)
+#' default_grid <- imr_tune_grid()
+#'
+#' # Fix beta to 0, tune gamma and laplace, and ranks 2 through 10
+#' custom_grid <- imr_tune_grid(
+#'   beta = 0,
+#'   gamma = c(0.01, 1, 10),
+#'   laplace = c(0, NA, 15, 3), # 15 points, patience of 3
+#'   rank = c(2, 10, 2, 2)
+#' )
 imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
                           gamma = c(0, NA, 20),
                           laplace = c(0, NA, 20, 2), # min, max, length, streak
@@ -82,6 +127,54 @@ print.imr_tune_grid <- function(x, ...) {
 }
 
 #-----------------------------------------------------
+#' Automatically Determine Hyperparameter Grid Limits
+#'
+#' @description
+#' Calculates the appropriate upper limits (`max`) for the hyperparameter tuning
+#' grid when they are specified as `"auto"`. It finds the smallest regularization
+#' parameter that forces all corresponding coefficients to zero.
+#'
+#' @param data An object of class `"imr_data"` containing the model structure
+#'   and matrices.
+#' @param grid An object of class `"imr_tune_grid"`, typically created by
+#'   `imr_tune_grid()`.
+#' @param default_rank Integer. The default rank to use when searching for the
+#'   maximum `lambda_beta` or `lambda_gamma`. Defaults to `2`.
+#' @param default_lambda_m Numeric. The default penalty for the low-rank component
+#'   when searching for covariate penalty limits. Defaults to `0`.
+#' @param default_lambda_beta Numeric. The default penalty for row covariates
+#'   when searching for the maximum `lambda_m`. Defaults to `0`.
+#' @param default_lambda_gamma Numeric. The default penalty for column covariates
+#'   when searching for the maximum `lambda_m`. Defaults to `0`.
+#' @param convergence An `"imr_convergence"` object controlling the internal model
+#'   fits during the search. Defaults to `IMR::imr_convergence(trace = FALSE, ls_initial = FALSE)`.
+#' @param bisection_iter Integer. The number of iterations to use in the bisection
+#'   algorithm to refine the upper limit. Defaults to `15`.
+#' @param verbose Integer. Controls the level of printed output during the search.
+#'   Defaults to `0` (silent). Set it `1` to output the final parameters and `2` for
+#'   an output at every iteration.
+#'
+#' @details
+#' The function isolates each hyperparameter to find its maximum using a
+#' two-step process:
+#' \enumerate{
+#'   \item **KKT Initialization:** It calculates an initial theoretical upper limit
+#'     based on the Karush-Kuhn-Tucker (KKT) conditions.
+#'   \item **Refinement:** Because the theoretical KKT value can sometimes
+#'     be slightly over or underestimated in practice, the function runs a bisection
+#'     search for `bisection_iter` iterations to empirically find the exact smallest
+#'     penalty value that shrinks all targeted parameters to zero.
+#' }
+#'
+#' When searching for the maximum `lambda_beta` or `lambda_gamma`, the other
+#' covariate penalty is effectively set to infinity (ignored), while the low-rank
+#' component is fixed at `default_rank` and `default_lambda_m`. Conversely, when
+#' searching for the maximum `lambda_m` (laplace), the covariate penalties are fixed
+#' at `default_lambda_beta` and `default_lambda_gamma`.
+#'
+#' @return The modified `"imr_tune_grid"` object with all `"auto"` maximums
+#'   replaced by their calculated numeric values.
+#'
 #' @export
 imr_set_grid_limits <- function(data,
                                 grid,
