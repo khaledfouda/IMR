@@ -32,8 +32,8 @@ row_covariates <- model_combn$row_covariates[model_id]
 col_covariates <- model_combn$col_covariates[model_id]
 
 model_data <- update(model_data,
-                     intercept_row = TRUE,
-                     intercept_col = TRUE,
+                     row_intercept = TRUE,
+                     col_intercept = TRUE,
                      row_covariates = row_covariates,
                      col_covariates = col_covariates); model_data
 

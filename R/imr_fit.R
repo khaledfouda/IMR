@@ -119,8 +119,8 @@ imr_fit <- function(
     dr = if (model$low_rank_component && model$row_similarity) data$similarity_row$d else NULL,
     Uc = if (model$low_rank_component && model$col_similarity) data$similarity_col$U else NULL,
     dc = if (model$low_rank_component && model$col_covariates) data$similarity_col$d else NULL,
-    intercept_row = model$intercept_row,
-    intercept_col = model$intercept_col,
+    row_intercept = model$row_intercept,
+    col_intercept = model$col_intercept,
     shared_beta = model$shared_beta,
     shared_gamma = model$shared_gamma,
     convergence = convergence,
@@ -154,7 +154,7 @@ imr_fit <- function(
     } else {
       sum_squares$sscc <- 0
     }
-    if (data$model$intercept_row) {
+    if (data$model$row_intercept) {
       sum_squares$ssri <- ss(partial_crossprod(
         as.matrix(result_list$beta0),
         diag(1, 1, data$meta$dimensions[2]),
@@ -163,7 +163,7 @@ imr_fit <- function(
     } else {
       sum_squares$ssri <- 0
     }
-    if (data$model$intercept_col) {
+    if (data$model$col_intercept) {
       sum_squares$ssci <- ss(partial_crossprod(
         diag(1, data$meta$dimensions[1], 1),
         t(as.matrix(result_list$gamma0)),
@@ -201,7 +201,7 @@ imr_fit <- function(
       meta = list(
         rank = rank,
         lambdas = c(M = lambda_m, beta = lambda_beta, gamma = lambda_gamma),
-        intercepts = c(row = model$intercept_row, col = model$intercept_col),
+        intercepts = c(row = model$row_intercept, col = model$col_intercept),
         shared_effects = c(beta = model$shared_beta, gamma = model$shared_gamma),
         n_iter = result_list$n_iter,
         converged = result_list$n_iter < convergence$maxit,
@@ -223,7 +223,7 @@ imr_fit <- function(
 #' Not exported
 imr_solver <- function(
   Y, X, Z,
-  intercept_row, intercept_col,
+  row_intercept, col_intercept,
   shared_beta, shared_gamma,
   r, lambda_m, lambda_beta, lambda_gamma,
   Ur, dr, Uc, dc,
@@ -287,11 +287,11 @@ imr_solver <- function(
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
       }
     }
-    if (intercept_row) {
+    if (row_intercept) {
       beta0 <- warm_start$beta0
     }
 
-    if (intercept_col) {
+    if (col_intercept) {
       gamma0 <- warm_start$gamma0
     }
 
@@ -302,7 +302,7 @@ imr_solver <- function(
     if (ls_initial) {
       mfit <- imr_solver(
         Y = Y, X = X, Z = Z,
-        intercept_row = intercept_row, intercept_col = intercept_col,
+        row_intercept = row_intercept, col_intercept = col_intercept,
         shared_beta = shared_beta, shared_gamma = shared_gamma,
         r = 0, lambda_m = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
@@ -326,10 +326,10 @@ imr_solver <- function(
           zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
         }
       }
-      if (intercept_row) {
+      if (row_intercept) {
         beta0 <- mfit$beta0
       }
-      if (intercept_col) {
+      if (col_intercept) {
         gamma0 <- mfit$gamma0
       }
 
@@ -353,10 +353,10 @@ imr_solver <- function(
           zg_obs <- rep(0, nz)
         }
       }
-      if (intercept_row) {
+      if (row_intercept) {
         beta0 <- rep(0, nr)
       }
-      if (intercept_col) {
+      if (col_intercept) {
         gamma0 <- rep(0, nc)
       }
       if (low_rank_flag) {
@@ -383,8 +383,8 @@ imr_solver <- function(
     if (gamma_flag && !shared_gamma) Y@x <- Y@x - zg_obs
     if (beta_flag && shared_beta) add_to_rows_inplace_cpp(Y@x, irow, -xbeta)
     if (gamma_flag && shared_gamma) add_to_cols_inplace_cpp(Y@x, pcol, -gammaz)
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, irow, -beta0)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, pcol, -gamma0)
+    if (row_intercept) add_to_rows_inplace_cpp(Y@x, irow, -beta0)
+    if (col_intercept) add_to_cols_inplace_cpp(Y@x, pcol, -gamma0)
   }
 
   #  Main loop ---------------------------------------------------------------
@@ -486,7 +486,7 @@ imr_solver <- function(
 
     # Intercepts (row/column) ---------------------------------------------
     # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
+    if (row_intercept) {
       old_val <- beta0
       beta0 <- row_means_cpp(Y@x, Y@i, nr, nc) + beta0
       change <- old_val - beta0
@@ -494,7 +494,7 @@ imr_solver <- function(
     }
 
     # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
+    if (col_intercept) {
       old_val <- gamma0
       gamma0 <- col_means_cpp(Y@x, Y@p, nr, nc) + gamma0
       change <- old_val - gamma0
@@ -701,10 +701,10 @@ summary.imr_fit <- function(object, ...) {
   if (object$model$col_covariates) {
     cat(sprintf("    |-- Column Covariates  :    %s\n", prepare_fmt(100 * sscc / sss)))
   }
-  if (object$model$intercept_row) {
+  if (object$model$row_intercept) {
     cat(sprintf("    |-- Row Intercepts     :    %s\n", prepare_fmt(100 * ssri / sss)))
   }
-  if (object$model$intercept_col) {
+  if (object$model$col_intercept) {
     cat(sprintf("    |-- Column Intercepts  :    %s\n", prepare_fmt(100 * ssci / sss)))
   }
 
@@ -770,9 +770,9 @@ summary.imr_fit <- function(object, ...) {
     )
   }
 
-  if (object$model$intercept_row || object$model$intercept_col) {
+  if (object$model$row_intercept || object$model$col_intercept) {
     cat("\n-- Intercepts --")
-    if (object$model$intercept_row) {
+    if (object$model$row_intercept) {
       coefs <- object$coefficients$beta0
       cat(sprintf("\nRow Intercepts    (n=%d) | ", length(coefs)))
       cat(sprintf(
@@ -780,7 +780,7 @@ summary.imr_fit <- function(object, ...) {
         mean(coefs), sd(coefs), min(coefs), max(coefs)
       ))
     }
-    if (object$model$intercept_col) {
+    if (object$model$col_intercept) {
       coefs <- object$coefficients$gamma0
       cat(sprintf("Column Intercepts (m=%d) | ", length(coefs)))
       cat(sprintf(

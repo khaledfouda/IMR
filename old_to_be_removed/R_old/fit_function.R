@@ -7,8 +7,8 @@ imr.fit <- function(
     lambda_m = 0,
     lambda_beta = 0,
     lambda_gamma = 0,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
+    row_intercept = FALSE,
+    col_intercept = FALSE,
     L_a = NULL,
     lambda_a = 0,
     L_b = NULL,
@@ -53,11 +53,11 @@ imr.fit <- function(
       gamma <- warm_start$gamma
       zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
     }
-    if (intercept_row) {
+    if (row_intercept) {
       beta0 <- warm_start$beta0
     }
 
-    if (intercept_col) {
+    if (col_intercept) {
       gamma0 <- warm_start$gamma0
     }
 
@@ -69,8 +69,8 @@ imr.fit <- function(
       mfit <- IMR::imr.fit_no_low_rank(Y, X, Z,
                                        lambda_beta = lambda_beta,
                                        lambda_gamma = lambda_gamma,
-                                       intercept_row = intercept_row,
-                                       intercept_col = intercept_col)
+                                       row_intercept = row_intercept,
+                                       col_intercept = col_intercept)
       if (beta_flag) {
         beta <- mfit$beta
         xb_obs <- partial_crossprod(X, beta, irow, pcol)
@@ -79,10 +79,10 @@ imr.fit <- function(
         gamma <- mfit$gamma
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
       }
-      if (intercept_row) {
+      if (row_intercept) {
         beta0 <- mfit$beta0
       }
-      if (intercept_col) {
+      if (col_intercept) {
         gamma0 <- mfit$gamma0
       }
 
@@ -96,10 +96,10 @@ imr.fit <- function(
         gamma <- matrix(0, nr, ncol(Z))
         zg_obs <- rep(0, nz)
       }
-      if (intercept_row) {
+      if (row_intercept) {
         beta0 <- rep(0, nr)
       }
-      if (intercept_col) {
+      if (col_intercept) {
         gamma0 <- rep(0, nc)
       }
 
@@ -119,8 +119,8 @@ imr.fit <- function(
   if (!is.null(warm_start)) {
     if (beta_flag) Y@x <- Y@x - xb_obs
     if (gamma_flag) Y@x <- Y@x - zg_obs
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, beta0, -1)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, gamma0, -1)
+    if (row_intercept) add_to_rows_inplace_cpp(Y@x, Y@i, beta0, -1)
+    if (col_intercept) add_to_cols_inplace_cpp(Y@x, Y@p, gamma0, -1)
   }
 
   #  Main loop ---------------------------------------------------------------
@@ -134,7 +134,7 @@ imr.fit <- function(
     D_old <- Dsq
     # Intercepts (row/column) ---------------------------------------------
     # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
+    if (row_intercept) {
       old_val <- beta0
       beta0 <- row_means_cpp(Y, nc) + beta0
       change <- old_val - beta0
@@ -142,7 +142,7 @@ imr.fit <- function(
     }
 
     # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
+    if (col_intercept) {
       old_val <- gamma0
       gamma0 <- col_means_cpp(Y, nr) + gamma0
       change <- old_val - gamma0
@@ -246,8 +246,8 @@ imr.fit_no_low_rank <- function(
     Z = NULL,
     lambda_beta = NULL,
     lambda_gamma = NULL,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
+    row_intercept = FALSE,
+    col_intercept = FALSE,
     maxit = 300,
     thresh = 1e-5,
     trace = FALSE) {
@@ -279,10 +279,10 @@ imr.fit_no_low_rank <- function(
     gamma <- matrix(0, nr, ncol(Z))
     zg_obs <- rep(0, nz)
   }
-  if (intercept_row) {
+  if (row_intercept) {
     beta0 <- rep(0, nr)
   }
-  if (intercept_col) {
+  if (col_intercept) {
     gamma0 <- rep(0, nc)
   }
 
@@ -296,7 +296,7 @@ imr.fit_no_low_rank <- function(
 
     # Intercepts (row/column) ---------------------------------------------
     # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
+    if (row_intercept) {
       old_val <- beta0
       beta0 <- row_means_cpp(Y, nc) + beta0
       change <- old_val - beta0
@@ -304,7 +304,7 @@ imr.fit_no_low_rank <- function(
     }
 
     # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
+    if (col_intercept) {
       old_val <- gamma0
       gamma0 <- col_means_cpp(Y, nr) + gamma0
       change <- old_val - gamma0

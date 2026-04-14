@@ -68,8 +68,8 @@ seed = 2025
       for(intercept in with_intercept){
 
       res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                   trace=1, hpar=hparam, intercept_row = intercept,
-                                   intercept_col = intercept, ls_initial = T,
+                                   trace=1, hpar=hparam, row_intercept = intercept,
+                                   col_intercept = intercept, ls_initial = T,
                                    seed = seed, warm_start = NULL, maxit=600,
                                    shared_information = T, thresh=1e-6,
                                    num_cores = 0)
@@ -206,8 +206,8 @@ all_res %>%
       for(intercept in with_intercept){
 
         res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                     trace=1, hpar=hparam, intercept_row = intercept,
-                                     intercept_col = intercept, ls_initial = T,
+                                     trace=1, hpar=hparam, row_intercept = intercept,
+                                     col_intercept = intercept, ls_initial = T,
                                      seed = seed, warm_start = NULL, maxit=600,
                                      shared_information = T, thresh=1e-6,
                                      num_cores = 0)
@@ -548,8 +548,8 @@ hparam$gamma$step_sizes = step_size(0, 0.3, 40)
 
 
 ttime <- bench::bench_time( res0 <- IMR:::imr.cv_laplace(dat$modd,
-                             trace=2, hpar=hparam, intercept_row = intercept,
-                             intercept_col = intercept, ls_initial = T,
+                             trace=2, hpar=hparam, row_intercept = intercept,
+                             col_intercept = intercept, ls_initial = T,
                              seed = seed, warm_start = NULL, maxit=800,
                              shared_information = shared, thresh=1e-6,
                              num_cores = 0))

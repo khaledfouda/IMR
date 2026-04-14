@@ -83,8 +83,8 @@ for (rep in 1:10) {
 
         start <- Sys.time()
         bench::bench_time(fitimr <- IMR:::imr.cv_21(dat$modd,
-          intercept_row = model_combn$Intercepts[i],
-          intercept_col = model_combn$Intercepts[i],
+          row_intercept = model_combn$Intercepts[i],
+          col_intercept = model_combn$Intercepts[i],
           hpar = hparam,
           thresh = 1e-4, maxit = 800,
           shared_information = TRUE,
@@ -244,8 +244,8 @@ for (prefix in 11:50) {
         lambda_m = model_combn$lambda[i],
         lambda_beta = 0,
         lambda_gamma = 0,
-        intercept_row = FALSE,
-        intercept_col = FALSE,
+        row_intercept = FALSE,
+        col_intercept = FALSE,
         Ur = laplacian_row$U,
         dr = laplacian_row$d,
         Uc = laplacian_col$U,

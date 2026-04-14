@@ -76,8 +76,8 @@ for (rep in 1:10) {
                              row_covariates = model_combn$covariates[i],
                              col_covariates = model_combn$covariates[i],
                              shared_beta = TRUE, shared_gamma = TRUE,
-                             intercept_row = model_combn$Intercepts[i],
-                             intercept_col = model_combn$Intercepts[i],
+                             row_intercept = model_combn$Intercepts[i],
+                             col_intercept = model_combn$Intercepts[i],
                              row_similarity = model_combn$similarity[i],
                              col_similarity = model_combn$similarity[i]); print(model_data)
 
@@ -246,8 +246,8 @@ for (prefix in 1:50) {
       model_data <- update(model_data,
                            row_covariates = model_combn$covariates[i],
                            col_covariates = model_combn$covariates[i],
-                           intercept_row = model_combn$Intercepts[i],
-                           intercept_col = model_combn$Intercepts[i],
+                           row_intercept = model_combn$Intercepts[i],
+                           col_intercept = model_combn$Intercepts[i],
                            row_similarity = model_combn$similarity[i],
                            col_similarity = model_combn$similarity[i]); print(model_data)
 

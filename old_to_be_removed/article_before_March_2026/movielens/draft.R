@@ -3,8 +3,8 @@ require(tidyverse)
 require(magrittr)
 fit_IMR_movielens <- function(input_tag = "_c_0_",
                                    seed = 2025,
-                              intercept_row = FALSE,
-                              intercept_col = FALSE,
+                              row_intercept = FALSE,
+                              col_intercept = FALSE,
                                    hpar = IMR::get_imr_default_hparams()){
 
   if(is.numeric(seed)) set.seed(seed)
@@ -97,8 +97,8 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
     Y = Y,
     X = dat$Xq,
     Z = dat$Zq,
-    intercept_row = T,
-    intercept_col = T,
+    row_intercept = T,
+    col_intercept = T,
     hpar = hpar,
     verbose = 1,
     max_cores = 9,

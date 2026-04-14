@@ -137,7 +137,7 @@ for(b in 1:500){
 
     # first tune with a single laplace value
     hparam$laplace$min = hparam$laplace$max = 18.9; hparam$laplace$step_sizes = c(1)
-    fitimr = IMR:::imr.cv_2(mdat, intercept_row = FALSE, intercept_col = FALSE,
+    fitimr = IMR:::imr.cv_2(mdat, row_intercept = FALSE, col_intercept = FALSE,
                             hpar = hparam, thresh = 1e-6, maxit = 1000,
                             trace = 1, ls_initial = TRUE, shared_information = FALSE,
                             seed = seed, num_cores = 10)
@@ -149,7 +149,7 @@ for(b in 1:500){
     hparam$laplace$min = 10
     hparam$laplace$max = 25
 
-    fitimr = IMR::imr.cv_laplace(mdat, intercept_row = FALSE, intercept_col = FALSE,
+    fitimr = IMR::imr.cv_laplace(mdat, row_intercept = FALSE, col_intercept = FALSE,
                                  hpar = hparam, thresh = 1e-6, maxit = 1000,
                                  trace = 1, ls_initial = TRUE, shared_information = FALSE,
                                  seed = seed, num_cores = 10,final_fit = TRUE,
@@ -253,8 +253,8 @@ for(b in 1:500){
     fitimr <- IMR::imr.fit(Y = mdat$Y,
                            X = mdat$Xq,
                            Z = mdat$Zq,
-                           intercept_row = FALSE,
-                           intercept_col = FALSE,
+                           row_intercept = FALSE,
+                           col_intercept = FALSE,
                            r = r,
                            lambda_m = best_hparams$lambda_laplace,
                            lambda_beta = best_hparams$lambda_beta,

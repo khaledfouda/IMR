@@ -72,7 +72,7 @@ data$X <- data$Z <- NULL;
 
 # the following are input parameters to the cv function >>
 lambda_beta <- lambda_gamma <- 0
-intercept_row <- intercept_col <- FALSE
+row_intercept <- col_intercept <- FALSE
 error_function <- IMR:::error_metric$rmse
 n_streaks <- 2; thresh = 1e-6; maxit=500; trace=2;
 old_fit=NULL; ls_initial=TRUE;seed=2025
@@ -128,22 +128,22 @@ data_nocov$Z <- data_nocov$Zq <- data_nocov$Zr <- NULL
 
 #-  1. IMR without intercepts or covariates
 res1 <-
-  IMR:::imr.cv_laplace(data_nocov, trace=3, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = F,
+  IMR:::imr.cv_laplace(data_nocov, trace=3, hpar=hpar, row_intercept = F,
+                       col_intercept = F, ls_initial = F,
                        seed = 2025, warm_start = NULL, maxit=500,
                        num_cores = 0)
 
 #-  2. IMR with intercept
 res2 <-
-  IMR:::imr.cv_laplace(data_nocov, trace=2, hpar=hpar, intercept_row = T,
-                       intercept_col = T, ls_initial = T,
+  IMR:::imr.cv_laplace(data_nocov, trace=2, hpar=hpar, row_intercept = T,
+                       col_intercept = T, ls_initial = T,
                        seed = 2025, warm_start = NULL,
                        num_cores = 8)
 
 #-  3.  IMR with covariates
 res3 <-
-  IMR:::imr.cv_laplace(data, trace=1, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = TRUE,
+  IMR:::imr.cv_laplace(data, trace=1, hpar=hpar, row_intercept = F,
+                       col_intercept = F, ls_initial = TRUE,
                        seed = 2025, warm_start = NULL,
                        num_cores = 8)
 
@@ -159,8 +159,8 @@ hpar$gamma$max <- NULL
 
 
 res41 <-
-  IMR:::imr.cv_laplace(data, trace=3, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = T,
+  IMR:::imr.cv_laplace(data, trace=3, hpar=hpar, row_intercept = F,
+                       col_intercept = F, ls_initial = T,
                        seed = 5025, warm_start = NULL,
                        shared_information = TRUE,
                        num_cores = 8)
@@ -171,8 +171,8 @@ all(res41$best_fit$u == res4$best_fit$u)
 
 fit <- IMR::imr.fit_no_low_rank(
   Y = data$y_train, X = data$Xq, Z = data$Zq,
-  lambda_beta = 0, lambda_gamma = 0, intercept_row = F,
-  intercept_col = F, shared_information = T, maxit = 600,
+  lambda_beta = 0, lambda_gamma = 0, row_intercept = F,
+  col_intercept = F, shared_information = T, maxit = 600,
   trace = TRUE
 )
 
@@ -183,8 +183,8 @@ sim_res(dat, fit, "Covariates (beta from Covariates)",T)
 
 
 IMR:::imr.cv_laplace(mdata,
-                    trace=4, hpar=hpar, intercept_row = F,
-                    intercept_col = F, ls_initial = T,final_fit = F,
+                    trace=4, hpar=hpar, row_intercept = F,
+                    col_intercept = F, ls_initial = T,final_fit = F,
                     seed = NULL, warm_start = NULL, maxit=600,
                     shared_information = TRUE,
                     num_cores = 5) -> out2
@@ -196,7 +196,7 @@ IMR:::error_metric$rmse(mdata$y_valid@x, vestim@x)
 out2$best_fit$lambda_laplace
 
 rank_fit_function(2, mdata, hpar, T, 5, F, F, T, 1e-6, 600, F, NULL)$error
-r = 6; data = mdata; shared_information=T; lambda_laplace=5; intercept_row=intercept_col=F;
+r = 6; data = mdata; shared_information=T; lambda_laplace=5; row_intercept=col_intercept=F;
 thresh=1e-6; trace=T; maxit=600; ls_initial=F; error_function=IMR:::error_metric$rmse; fit=NULL
 
 
@@ -214,8 +214,8 @@ IMR::adaptive_tuner(rank_fit_function,
                     hpar = hpar,
                     lambda_laplace = lambda_laplace,
                     shared_information = shared_information,
-                    intercept_row = intercept_row,
-                    intercept_col = intercept_col,
+                    row_intercept = row_intercept,
+                    col_intercept = col_intercept,
                     trace = trace,
                     thresh = thresh,
                     .warm_start = NULL,
@@ -267,8 +267,8 @@ fit1 <- IMR::imr.fit(
   lambda_m = 5,
   lambda_beta = hpar$beta$value,
   lambda_gamma = hpar$gamma$value,
-  intercept_row = F,
-  intercept_col = F,
+  row_intercept = F,
+  col_intercept = F,
   shared_information = T,
   Ur = hpar$laplacian_row$U,
   dr = hpar$laplacian_row$d,
@@ -289,16 +289,16 @@ resid@x <- resid@x - IMR:::partial_crossprod(dat$X, warm$beta, Y2@i, Y2@p)
 init <- svd_opt(naive_MC(resid), 2, n, m, FALSE, FALSE)
 warm$u <- init$u; warm$v = init$v; warm$d = init$d;
 res4 <-
-  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = F,
+  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, row_intercept = F,
+                       col_intercept = F, ls_initial = F,
                        seed = 2025, warm_start = warm,
                        num_cores = 0)
 
 
 #- 5. IMR with covariates and intercept
 # res5 <-
-#   IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
-#                        intercept_col = F, ls_initial = F,
+#   IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, row_intercept = F,
+#                        col_intercept = F, ls_initial = F,
 #                        seed = 2025, warm_start = NULL,
 #                        num_cores = 0)
 
@@ -310,8 +310,8 @@ resid@x <- resid@x - IMR:::partial_crossprod(dat$X, warm$beta, Y2@i, Y2@p)
 init <- svd_opt(naive_MC(resid), 2, n, m, FALSE, FALSE)
 warm$u <- init$u; warm$v = init$v; warm$d = init$d;
 res6 <-
-  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = F,
+  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, row_intercept = F,
+                       col_intercept = F, ls_initial = F,
                        seed = 2025, warm_start = warm,
                        num_cores = 0)
 
@@ -320,8 +320,8 @@ res6 <-
 warm <- res3$best_fit
 warm$beta <- matrix(0, nrow(warm$beta), ncol(warm$beta))
 res7 <-
-  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, intercept_row = F,
-                       intercept_col = F, ls_initial = F,
+  IMR:::imr.cv_laplace(data, trace=2, hpar=hpar, row_intercept = F,
+                       col_intercept = F, ls_initial = F,
                        seed = 2025, warm_start = warm,
                        num_cores = 0)
 
@@ -386,8 +386,8 @@ rbind(
 # warm$u <- init$u; warm$v = init$v; warm$d = init$d;
 #
 # bench::bench_time(res3 <-
-#                     IMR:::imr.cv_laplace(data, trace=2, hpar=hpar2, intercept_row = F,
-#                                          intercept_col = F, ls_initial = T,
+#                     IMR:::imr.cv_laplace(data, trace=2, hpar=hpar2, row_intercept = F,
+#                                          col_intercept = F, ls_initial = T,
 #                                          seed = 2025, warm_start = warm,
 #
 #                              num_cores = 0)) -> time.lap
@@ -398,15 +398,15 @@ rbind(
 # hpar2$beta$value <- 0;
 #
 # bench::bench_time(res1 <-
-#                     IMR:::imr.cv_laplace(data, trace=2, hpar=hpar2, intercept_row = F,
-#                                          intercept_col = F, ls_initial = T,
+#                     IMR:::imr.cv_laplace(data, trace=2, hpar=hpar2, row_intercept = F,
+#                                          col_intercept = F, ls_initial = T,
 #                                          seed = 2025,
 #
 #                                          num_cores = 0)) -> time.lap
 #
 # bench::bench_time(res2 <-
-#                     IMR:::imr.cv_laplace(data, trace=2, hpar=hpar2, intercept_row = T,
-#                                          intercept_col = T, ls_initial = T,
+#                     IMR:::imr.cv_laplace(data, trace=2, hpar=hpar2, row_intercept = T,
+#                                          col_intercept = T, ls_initial = T,
 #                                          seed = 2025,
 #
 #                                          num_cores = 0)) -> time.lap
@@ -415,8 +415,8 @@ rbind(
 #
 #
 # bench::bench_time(res1 <-
-#                     IMR:::imr.cv(data, trace=2, hpar=hpar, intercept_row = F,
-#                                          intercept_col = F,
+#                     IMR:::imr.cv(data, trace=2, hpar=hpar, row_intercept = F,
+#                                          col_intercept = F,
 #                                  warm_start = NULL,
 #                                  ls_initial = T,
 #                                          num_cores = 0)) -> time.lap1
@@ -468,10 +468,10 @@ for (b in 1:1) {
 
 
   timer <- system.time(fit.imrS <- IMR::imr.cv(inp.dat$model,
-    intercept_row = F,
+    row_intercept = F,
     seed = seed, ls_initial = FALSE, hpar = hpar,
     maxit = 600,
-    intercept_col = F, verbose = 0
+    col_intercept = F, verbose = 0
   ))
 
   res <- bind_rows(res, rbind(
@@ -503,8 +503,8 @@ fitsim$rows$best_parameter
 # we want to follow what happens inside
 lambda_betaa <- 0
 lambda_gammaa <- 0
-intercept_row <- FALSE
-intercept_col <- FALSE
+row_intercept <- FALSE
+col_intercept <- FALSE
 trace <- T
 thresh <- 1e-6
 maxit <- 300

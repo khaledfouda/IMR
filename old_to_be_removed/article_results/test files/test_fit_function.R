@@ -117,8 +117,8 @@ out <- IMR:::imr.cv_laplace(inp.dat$model, 0, 0, T, T, hpar)
 data <- inp.dat$model
 lambda_beta = 0
 lambda_gamma = 0
-intercept_row = T
-intercept_col = T
+row_intercept = T
+col_intercept = T
 error_function = error_metric$rmse
 thresh = 1e-6
 maxit = 300
@@ -143,8 +143,8 @@ ggplot(results_rows$history, aes(x = parameter, y = error, color = factor(step_s
 Y = inp.dat$Y
 X = inp.dat$Xq
 Z = inp.dat$Zq
-intercept_row = FALSE
-intercept_col = FALSE
+row_intercept = FALSE
+col_intercept = FALSE
 r = 2
 lambda_m = 0.1
 lambda_beta = 0.1

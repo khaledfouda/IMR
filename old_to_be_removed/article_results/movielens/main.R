@@ -94,8 +94,8 @@ dat <- IMR::prepare_data(Y, NULL, NULL, 0.2, seed = 2025)
 
 bench::bench_time(fit.imr1 <- IMR:::imr.cv(
   dat$model,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   hpar = hpar,
   verbose = 1,
   fast.cv = T,
@@ -112,8 +112,8 @@ saveRDS(fit.imr1, paste0("article_results/movielens/data/saved_models/",
 dat <- IMR::prepare_data(Y, X, NULL, 0.2, seed = 2025)
 bench::bench_time(fit.imr2 <- IMR:::imr.cv(
   dat$model,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   fast.cv = F,
   hpar = hpar,
   verbose = 1,
@@ -130,8 +130,8 @@ saveRDS(fit.imr2, paste0("article_results/movielens/data/saved_models/",
 dat <- IMR::prepare_data(Y, X, Z, 0.2, seed = 2025)
 bench::bench_time(fit.imr3 <- IMR::imr.cv(
   dat$model,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   hpar = hpar,
   verbose = 1,
   seed = 2025,

@@ -58,8 +58,8 @@ hparam$gamma$step_sizes <- 0.2 / 300
 initialize_parallel_workers(9)
 
 bench::bench_time(res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                             trace=2, hpar=hparam, intercept_row = T,
-                                             intercept_col = T, ls_initial = T,
+                                             trace=2, hpar=hparam, row_intercept = T,
+                                             col_intercept = T, ls_initial = T,
                                              seed = seed, warm_start = NULL, maxit=600,
                                              shared_information = T, thresh=1e-5,
                                              num_cores = 0)) -> timee
@@ -115,8 +115,8 @@ initialize_parallel_workers(9)
     hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
     hparam$rank$max <- 15
     res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                 trace=1, hpar=hparam, intercept_row = T,
-                                 intercept_col = T, ls_initial = T,
+                                 trace=1, hpar=hparam, row_intercept = T,
+                                 col_intercept = T, ls_initial = T,
                                  seed = seed, warm_start = NULL, maxit=600,
                                  shared_information = T, thresh=1e-6,
                                  num_cores = 0)
@@ -216,8 +216,8 @@ datatable(tab, rownames = FALSE, options = list(pageLength = nrow(tab), dom = "t
       for(intercept in with_intercept){
 
       res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                   trace=1, hpar=hparam, intercept_row = intercept,
-                                   intercept_col = intercept, ls_initial = T,
+                                   trace=1, hpar=hparam, row_intercept = intercept,
+                                   col_intercept = intercept, ls_initial = T,
                                    seed = seed, warm_start = NULL, maxit=600,
                                    shared_information = T, thresh=1e-6,
                                    num_cores = 0)
@@ -318,8 +318,8 @@ all_res %>%
       for(intercept in with_intercept){
 
         res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                     trace=1, hpar=hparam, intercept_row = intercept,
-                                     intercept_col = intercept, ls_initial = T,
+                                     trace=1, hpar=hparam, row_intercept = intercept,
+                                     col_intercept = intercept, ls_initial = T,
                                      seed = seed, warm_start = NULL, maxit=600,
                                      shared_information = T, thresh=1e-6,
                                      num_cores = 0)
@@ -383,8 +383,8 @@ for(i in 1:B){
     hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
     hparam$rank$max <- 15
     res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                                 trace=1, hpar=hparam, intercept_row = T,
-                                 intercept_col = T, ls_initial = T,
+                                 trace=1, hpar=hparam, row_intercept = T,
+                                 col_intercept = T, ls_initial = T,
                                  seed = seed, warm_start = NULL, maxit=600,
                                  shared_information = T, thresh=1e-6,
                                  num_cores = 0)
@@ -442,8 +442,8 @@ hparam$laplace$max <- 5
 hparam$rank$n_streaks <- hparam$laplace$n_streaks <- 1
 hparam$rank$max <- 15
 res0 <- IMR:::imr.cv_laplace(dat$modd,final_fit = T,
-                             trace=2, hpar=hparam, intercept_row = T,
-                             intercept_col = T, ls_initial = T,
+                             trace=2, hpar=hparam, row_intercept = T,
+                             col_intercept = T, ls_initial = T,
                              seed = seed, warm_start = NULL, maxit=600,
                              shared_information = T, thresh=1e-6,
                              num_cores = 0)
@@ -505,8 +505,8 @@ for(j in 1:nrow(combined)){
 
 
   res0 <- IMR:::imr.cv(dat$modd,
-                               trace=2, hpar=hparam, intercept_row = combined$intercept[j],
-                               intercept_col = combined$intercept[j], ls_initial = T,
+                               trace=2, hpar=hparam, row_intercept = combined$intercept[j],
+                               col_intercept = combined$intercept[j], ls_initial = T,
                                seed = seed, warm_start = NULL, maxit=600,
                                shared_information = shared, thresh=1e-6,
                                num_cores = 0)
@@ -565,8 +565,8 @@ hparam$laplacian_row <- hparam$laplacian_col <- NULL
 dat$modd$similarity_rows <- dat$modd$similarity_cols <- NULL
 
 bench::bench_time(res <- IMR:::imr.cv(dat$modd,
-                                              trace=2, hpar=hparam, intercept_row = T,
-                                              intercept_col = T, ls_initial = T,
+                                              trace=2, hpar=hparam, row_intercept = T,
+                                              col_intercept = T, ls_initial = T,
                                               seed = seed, warm_start = NULL, maxit=900,
                                               thresh = 1e-6,
                                               shared_information = T,

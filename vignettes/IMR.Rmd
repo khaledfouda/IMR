@@ -81,7 +81,7 @@ data
 ## Model Structure
 
 ```{r}
-data <- update(data, shared_gamma = TRUE, intercept_col = TRUE, intercept_row = TRUE)
+data <- update(data, shared_gamma = TRUE, col_intercept = TRUE, row_intercept = TRUE)
 print(data)
 
 ```
@@ -188,7 +188,7 @@ data <- IMR::imr_data(bixi$Y, bixi$X, bixi$Z,
                       similarity_cols = similarity_cols,
                       val_prop = 0.2, seed = 2026)
 
-data <- update(data, shared_gamma = TRUE, intercept_col = TRUE, intercept_row = TRUE)
+data <- update(data, shared_gamma = TRUE, col_intercept = TRUE, row_intercept = TRUE)
 print(data)
 
 grid <- IMR::imr_tune_grid(

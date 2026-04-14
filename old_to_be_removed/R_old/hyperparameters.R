@@ -37,12 +37,12 @@ get_lambda_m_max <-
   function(Y,
            X = NULL,
            Z = NULL,
-           intercept_row = FALSE,
-           intercept_col = FALSE,
+           row_intercept = FALSE,
+           col_intercept = FALSE,
            lambda_beta = NULL,
            lambda_gamma = NULL,
            maxit = 30){
-    need_fit <- any(!is.null(X), !is.null(Z), intercept_row, intercept_col)
+    need_fit <- any(!is.null(X), !is.null(Z), row_intercept, col_intercept)
 
 
     if (! need_fit) {
@@ -53,8 +53,8 @@ get_lambda_m_max <-
       Y,
       X = X,
       Z = Z,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
       trace = FALSE
@@ -75,8 +75,8 @@ get_lambda_lasso_max <- function(
     # W_valid = NULL,
     y       = NULL,
     # row_cov = TRUE,
-    intercept_row = TRUE,
-    intercept_col = TRUE,
+    row_intercept = TRUE,
+    col_intercept = TRUE,
     hpar = get_imr_default_hparams(),
     interior_loop_length = 20,
     maxit   = 100,
@@ -102,8 +102,8 @@ get_lambda_lasso_max <- function(
       lambda_m    = 0,
       lambda_beta = 0,
       lambda_gamma = 0,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit       = maxit,
       trace       = F
     )
@@ -118,8 +118,8 @@ get_lambda_lasso_max <- function(
       Y_full      = y,
       lambda_beta = 0,
       lambda_gamma = 0,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       trace       = F,
       maxit       = maxit,
       hpar        = hpar
@@ -130,9 +130,9 @@ get_lambda_lasso_max <- function(
   ##  Compute max value using kkt ------------
   residuals  <- y_train -
     mfit$fit$u %*% (mfit$fit$d * t(mfit$fit$v))
-  if(intercept_row)
+  if(row_intercept)
     residuals <- residuals - mfit$fit$beta0 %*% matrix(1, 1, nc)
-  if(intercept_col)
+  if(col_intercept)
     residuals <- residuals - matrix(1, nr, 1) %*% mfit$fit$gamma0
   if(row_cov){
     lambda_max <- max(crossprod(X, residuals))
@@ -148,8 +148,8 @@ get_lambda_lasso_max <- function(
       lambda_m      = lambda_m,
       lambda_beta   = lambda_beta,
       lambda_gamma  = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit         = maxit,
       trace         = FALSE
     )

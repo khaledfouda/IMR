@@ -7,8 +7,8 @@ imr.cv_M <- function(
   Y_full = NULL,
   lambda_beta = 0,
   lambda_gamma = 0,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   hpar = IMR::get_imr_default_hparams(),
   error_function = IMR:::error_metric$rmse,
   thresh = 1e-6,
@@ -63,8 +63,8 @@ imr.cv_M <- function(
       lambda_m = lambda_seq[i],
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,
       Uc = hpar$laplacian_col$U,
@@ -84,10 +84,10 @@ imr.cv_M <- function(
     if (gamma_flag) {
       y_valid@x <- y_valid@x + partial_crossprod(old_fit$gamma, Z, virow, vpcol, TRUE)
     }
-    if (intercept_row) {
+    if (row_intercept) {
       add_to_rows_inplace_cpp(y_valid@x, y_valid@i, old_fit$beta0)
     }
-    if (intercept_col) {
+    if (col_intercept) {
       add_to_cols_inplace_cpp(y_valid@x, y_valid@p, old_fit$gamma0)
     }
 
@@ -156,8 +156,8 @@ imr.cv_M <- function(
       lambda_m = best_fit$lambda_m,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,
       Uc = hpar$laplacian_col$U,
@@ -183,8 +183,8 @@ imr.cv_laplace <- function(
   data,
   lambda_beta = 0,
   lambda_gamma = 0,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   hpar = IMR::get_imr_default_hparams(),
   error_function = IMR:::error_metric$rmse,
   n_streaks = 2,
@@ -208,7 +208,7 @@ imr.cv_laplace <- function(
   # fits a single "rank" and returns [fit, error]; with all lambdas fixed.
   # this is a single fit where all parameters are fixed but it returns validation error
   rank_fit_function <- function(r, data, hpar, lambda_betaa, lambda_gammaa,
-                                intercept_row, intercept_col,
+                                row_intercept, col_intercept,
                                 trace, thresh, maxit,
                                 ls_initial, fit = NULL) {
     fit <- IMR::imr.fit(
@@ -219,8 +219,8 @@ imr.cv_laplace <- function(
       lambda_m = 0,
       lambda_beta = lambda_betaa,
       lambda_gamma = lambda_gammaa,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,
       Uc = hpar$laplacian_col$U,
@@ -251,8 +251,8 @@ imr.cv_laplace <- function(
   # we run on a grid of (alpha, lambda_laplace)
   #' this function takes a single alpha and finds the optimal rank. everything else fixed.
   laplace_cv_alpha_function <- function(alpha, data, hpar, lambda_laplace, lambda_beta,
-                                        lambda_gamma, intercept_row,
-                                        intercept_col, trace, thresh,
+                                        lambda_gamma, row_intercept,
+                                        col_intercept, trace, thresh,
                                         maxit, ls_initial, fit = NULL) {
     hpar$laplacian_row <- IMR::decompose_symmetric_matrix(data$similarity_row, lambda_laplace * alpha)
     hpar$laplacian_col <- IMR::decompose_symmetric_matrix(data$similarity_col, lambda_laplace * (1 - alpha))
@@ -266,8 +266,8 @@ imr.cv_laplace <- function(
       hpar = hpar,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       trace = trace,
       thresh = thresh,
       fit = fit,
@@ -292,8 +292,8 @@ imr.cv_laplace <- function(
   #' This function takes a single lambda_laplace and finds the optimal (alpha, rank) combination
   #' for a fixed lambda_beta, lambda_gamma
   laplace_cv_lambda_function <- function(lambda_laplace, data, hpar, lambda_beta,
-                                         lambda_gamma, intercept_row,
-                                         intercept_col, trace, thresh,
+                                         lambda_gamma, row_intercept,
+                                         col_intercept, trace, thresh,
                                          maxit, ls_initial, fit = NULL) {
     results <- IMR::adaptive_tuner(laplace_cv_alpha_function,
       step_sizes = hpar$laplace$alpha_step_sizes,
@@ -305,8 +305,8 @@ imr.cv_laplace <- function(
       hpar = hpar,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       trace = trace,
       thresh = thresh,
       fit = fit,
@@ -341,8 +341,8 @@ imr.cv_laplace <- function(
     hpar = hpar,
     lambda_beta = lambda_beta,
     lambda_gamma = lambda_gamma,
-    intercept_row = intercept_row,
-    intercept_col = intercept_col,
+    row_intercept = row_intercept,
+    col_intercept = col_intercept,
     trace = trace,
     thresh = thresh,
     maxit = maxit,
@@ -380,8 +380,8 @@ imr.cv_laplace <- function(
       lambda_m = 0,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,
       Uc = hpar$laplacian_col$U,
@@ -404,8 +404,8 @@ imr.cv_laplace <- function(
 #' @export
 imr.cv <- function(
   inp.dat,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   lambda_beta = NULL,
   lambda_gamma = NULL,
   lambda_gamma_default = NULL,
@@ -423,8 +423,8 @@ imr.cv <- function(
     return(
       IMR:::nlrr.cv(
         inp.dat = inp.dat,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
+        row_intercept = row_intercept,
+        col_intercept = col_intercept,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
         hpar = hpar,
@@ -460,8 +460,8 @@ imr.cv <- function(
       y_train = inp.dat$y_train,
       y_valid = inp.dat$y_valid,
       Y_full = inp.dat$Y,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       hpar = hpar,
       error_function = error_function,
       thresh = thresh,
@@ -478,8 +478,8 @@ imr.cv <- function(
       y_train = inp.dat$y_train,
       X = inp.dat$Xq,
       y_valid = inp.dat$y_valid,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit = 100,
       verbose = verbose
     )
@@ -489,8 +489,8 @@ imr.cv <- function(
       y_train = inp.dat$y_train,
       Z = inp.dat$Zq,
       y_valid = inp.dat$y_valid,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit = 100,
       verbose = verbose
     )
@@ -538,8 +538,8 @@ imr.cv <- function(
       X = inp.dat$Xq,
       # Z = inp.dat$Zq,
       Y_full = NULL,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       hpar = hpar,
       error_function = error_function,
       thresh = thresh,
@@ -570,8 +570,8 @@ imr.cv <- function(
       X = inp.dat$Xq,
       Z = inp.dat$Zq,
       Y_full = inp.dat$Y,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       hpar = hpar,
       error_function = error_function,
       thresh = thresh,
@@ -604,8 +604,8 @@ imr.cv <- function(
       X = inp.dat$Xq,
       Z = inp.dat$Zq,
       Y_full = inp.dat$Y,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       hpar = hpar,
       error_function = error_function,
       thresh = thresh,

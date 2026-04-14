@@ -7,8 +7,8 @@
 #'   The target matrix to be completed (n by m).
 #' @param X Optional matrix of row covariates (n by p). Default is \code{NULL}.
 #' @param Z Optional matrix of column covariates (m by q). Default is \code{NULL}.
-#' @param intercept_row Logical. Include row-level intercepts? Default is \code{FALSE}.
-#' @param intercept_col Logical. Include column-level intercepts? Default is \code{FALSE}.
+#' @param row_intercept Logical. Include row-level intercepts? Default is \code{FALSE}.
+#' @param col_intercept Logical. Include column-level intercepts? Default is \code{FALSE}.
 #' @param r Integer. The rank (number of latent factors/columns in A and B).
 #'   Default is 2.
 #' @param lambda_m Numeric scalar. Controls the nuclear penalty. Default is 0.
@@ -37,8 +37,8 @@
 #'     \deqn{M = u \cdot \textrm{diag}(d) \cdot v^T}}
 #'   \item{beta}{Matrix of row covariate coefficients. \code{NULL} if \code{X} is \code{NULL}.}
 #'   \item{gamma}{Matrix of column covariate coefficients. \code{NULL} if \code{Z} is \code{NULL}.}
-#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{intercept_row} is \code{FALSE}.}
-#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{intercept_col} is \code{FALSE}.}
+#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{row_intercept} is \code{FALSE}.}
+#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{col_intercept} is \code{FALSE}.}
 #'   \item{n_iter}{Integer. The number of iterations performed.}
 #' }
 #'
@@ -47,8 +47,8 @@ imr.fit <- function(
   Y,
   X = NULL,
   Z = NULL,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   r = 2,
   lambda_m = 0,
   lambda_beta = 0,
@@ -108,11 +108,11 @@ imr.fit <- function(
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
       }
     }
-    if (intercept_row) {
+    if (row_intercept) {
       beta0 <- warm_start$beta0
     }
 
-    if (intercept_col) {
+    if (col_intercept) {
       gamma0 <- warm_start$gamma0
     }
 
@@ -124,8 +124,8 @@ imr.fit <- function(
       mfit <- IMR::imr.fit_no_low_rank(Y, X, Z,
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
+        row_intercept = row_intercept,
+        col_intercept = col_intercept,
         shared_information = shared_information
       )
       if (beta_flag) {
@@ -144,10 +144,10 @@ imr.fit <- function(
           zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
         }
       }
-      if (intercept_row) {
+      if (row_intercept) {
         beta0 <- mfit$beta0
       }
-      if (intercept_col) {
+      if (col_intercept) {
         gamma0 <- mfit$gamma0
       }
 
@@ -171,10 +171,10 @@ imr.fit <- function(
           zg_obs <- rep(0, nz)
         }
       }
-      if (intercept_row) {
+      if (row_intercept) {
         beta0 <- rep(0, nr)
       }
-      if (intercept_col) {
+      if (col_intercept) {
         gamma0 <- rep(0, nc)
       }
 
@@ -196,8 +196,8 @@ imr.fit <- function(
     if (gamma_flag && !shared_information) Y@x <- Y@x - zg_obs
     if (beta_flag && shared_information) add_to_rows_inplace_cpp(Y@x, Y@i, -xbeta)
     if (gamma_flag && shared_information) add_to_cols_inplace_cpp(Y@x, Y@p, -gammaz)
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
+    if (row_intercept) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
+    if (col_intercept) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
   }
 
   #  Main loop ---------------------------------------------------------------
@@ -301,7 +301,7 @@ imr.fit <- function(
 
     # Intercepts (row/column) ---------------------------------------------
     # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
+    if (row_intercept) {
       old_val <- beta0
       beta0 <- row_means_cpp(Y, nc) + beta0
       change <- old_val - beta0
@@ -309,7 +309,7 @@ imr.fit <- function(
     }
 
     # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
+    if (col_intercept) {
       old_val <- gamma0
       gamma0 <- col_means_cpp(Y, nr) + gamma0
       change <- old_val - gamma0
@@ -367,8 +367,8 @@ imr.fit <- function(
 #'   \item{resid}{An incomplete matrix of the last iteration's residuals (i.e., the model's training errors)}
 #'   \item{beta}{Matrix of row covariate coefficients. \code{NULL} if \code{X} is \code{NULL}.}
 #'   \item{gamma}{Matrix of column covariate coefficients. \code{NULL} if \code{Z} is \code{NULL}.}
-#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{intercept_row} is \code{FALSE}.}
-#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{intercept_col} is \code{FALSE}.}
+#'   \item{beta0}{Vector of row-level intercepts. \code{NULL} if \code{row_intercept} is \code{FALSE}.}
+#'   \item{gamma0}{Vector of column-level intercepts. \code{NULL} if \code{col_intercept} is \code{FALSE}.}
 #'   \item{n_iter}{Integer. The number of iterations performed.}
 #' }
 #' @export
@@ -378,8 +378,8 @@ imr.fit_no_low_rank <- function(
   Z = NULL,
   lambda_beta = NULL,
   lambda_gamma = NULL,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   shared_information = FALSE,
   maxit = 300,
   thresh = 1e-5,
@@ -422,11 +422,11 @@ imr.fit_no_low_rank <- function(
         zg_obs <- partial_crossprod(gamma, Z, irow, pcol, TRUE)
       }
     }
-    if (intercept_row) {
+    if (row_intercept) {
       beta0 <- warm_start$beta0
     }
 
-    if (intercept_col) {
+    if (col_intercept) {
       gamma0 <- warm_start$gamma0
     }
   } else {
@@ -448,10 +448,10 @@ imr.fit_no_low_rank <- function(
         zg_obs <- rep(0, nz)
       }
     }
-    if (intercept_row) {
+    if (row_intercept) {
       beta0 <- rep(0, nr)
     }
-    if (intercept_col) {
+    if (col_intercept) {
       gamma0 <- rep(0, nc)
     }
   }
@@ -460,8 +460,8 @@ imr.fit_no_low_rank <- function(
     if (gamma_flag && !shared_information) Y@x <- Y@x - zg_obs
     if (beta_flag && shared_information) Y@x <- add_to_rows_inplace_cpp(Y@x, Y@i, -xbeta)
     if (gamma_flag && shared_information) Y@x <- add_to_cols_inplace_cpp(Y@x, Y@p, -gammaz)
-    if (intercept_row) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
-    if (intercept_col) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
+    if (row_intercept) add_to_rows_inplace_cpp(Y@x, Y@i, -beta0)
+    if (col_intercept) add_to_cols_inplace_cpp(Y@x, Y@p, -gamma0)
   }
   #  Main loop ---------------------------------------------------------------
   ratio <- Inf
@@ -519,7 +519,7 @@ imr.fit_no_low_rank <- function(
 
     # Intercepts (row/column) ---------------------------------------------
     # Row-level intercepts (beta0), then apply delta to residuals.
-    if (intercept_row) {
+    if (row_intercept) {
       old_val <- beta0
       beta0 <- row_means_cpp(Y, nc) + beta0
       change <- old_val - beta0
@@ -527,7 +527,7 @@ imr.fit_no_low_rank <- function(
     }
 
     # Column-level intercepts (gamma0), then apply delta to residuals.
-    if (intercept_col) {
+    if (col_intercept) {
       old_val <- gamma0
       gamma0 <- col_means_cpp(Y, nr) + gamma0
       change <- old_val - gamma0

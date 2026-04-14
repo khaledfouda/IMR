@@ -225,7 +225,7 @@ imr_get_lambda_m_max <-
            bisection_iter = 15,
            convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE),
            verbose = 0) {
-    need_fit <- any(!is.null(data$Xq), !is.null(data$Zq), data$model$intercept_row, data$model$intercept_col)
+    need_fit <- any(!is.null(data$Xq), !is.null(data$Zq), data$model$row_intercept, data$model$col_intercept)
 
 
     if (!need_fit) {

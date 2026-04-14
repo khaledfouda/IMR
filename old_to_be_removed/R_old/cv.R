@@ -7,8 +7,8 @@ imr.cv_M <- function(
   Y_full = NULL,
   lambda_beta = 0,
   lambda_gamma = 0,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   hpar = get_imr_default_hparams(),
   error_function = error_metric$rmse,
   thresh = 1e-6,
@@ -61,8 +61,8 @@ imr.cv_M <- function(
       lambda_m = lambda_seq[i],
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       lambda_a = hpar$laplacian$lambda_a,
       lambda_b = hpar$laplacian$lambda_b,
       L_a = hpar$laplacian$L_a,
@@ -80,9 +80,9 @@ imr.cv_M <- function(
       y_valid@x <- y_valid@x + partial_crossprod(X, old_fit$beta, virow, vpcol)
     if(gamma_flag)
       y_valid@x <- y_valid@x + partial_crossprod(old_fit$gamma, Z, virow, vpcol, TRUE)
-    if(intercept_row)
+    if(row_intercept)
       add_to_rows_inplace_cpp(y_valid@x, y_valid@i, old_fit$beta0)
-    if(intercept_col)
+    if(col_intercept)
       add_to_cols_inplace_cpp(y_valid@x, y_valid@p, old_fit$gamma0)
 
     verror <- error_function(y_valid@x, reference)
@@ -150,8 +150,8 @@ imr.cv_M <- function(
       lambda_m = best_fit$lambda_m,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       lambda_a = hpar$laplacian$lambda_a,
       lambda_b = hpar$laplacian$lambda_b,
       L_a = hpar$laplacian$L_a,
@@ -180,8 +180,8 @@ imr.cv <- function(
     y_valid = NULL,
     X = NULL,
     Z = NULL,
-    intercept_row = FALSE,
-    intercept_col = FALSE,
+    row_intercept = FALSE,
+    col_intercept = FALSE,
     lambda_beta = NULL,
     lambda_gamma = NULL,
     val_prop = 0.2,
@@ -222,8 +222,8 @@ imr.cv <- function(
       y_train = y_train,
       y_valid = y_valid,
       Y_full = Y,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       hpar = hpar,
       error_function = error_function,
       thresh = thresh,
@@ -239,8 +239,8 @@ imr.cv <- function(
       y_train = y_train,
       X = X,
       y_valid = y_valid,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit = 100,
       verbose = verbose
     )
@@ -250,8 +250,8 @@ imr.cv <- function(
       y_train = y_train,
       Z = Z,
       y_valid = y_valid,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit = 100,
       verbose = verbose
     )
@@ -291,8 +291,8 @@ imr.cv <- function(
                            X = X,
                            Z = Z,
                            Y_full = Y,
-                           intercept_row = intercept_row,
-                           intercept_col = intercept_col,
+                           row_intercept = row_intercept,
+                           col_intercept = col_intercept,
                            hpar = hpar,
                            error_function = error_function,
                            thresh = thresh,

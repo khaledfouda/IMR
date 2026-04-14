@@ -68,10 +68,10 @@ if (run_all) {
 
 
       timer <- system.time(fit.imrS <- IMR::imr.cv(inp.dat$model,
-        intercept_row = F,
+        row_intercept = F,
         seed = seed, ls_initial = FALSE, hpar = hpar,
         maxit = 600,
-        intercept_col = F, verbose = 0
+        col_intercept = F, verbose = 0
       ))
 
       res <- bind_rows(res, rbind(
@@ -141,10 +141,10 @@ if (run_all) {
 
 
       timer <- system.time(fit.imrS <- IMR::imr.cv(inp.dat$model,
-        intercept_row = F,
+        row_intercept = F,
         seed = seed, ls_initial = FALSE, hpar = hpar,
         maxit = 600,
-        intercept_col = F, verbose = 0
+        col_intercept = F, verbose = 0
       ))
 
       res <- bind_rows(res, rbind(
@@ -313,10 +313,10 @@ if (run_all) {
 
   # original IMR
   timer <- system.time(fit.imrS <- IMR::imr.cv(inp.dat$model,
-    intercept_row = F,
+    row_intercept = F,
     seed = seed, ls_initial = FALSE, hpar = hpar,
     maxit = 600,
-    intercept_col = F, verbose = 0
+    col_intercept = F, verbose = 0
   ))
 
   res <- bind_rows(res, rbind(

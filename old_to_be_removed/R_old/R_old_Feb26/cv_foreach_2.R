@@ -2,8 +2,8 @@
 #' @export
 imr.cv_3 <- function(
   data,
-  intercept_row = FALSE,
-  intercept_col = FALSE,
+  row_intercept = FALSE,
+  col_intercept = FALSE,
   hpar = IMR::get_imr_default_hparams(),
   error_function = IMR:::error_metric$rmse,
   thresh = 1e-6,
@@ -31,8 +31,8 @@ imr.cv_3 <- function(
   if (!(beta_flag | gamma_flag)) {
     return(IMR:::imr.cv_laplace(
       data = data,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       hpar = hpar,
       error_function = error_function,
       thresh = thresh,
@@ -50,8 +50,8 @@ imr.cv_3 <- function(
       y_train = data$y_train,
       X = data$Xq,
       # y_valid = data$y_valid,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit = 300,
       verbose = trace
     )
@@ -61,8 +61,8 @@ imr.cv_3 <- function(
       y_train = data$y_train,
       Z = data$Zq,
       # y_valid = data$y_valid,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       maxit = 300,
       verbose = trace
     )
@@ -76,7 +76,7 @@ imr.cv_3 <- function(
   # this is a single fit where all parameters are fixed but it returns validation error
   rank_fit_function <- function(r, fdata, hpar, shared_information,
                                 lambda_laplace,
-                                intercept_row, intercept_col,
+                                row_intercept, col_intercept,
                                 trace, thresh, maxit,
                                 ls_initial, fit = NULL,
                                 error_function = IMR:::error_metric$rmse) {
@@ -88,8 +88,8 @@ imr.cv_3 <- function(
       lambda_m = lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       shared_information = shared_information,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,
@@ -115,7 +115,7 @@ imr.cv_3 <- function(
   # parallel setup
   # the following function takes
   single_fit <- function(lambda_laplace, lambda_beta, lambda_gamma,
-                         data, intercept_row, intercept_col,
+                         data, row_intercept, col_intercept,
                          shared_information,
                          hpar, error_function, thresh, trace, maxit, ls_initial,
                          seed, fit = NULL, warm_start = NULL) {
@@ -138,8 +138,8 @@ imr.cv_3 <- function(
       hpar = hpar,
       lambda_laplace = lambda_laplace,
       shared_information = shared_information,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       trace = trace,
       thresh = thresh,
       .warm_start = warm_start,
@@ -207,8 +207,8 @@ imr.cv_3 <- function(
           lambda_beta = lambda_beta,
           lambda_gamma = lambda_gamma,
           data = data,
-          intercept_row = intercept_row,
-          intercept_col = intercept_col,
+          row_intercept = row_intercept,
+          col_intercept = col_intercept,
           hpar = hpar,
           shared_information = shared_information,
           error_function = error_function,
@@ -256,8 +256,8 @@ imr.cv_3 <- function(
           lambda_beta = hpar$beta$value,
           lambda_gamma = hpar$gamma$value,
           data = data,
-          intercept_row = intercept_row,
-          intercept_col = intercept_col,
+          row_intercept = row_intercept,
+          col_intercept = col_intercept,
           hpar = hpar,
           shared_information = shared_information,
           error_function = error_function,
@@ -315,8 +315,8 @@ imr.cv_3 <- function(
       lambda_m = results[1, ]$lambda_laplace,
       lambda_beta = hpar$beta$value,
       lambda_gamma = hpar$gamma$value,
-      intercept_row = intercept_row,
-      intercept_col = intercept_col,
+      row_intercept = row_intercept,
+      col_intercept = col_intercept,
       shared_information = shared_information,
       Ur = hpar$laplacian_row$U,
       dr = hpar$laplacian_row$d,

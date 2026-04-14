@@ -28,7 +28,7 @@ fit <- IMR::imr.fit(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
                     #Uc = hpar$laplacian_col$U, dc = hpar$laplacian_col$d,
                     #Ur = hpar$laplacian_row$U, dr = hpar$laplacian_row$d,
                     r=6, lambda_m = 3.23, lambda_beta=.000, lambda_gamma=0,
-                    trace=F, ls_initial = T,intercept_row = T, intercept_col = T)
+                    trace=F, ls_initial = T,row_intercept = T, col_intercept = T)
 quick_camc_simu_res(dat, fit)
 #========================================================
 fit2 <- IMR::imr.cv_M(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$X$Q,
@@ -43,10 +43,10 @@ inp.dat <- list(
   y_train = dat$fit_data$train,
   y_valid = dat$fit_data$valid
 )
-fit3 <-  IMR::imr.cv(inp.dat,intercept_row = F,
+fit3 <-  IMR::imr.cv(inp.dat,row_intercept = F,
                      hpar = hpar,
                      seed = 2025, separate_tuning = T,
-                     intercept_col = F, verbose=2)
+                     col_intercept = F, verbose=2)
 quick_camc_simu_res(dat, fit3$fit)
 #==============================================================================
 unsvd <- function(a) tcrossprod(a$u %*% diag(a$d), a$v )
@@ -306,7 +306,7 @@ all.equal(m1, m4)
 fit <- IMR::imr.fit(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
 
                 r=6, lambda_m = 3.23, lambda_beta=.000, lambda_gamma=0,
-                trace=T, ls_initial = T,intercept_row = T, intercept_col = T)
+                trace=T, ls_initial = T,row_intercept = T, col_intercept = T)
 quick_camc_simu_res(dat, fit)
 
 fitm <- IMR::imr.fit_no_low_rank(dat$fit_data$train, dat$fit_data$X$Q, dat$fit_data$Z$Q,
@@ -325,8 +325,8 @@ mfit <- IMR::imr.cv_M(
   Y_full      = dat$fit_data$Y_full,
   lambda_beta = 0,
   lambda_gamma = 0,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   trace       = T
 )
 
@@ -339,8 +339,8 @@ fit <- IMR::imr.fit(
   lambda_m = 62.34,
   lambda_beta = 0,
   lambda_gamma = 0,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   #warm_start = old_fit,
   trace = T,
   thresh = 1e-6,
@@ -368,9 +368,9 @@ hpar$M$lambda_max <- 80
 hpar$beta$n.lambda <- 10
 hpar$gamma$n.lambda <- 10
 fit32 <- IMR::imr.cv(dat$fit_data$Y_full, X=dat$fit_data$X$Q,
-                    Z = dat$fit_data$Z$Q,intercept_row = F,
+                    Z = dat$fit_data$Z$Q,row_intercept = F,
                     hpar = hpar, seed = 2025,
-                    intercept_col = F, verbose=2)
+                    col_intercept = F, verbose=2)
 quick_camc_simu_res(dat, fit32$fit)
 
 
@@ -423,8 +423,8 @@ worker <- function(args) {
                           X = X,
                           Z = Z,
                           Y_full = Y,
-                          intercept_row = intercept_row,
-                          intercept_col = intercept_col,
+                          row_intercept = row_intercept,
+                          col_intercept = col_intercept,
                           hpar = hpar,
                           error_function = error_function,
                           thresh = thresh,
@@ -443,8 +443,8 @@ IMR::imr.cv_M(
   X = X,
   Z = Z,
   Y_full = Y,
-  intercept_row = intercept_row,
-  intercept_col = intercept_col,
+  row_intercept = row_intercept,
+  col_intercept = col_intercept,
   hpar = hpar,
   error_function = error_function,
   thresh = thresh,
@@ -461,8 +461,8 @@ IMR::imr.fit(
   r = 2,
   X = X,
   Z = Z,
-  intercept_row = intercept_row,
-  intercept_col = intercept_col,
+  row_intercept = row_intercept,
+  col_intercept = col_intercept,
   thresh = thresh,
   maxit = 300,
   trace = T,

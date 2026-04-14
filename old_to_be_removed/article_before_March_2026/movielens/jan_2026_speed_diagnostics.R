@@ -2,8 +2,8 @@
 
 # function paramter (cv_lambda)
 data = fdata = dat;
-intercept_row = TRUE
-intercept_col = TRUE
+row_intercept = TRUE
+col_intercept = TRUE
 hpar = hparam
 error_function = IMR:::error_metric$rmse
 thresh = 1e-3
@@ -38,8 +38,8 @@ bench_time(
         lambda_beta = lambda_beta,
         lambda_gamma = lambda_gamma,
         data = data,
-        intercept_row = intercept_row,
-        intercept_col = intercept_col,
+        row_intercept = row_intercept,
+        col_intercept = col_intercept,
         hpar = hpar,
         shared_information = shared_information,
         error_function = error_function,
@@ -69,7 +69,7 @@ results6 %>%
 
 # 1.  rank fit function speed (single fit)
 bench::bench_time(rank_fit <- rank_fit_function(r, data, hpar, shared_information, lambda_laplace,
-                  intercept_row, intercept_col, trace, thresh, maxit, TRUE)) ->
+                  row_intercept, col_intercept, trace, thresh, maxit, TRUE)) ->
   single_fit_time; single_fit_time
 
 
@@ -84,8 +84,8 @@ bench_time(fit_init <- IMR::imr.fit(
   lambda_m = lambda_laplace,
   lambda_beta = hpar$beta$value,
   lambda_gamma = hpar$gamma$value,
-  intercept_row = intercept_row,
-  intercept_col = intercept_col,
+  row_intercept = row_intercept,
+  col_intercept = col_intercept,
   shared_information = shared_information,
   Ur = hpar$laplacian_row$U,
   dr = hpar$laplacian_row$d,
@@ -105,8 +105,8 @@ bench_time(
     y_train = data$y_train,
     X = data$Xq,
     # y_valid = data$y_valid,
-    intercept_row = intercept_row,
-    intercept_col = intercept_col,
+    row_intercept = row_intercept,
+    col_intercept = col_intercept,
     maxit = 50,
     thresh = 1e-3,
     init_maxit = 100,
@@ -128,8 +128,8 @@ bench_time(
     lambda_beta = 0,
     lambda_gamma = 0,
     data = data,
-    intercept_row = intercept_row,
-    intercept_col = intercept_col,
+    row_intercept = row_intercept,
+    col_intercept = col_intercept,
     hpar = hpar,
     shared_information = shared_information,
     error_function = error_function,

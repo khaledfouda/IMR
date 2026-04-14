@@ -24,7 +24,7 @@ S2 <- imr_similarity(dat$similarity_cols, invert=TRUE); S2
 data <- IMR:::imr_data(dat$Y, dat$X, dat$Z,val_prop = 0.2,
                           similarity_rows = S1, similarity_cols = S2);data
 data <- update(data, col_similarity = FALSE, row_similarity = FALSE,
-                shared_beta = FALSE, intercept_row = F, intercept_col = F);data
+                shared_beta = FALSE, row_intercept = F, col_intercept = F);data
 
 grid <- IMR::imr_tune_grid(laplace = c(0,NA,30,2), beta = 0, gamma = 0,
                            rank = c(2,15, 1));grid
@@ -79,8 +79,8 @@ history %>% head(20)
 target = "beta"
 rank = 2
 lambda_m = lambda_beta = lambda_gamma= 0.1
-intercept_row = FALSE
-intercept_col = FALSE
+row_intercept = FALSE
+col_intercept = FALSE
 shared_beta = shared_gamma = shared_effects = FALSE
 bisection_iter = 15
 verbose = 3

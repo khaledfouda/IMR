@@ -95,8 +95,8 @@ start <- Sys.time()
     lambda_m = 17.88, # 20.79,#14.53,#
     lambda_beta = .21053, # .03158,
     lambda_gamma = .3157892,
-    intercept_row = T,
-    intercept_col = T,
+    row_intercept = T,
+    col_intercept = T,
     trace = F,
     thresh = 1e-6,
     maxit = 3000,

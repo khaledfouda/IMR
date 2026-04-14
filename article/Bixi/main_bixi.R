@@ -142,8 +142,8 @@ for (miss in c( .55, .65, .75, .85, .99, .6, .7, .8, .9, .95)){
   #  IMR + covariates
   if (models$covariate) {
     bench::bench_time(fit.imr <- IMR::imr.cv(dat$model,
-      intercept_row = T,
-      intercept_col = T,
+      row_intercept = T,
+      col_intercept = T,
       hpar = hpar,
       verbose = 1,
       separate_tuning = T,
@@ -176,8 +176,8 @@ for (miss in c( .55, .65, .75, .85, .99, .6, .7, .8, .9, .95)){
       for (rand in 2035:2035) {
 
         bench::bench_time(fit.imr <- IMR::imr.cv_laplace(dat$model,
-          intercept_row = T,
-          intercept_col = T,lambda_beta = 0, lambda_gamma=0,
+          row_intercept = T,
+          col_intercept = T,lambda_beta = 0, lambda_gamma=0,
           hpar = hpar,
           trace = T,
           seed = rand
@@ -203,8 +203,8 @@ for (miss in c( .55, .65, .75, .85, .99, .6, .7, .8, .9, .95)){
     hpar$laplacian_col <- hpar$laplacian_col <- list()
     dat <- IMR::prepare_data(odat$Y.inc, NULL, NULL, 0.2, 2025)
     bench::bench_time(fit.imr <- IMR::imr.cv(dat$model,
-      intercept_row = T,
-      intercept_col = T,
+      row_intercept = T,
+      col_intercept = T,
       hpar = hpar,
       verbose = 0,
       separate_tuning = T,
@@ -238,8 +238,8 @@ for (miss in c( .55, .65, .75, .85, .99, .6, .7, .8, .9, .95)){
   # -- intercept only model
   #   dat <- IMR::prepare_data(odat$Y.inc, NULL, NULL, 0.2, rand)
   #   bench::bench_time(fit.imr <- IMR::imr.cv(dat$model,
-  #     intercept_row = T,
-  #     intercept_col = T,
+  #     row_intercept = T,
+  #     col_intercept = T,
   #     hpar = hpar,
   #     verbose = 0,
   #     separate_tuning = T,

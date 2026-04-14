@@ -106,8 +106,8 @@ dat <- IMR::prepare_data(Y, X, Z,val_prop =  0.2, seed = 2025)
 hpar$beta$max <- IMR::get_lambda_lasso_max(
   y_train = data$y_train,
   X = data$Xq,
-  intercept_row = intercept_row,
-  intercept_col = intercept_col,
+  row_intercept = row_intercept,
+  col_intercept = col_intercept,
   maxit = 50,
   thresh = 1e-3,
   init_maxit = 100,
@@ -119,8 +119,8 @@ hpar$beta$max <- IMR::get_lambda_lasso_max(
 hpar$gamma$max <- IMR::get_lambda_lasso_max(
   y_train = data$y_train,
   Z = data$Zq,
-  intercept_row = intercept_row,
-  intercept_col = intercept_col,
+  row_intercept = row_intercept,
+  col_intercept = col_intercept,
   maxit = 50,
   thresh = 1e-3,
   shared_information = TRUE,
@@ -137,13 +137,13 @@ hpar$gamma$max <- IMR::get_lambda_lasso_max(
 # 4. X shared
 # 5. XZ shared [ need to find an upper-bound on these]
 
-bench::bench_time(fit.imr1 <- IMR::imr.cv_laplace(dat, intercept_row = TRUE, intercept_col = TRUE,
+bench::bench_time(fit.imr1 <- IMR::imr.cv_laplace(dat, row_intercept = TRUE, col_intercept = TRUE,
                              hpar = hpar_int, thresh = 1e-3, maxit = 300,
                              trace = 1, ls_initial = TRUE, shared_information = FALSE,
                              seed = seed, num_cores = 9,final_fit = FALSE,
                              final_thresh = 1e-6, final_maxit = 1000)) -> time.imr
 
-bench::bench_time(fit.imr2 <- IMR:::imr.cv_21(dat, intercept_row = TRUE, intercept_col = TRUE,
+bench::bench_time(fit.imr2 <- IMR:::imr.cv_21(dat, row_intercept = TRUE, col_intercept = TRUE,
                                                   hpar = hparam, thresh = 1e-3, maxit = 600,
                                                   trace = 1, ls_initial = TRUE,
                                               shared_information = FALSE,
@@ -188,8 +188,8 @@ fit.imr1$best_fit$r
 #-- tmp end
 bench::bench_time(fit.imr1 <- IMR:::imr.cv_3(
   dat,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   hpar = hpar_int,
   trace = 1,
   num_cores = 7,
@@ -205,8 +205,8 @@ saveRDS(fit.imr1, paste0("article/movielens/data/saved_models/",
 dat <- IMR::prepare_data(Y, X, NULL, 0.2, seed = 2025)
 bench::bench_time(fit.imr2 <- IMR:::imr.cv(
   dat$model,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   fast.cv = F,
   hpar = hpar,
   verbose = 1,
@@ -223,8 +223,8 @@ saveRDS(fit.imr2, paste0("article/movielens/data/saved_models/",
 dat <- IMR::prepare_data(Y, X, Z, 0.2, seed = 2025)
 bench::bench_time(fit.imr3 <- IMR::imr.cv(
   dat$model,
-  intercept_row = T,
-  intercept_col = T,
+  row_intercept = T,
+  col_intercept = T,
   hpar = hpar,
   verbose = 1,
   seed = 2025,

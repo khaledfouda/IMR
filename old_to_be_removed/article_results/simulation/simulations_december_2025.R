@@ -48,8 +48,8 @@ for(i in 1:B){
 #--------------------------------------------------------------------------------------
   mdata <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols,seed = 2025)
   bench::bench_time(results1_1$IMRXZR[[i]] <- IMR:::imr.cv_laplace(mdata,
-                                                trace=1, hpar=hparam, intercept_row = T,
-                                                intercept_col = T, ls_initial = F,
+                                                trace=1, hpar=hparam, row_intercept = T,
+                                                col_intercept = T, ls_initial = F,
                                                 seed = seed, warm_start = NULL, maxit=600,
                                                 shared_information = T,
                                                 num_cores = 0)) -> timee
@@ -57,8 +57,8 @@ results1_1$IMRXZR[[i]]$time <- round(lubridate::time_length(timee[2], "seconds")
 
 mdata <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols,seed = 2025)
 bench::bench_time(results1_1$IMRXZLS[[i]] <- IMR:::imr.cv_laplace(mdata,
-                                                             trace=1, hpar=hparam, intercept_row = T,
-                                                             intercept_col = T, ls_initial = T,
+                                                             trace=1, hpar=hparam, row_intercept = T,
+                                                             col_intercept = T, ls_initial = T,
                                                              maxit=600,
                                                              seed = seed, warm_start = NULL,
                                                              shared_information = T,
@@ -69,8 +69,8 @@ results1_1$IMRXZLS[[i]]$time <- round(lubridate::time_length(timee[2], "seconds"
 
 bench::bench_time(results1_1$LS[[i]] <- IMR::imr.fit_no_low_rank(
   Y = mdata$y_train, X = mdata$Xq, Z = mdata$Zq,
-  lambda_beta = 0, lambda_gamma = 0, intercept_row = F,
-  intercept_col = F, shared_information = T, maxit = 600,
+  lambda_beta = 0, lambda_gamma = 0, row_intercept = F,
+  col_intercept = F, shared_information = T, maxit = 600,
   trace = F
 )) -> timee
 sdd = IMR::svd_opt(IMR::naive_MC(results1_1$LS[[i]]$resid), r,n,m,F,F)
@@ -129,8 +129,8 @@ results2_1$data[[i]] <- dat
 #--------------------------------------------------------------------------------------
   bench::bench_time(results2_1$IMR[[i]] <- IMR:::imr.cv_laplace(data_nocov,
                                                                  trace=1, hpar=hparam,
-                                                                intercept_row = T,
-                                                                 intercept_col = T, ls_initial = T,
+                                                                row_intercept = T,
+                                                                 col_intercept = T, ls_initial = T,
                                                                  seed = seed, warm_start = NULL,
                                                                   maxit=600,
                                                                  shared_information = TRUE,
@@ -141,8 +141,8 @@ results2_1$data[[i]] <- dat
   mdata$X <- mdata$Z <- NULL
   bench::bench_time(results2_1$IMRXZ[[i]] <- IMR:::imr.cv_laplace(mdata,
                                                                   trace=1, hpar=hparam,
-                                                                  intercept_row = T,
-                                                                  intercept_col = T, ls_initial = T,
+                                                                  row_intercept = T,
+                                                                  col_intercept = T, ls_initial = T,
                                                                   maxit=600,
                                                                   seed = seed, warm_start = NULL,
                                                                   shared_information = TRUE,
@@ -201,8 +201,8 @@ for(i in 1:B){
   results3$data[[i]] <- dat
   #--------------------------------------------------------------------------------------
   bench::bench_time(results3$IMRL[[i]] <- IMR:::imr.cv_laplace(data_nocov,
-                                                              trace=1, hpar=hparam, intercept_row = F,
-                                                              intercept_col = F, ls_initial = T,
+                                                              trace=1, hpar=hparam, row_intercept = F,
+                                                              col_intercept = F, ls_initial = T,
                                                               seed = seed, warm_start = NULL,
                                                               maxit=600,
                                                               shared_information = TRUE,
@@ -213,8 +213,8 @@ for(i in 1:B){
   mdata <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)
   mdata$X <- mdata$Z <- NULL
   bench::bench_time(results3$IMRXZL[[i]] <- IMR:::imr.cv_laplace(mdata,
-                                                                trace=1, hpar=hparam, intercept_row = F,
-                                                                intercept_col = F, ls_initial = T,
+                                                                trace=1, hpar=hparam, row_intercept = F,
+                                                                col_intercept = F, ls_initial = T,
                                                                 maxit=600,
                                                                 seed = seed, warm_start = NULL,
                                                                 shared_information = TRUE,
@@ -225,8 +225,8 @@ for(i in 1:B){
 
   data_nocov <- IMR::prepare_data(dat$Y, NULL, NULL, NULL, NULL)
   bench::bench_time(results3$IMR[[i]] <- IMR:::imr.cv_laplace(data_nocov,
-                                                               trace=1, hpar=hparam, intercept_row = F,
-                                                               intercept_col = F, ls_initial = T,
+                                                               trace=1, hpar=hparam, row_intercept = F,
+                                                               col_intercept = F, ls_initial = T,
                                                                seed = seed, warm_start = NULL,
                                                                maxit=600,
                                                                shared_information = TRUE,
@@ -237,8 +237,8 @@ for(i in 1:B){
   mdata <- IMR::prepare_data(dat$Y, dat$X, dat$Z, NULL, NULL)
   mdata$X <- mdata$Z <- NULL
   bench::bench_time(results3$IMRXZ[[i]] <- IMR:::imr.cv_laplace(mdata,
-                                                                 trace=1, hpar=hparam, intercept_row = F,
-                                                                 intercept_col = F, ls_initial = T,
+                                                                 trace=1, hpar=hparam, row_intercept = F,
+                                                                 col_intercept = F, ls_initial = T,
                                                                  maxit=600,
                                                                  seed = seed, warm_start = NULL,
                                                                  shared_information = TRUE,
@@ -307,8 +307,8 @@ for(i in 1:B){
   results4$data[[i]] <- dat
   #--------------------------------------------------------------------------------------
   bench::bench_time(results4$IMRL[[i]] <- IMR:::imr.cv_laplace(data_nocov,
-                                                               trace=1, hpar=hparam, intercept_row = F,
-                                                               intercept_col = F, ls_initial = T,
+                                                               trace=1, hpar=hparam, row_intercept = F,
+                                                               col_intercept = F, ls_initial = T,
                                                                seed = seed, warm_start = NULL,
                                                                maxit=600,
                                                                shared_information = TRUE,
@@ -319,8 +319,8 @@ for(i in 1:B){
   mdata <- IMR::prepare_data(dat$Y, dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)
   mdata$X <- mdata$Z <- NULL
   bench::bench_time(results4$IMRXZL[[i]] <- IMR:::imr.cv_laplace(mdata,
-                                                                 trace=1, hpar=hparam, intercept_row = F,
-                                                                 intercept_col = F, ls_initial = T,
+                                                                 trace=1, hpar=hparam, row_intercept = F,
+                                                                 col_intercept = F, ls_initial = T,
                                                                  maxit=600,
                                                                  seed = seed, warm_start = NULL,
                                                                  shared_information = TRUE,
@@ -331,8 +331,8 @@ for(i in 1:B){
 
   data_nocov <- IMR::prepare_data(dat$Y, NULL, NULL, NULL, NULL)
   bench::bench_time(results4$IMR[[i]] <- IMR:::imr.cv_laplace(data_nocov,
-                                                              trace=1, hpar=hparam, intercept_row = F,
-                                                              intercept_col = F, ls_initial = T,
+                                                              trace=1, hpar=hparam, row_intercept = F,
+                                                              col_intercept = F, ls_initial = T,
                                                               seed = seed, warm_start = NULL,
                                                               maxit=600,
                                                               shared_information = TRUE,
@@ -343,8 +343,8 @@ for(i in 1:B){
   mdata <- IMR::prepare_data(dat$Y, dat$X, dat$Z, NULL, NULL)
   mdata$X <- mdata$Z <- NULL
   bench::bench_time(results4$IMRXZ[[i]] <- IMR:::imr.cv_laplace(mdata,
-                                                                trace=1, hpar=hparam, intercept_row = F,
-                                                                intercept_col = F, ls_initial = T,
+                                                                trace=1, hpar=hparam, row_intercept = F,
+                                                                col_intercept = F, ls_initial = T,
                                                                 maxit=600,
                                                                 seed = seed, warm_start = NULL,
                                                                 shared_information = TRUE,

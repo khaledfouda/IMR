@@ -53,14 +53,14 @@ one_loop_fit <- function(dat, hpar = IMR::get_imr_default_hparams(), seed=2025){
 
 
  # fit.imr <- IMR::imr.cv(dat$fit_data$Y_full, X=dat$fit_data$X$Q,
- #                      Z = dat$fit_data$Z$Q,intercept_row = F,
+ #                      Z = dat$fit_data$Z$Q,row_intercept = F,
  #                      hpar = hpar, seed = seed, ls_initial = FALSE,
- #                      intercept_col = F, verbose=1)
+ #                      col_intercept = F, verbose=1)
 
   fit.nlrr <-  IMR:::nlrr.cv(dat$fit_data$Y_full, X=dat$fit_data$X$Q,
-                           Z = dat$fit_data$Z$Q,intercept_row = F,
+                           Z = dat$fit_data$Z$Q,row_intercept = F,
                            hpar = hpar, seed = seed,
-                           intercept_col = F, verbose=1)
+                           col_intercept = F, verbose=1)
 
   fitsi <- simpute.cv(dat$fit_data$train, dat$fit_data$valid, dat$fit_data$Y_full,
                       trace=T,
@@ -290,9 +290,9 @@ dat <- increase_sparsity(dat, .02)
 
 
 fit.nlrr <-  IMR:::nlrr.cv(dat$fit_data$Y_full, X=dat$fit_data$X$Q,
-                           Z = dat$fit_data$Z$Q,intercept_row = F,
+                           Z = dat$fit_data$Z$Q,row_intercept = F,
                            hpar = hpar, seed = seed,
-                           intercept_col = F, verbose=1)
+                           col_intercept = F, verbose=1)
 
 lambdas %<>% rbind(
   data.frame(sparsity=dat$sparsity, n=1000,beta=fit.nlrr$lambda_beta,
@@ -556,8 +556,8 @@ fit.nlrr$v <- fitsi$fit$v
 
 
 fit0 <- IMR::imr.fit_no_low_rank(dat$fit_data$train, dat$fit_data$X$Q,
-                                 lambda_beta=0.4, intercept_row = T,
-                                 intercept_col = T)
+                                 lambda_beta=0.4, row_intercept = T,
+                                 col_intercept = T)
 fit0$gamma0
 
 
