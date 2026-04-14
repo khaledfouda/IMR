@@ -192,15 +192,58 @@ get_metric <- function(metric) {
   stop("Unvalid error metric")
 }
 
-#' Evaluate Model Predictions on all metrics
+#' Evaluate Model Predictions
+#'
+#' @description
+#' Computes common error metrics between a vector of predicted
+#' values and a vector of actual/observed values.
+#'
+#' @param predicted A numeric vector of predicted values.
+#' @param actual A numeric vector of actual/observed values. Must be the same
+#'   length as `predicted`.
+#' @param metric A character string specifying the single metric to compute
+#'   (one of `"rmse"`, `"rrmse"`, `"mae"`, `"mape"`, `"spearman"`). If set to
+#'   `"all"` (the default), the function computes and returns all available metrics.
+#' @param na.rm Logical. Should missing values be removed before computation?
+#'   Defaults to `TRUE`. Note that removal is performed pairwise: if an `NA` is
+#'   present at a specific index in either `predicted` or `actual`, that entire
+#'   pair is excluded from the calculation.
+#'
+#' @details
+#' The function calculates the following metrics:
+#' \itemize{
+#'   \item \strong{RMSE}: Root Mean Squared Error.
+#'   \item \strong{Rel_RMSE}: Relative Root Mean Squared Error.
+#'   \item \strong{MAE}: Mean Absolute Error. The average of the absolute differences between predictions and actual observations.
+#'   \item \strong{MAPE}: Mean Absolute Percentage Error. Measures prediction accuracy as a percentage.
+#'   \item \strong{Spearman_Rho}: Spearman's rank correlation coefficient (Spearman's Rho). Measures the monotonic relationship between the predicted and actual values.
+#' }
+#'
+#' @return
+#' If `metric = "all"`, returns a one-row data frame containing
+#' columns for each calculated metric. If a specific metric is requested, returns
+#' a single numeric value.
+#'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' actual_vals <- c(10, 15, 20, NA, 30)
+#' pred_vals <- c(11, 14, 22, 25, 28)
+#'
+#' # Get a tibble of all metrics (NAs removed pairwise automatically)
+#' evaluate(pred_vals, actual_vals)
+#'
+#' # Get only the Root Mean Squared Error
+#' evaluate(pred_vals, actual_vals, metric = "rmse")
+#' }
 evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
   p <- as.numeric(predicted)
   a <- as.numeric(actual)
   if (stringr::str_to_lower(metric) != "all") {
     return(IMR:::get_metric(metric)(p, a, na.rm))
   }
-  tibble(
+  data.frame(
     RMSE            = error_metrics$rmse(p, a, na.rm),
     Rel_RMSE        = error_metrics$rrmse(p, a, na.rm),
     MAE             = error_metrics$mae(p, a, na.rm),

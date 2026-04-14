@@ -467,11 +467,91 @@ imr_tune_lasso <- function(data,
   list(fit = best_fit_obj, params = best_params, history = history)
 }
 # =============================================================================================
+
+#' Hyperparameter Tuning for IMR Models
+#'
+#' @description
+#' Performs hyperparameter tuning for an Incomplete Matrix Regression (IMR)
+#' model. It evaluates model performance on a validation set (`y_valid`) while
+#' training on a training set (`y_train`), using a variety of grid search and
+#' alternating optimization strategies.
+#'
+#' @param data An object of class `"imr_data"` containing the training and
+#'   validation splits.
+#' @param grid An object of class `"imr_tune_grid"`. **Note:** Any `"auto"` maximum
+#'   values in this grid must be resolved using \code{\link{imr_set_grid_limits}}
+#'   prior to calling `imr_tune`.
+#' @param final_fit Logical. If `TRUE`, after identifying the optimal hyperparameters,
+#'   the function performs one final model fit on the entire complete dataset (`Y`)
+#'   and returns it. Defaults to `TRUE`.
+#' @param use_warm_in_final Internal. Pending deprecation.
+#' @param fast_laplace Logical. Toggles the algorithm used for tuning the low-rank
+#'   component (Laplace). See Details for the difference between fast and slow modes.
+#'   Defaults to `TRUE`.
+#' @param convergence An `"imr_convergence"` object controlling the internal model fits.
+#' @param error_function A function used to evaluate prediction error on the validation
+#'   set. Must take two arguments `(predicted, actual)`. Defaults to `IMR::error_metrics$rmse`.
+#' @param warm_start Internal. Pending deprecation.
+#' @param verbose Integer. Controls the level of printed progress output. Defaults to `1`.
+#' @param n_cores Integer. Number of CPU cores to use for parallel execution over
+#'   covariate grids. Defaults to `4`.
+#' @param seed Integer. Random seed for reproducibility. Defaults to `NULL`.
+#' @param laplace_log_scale Logical. If `TRUE`, the `lambda_m` grid is generated on
+#'   a logarithmic scale, concentrating more test values near the minimum. Recommended
+#'   when the maximum `lambda_m` is very large. Defaults to `TRUE`.
+#' @param tune_maxit Integer. The maximum number of alternating optimization iterations
+#'   allowed when tuning all three parameters (Scenario 3). Defaults to `10`.
+#' @param tune_tol Numeric. The relative tolerance for early stopping during alternating
+#'   optimization. If the absolute relative change in validation error falls below this
+#'   threshold, tuning stops. Defaults to `1e-4`.
+#'
+#' @details
+#' **Tuning Scenarios:**
+#' The function automatically selects one of three tuning scenarios based on the
+#' complexity of the provided `grid` and data structure:
+#' \enumerate{
+#'   \item \strong{Laplace Only:} If both `beta` and `gamma` are either fixed or
+#'     not part of the model, tuning operates strictly sequentially over the low-rank
+#'     component parameters.
+#'   \item \strong{Laplace + One Covariate:} If only one covariate penalty (either
+#'     `beta` or `gamma`) requires tuning, the function parallelizes over the covariate
+#'     grid. For each covariate penalty value, it runs Scenario 1 to find the optimal
+#'     Laplace parameters.
+#'   \item \strong{Alternating Optimization (All Three):} If `beta`, `gamma`, and
+#'     Laplace all require tuning, an alternating loop is used. It fixes `gamma`,
+#'     tunes `beta` + Laplace (Scenario 2), then fixes `beta`, tunes `gamma` + Laplace,
+#'     and repeats. This continues until the validation error stabilizes (`tune_tol`)
+#'     or `tune_maxit` is reached.
+#' }
+#'
+#' **Laplace Tuning Modes (`fast_laplace`):**
+#' \itemize{
+#'   \item \strong{Fast Mode (`TRUE`):} Starts at the maximum `lambda_m` and minimum
+#'     rank. It simultaneously steps down `lambda_m` while stepping up the rank at
+#'     each iteration. It stops when validation performance ceases to improve based
+#'     on the grid's patience/streaks parameter. Excellent for rapid modeling.
+#'   \item \strong{Slow Mode (`FALSE`):} Creates a complete nested grid. For every
+#'     value of `lambda_m`, it iteratively tests ranks from smallest to largest until
+#'     performance degrades. Slower, but exhaustively maps the performance space for
+#'     a final, fine-tuned model.
+#' }
+#'
+#' @return A list containing:
+#' \itemize{
+#'   \item \code{all_params}: A data frame containing the best parameter combinations
+#'         found during each main iteration of the tuning process.
+#'   \item \code{history}: A data frame containing the comprehensive history of all
+#'         evaluated parameter combinations and their associated errors.
+#'   \item \code{fit}: The final fitted `"imr_fit"` object using the best parameters
+#'         (if `final_fit = TRUE`).
+#'   \item \code{params}: A one-row data frame isolating the absolute best hyperparameter
+#'         combination found.
+#'   \item \code{time_secs}: The total tuning execution time in seconds.
+#' }
+#'
 #' @export
 imr_tune <- function(data,
                      grid,
-                     default_lambda_beta = 0,
-                     default_lambda_gamma = 0,
                      final_fit = TRUE,
                      use_warm_in_final = TRUE,
                      fast_laplace = TRUE,
@@ -491,10 +571,10 @@ imr_tune <- function(data,
   tune_beta <- data$model$row_covariates && data$meta$has_X && grid$beta$length > 1
   tune_gamma <- data$model$col_covariates && data$meta$has_Z && grid$gamma$length > 1
 
-  if(data$model$row_covariates && grid$beta$length == 1)
-    default_lambda_beta <- grid$beta$min
-  if(data$model$col_covariates && grid$gamma$length == 1)
-    default_lambda_gamma <- grid$gamma$min
+  # if(data$model$row_covariates && grid$beta$length == 1)
+  #   default_lambda_beta <- grid$beta$min
+  # if(data$model$col_covariates && grid$gamma$length == 1)
+  #   default_lambda_gamma <- grid$gamma$min
 
   #----------------------------------------------------------
   # Scenario 1: Tune Laplace Only
@@ -504,7 +584,7 @@ imr_tune <- function(data,
     laplace_function <- if (fast_laplace) imr_tune_laplace_fast else imr_tune_laplace_slow
     out_obj <- laplace_function(
       data = data, grid = grid,
-      lambda_beta = default_lambda_beta, lambda_gamma = default_lambda_gamma,
+      lambda_beta = grid$beta$min, lambda_gamma = grid$gamma$min,
       final_fit = final_fit, convergence = convergence,
       error_function = error_function, warm_start = warm_start,
       log_grid = laplace_log_scale,
@@ -522,7 +602,7 @@ imr_tune <- function(data,
   #-----------------------------------------------------------------
   if (tune_beta != tune_gamma) {
     target <- if (tune_beta) "beta" else "gamma"
-    fixed_other <- if (tune_beta) default_lambda_gamma else default_lambda_beta
+    fixed_other <- if (tune_beta) grid$gamma$min else grid$beta$min
 
     if (verbose > 0) message(sprintf("Tuning %s + Laplace...", (target)))
     out_obj <- imr_tune_lasso(
