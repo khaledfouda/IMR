@@ -95,16 +95,16 @@ generate_similarity_bixi <- function(miss      = 0.8,
                                      file_dir = "./article/bixi/data/splits/",
                                      spatial = "simulated",
                                      temporal = "simulated",
-                                     spatial_jitter = FALSE,
-                                     temporal_jitter = FALSE,
+                                     spatial_jitter = TRUE,
+                                     temporal_jitter = TRUE,
                                      matern_range = function(x){x <- x[upper.tri(x)]; median(x[x>0])},
                                      matern.cor.target = 0.5,
-                                     jitter_kappa_max = 1e4,
+                                     jitter_kappa_max = 1e3,
                                      jitter_tau_max = 1e-2,
                                      RBF_ell_t = 1.3,
                                      RBF_ell_s = 1.3,
                                      matern_scale = NULL){
-  require(BKTR)
+  library(BKTR)
   bkdat <- BixiData$new()
   stopifnot(temporal %in% c("Matern", "original", "RBF", "none", "simulated"))
   stopifnot(spatial %in% c("Matern", "original", "none", "RBF", "simulated"))

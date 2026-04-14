@@ -8,7 +8,7 @@ mutate_bixi_file <- function(data,
                            prefix = "",
                            file_override = FALSE,
                            create_folder = FALSE,
-                           out_dir = "./article_results/bixi/data/splits/",
+                           out_dir = "./article/bixi/data/splits2/",
                            read = FALSE) {
 
   if (!dir.exists(out_dir)) {
@@ -342,19 +342,19 @@ preprocess_bixi_data <- function(miss_pct = 0.5,
 #'
 #' @param time_cov Logical; if TRUE, use time-varying covariates
 #' @return A list with matrices X, Y, masks, and splits.
-prepare_bixi_data <- function(miss_p = 0.5,
-                              timestamp = "25Sep", seed = NULL,
+prepare_bixi_data <- function(miss_p = 0.25,
+                              timestamp = "Feb_last", seed = NULL,
                               val_prop = 0.2,
-                              prefix = "",
-                              train_prefix = "",
+                              prefix = "1",
+                              train_prefix = "65",
                               x_keep = c(
                                 "x_humidity", "x_max_temp_f", "x_mean_temp_c",
                                 "x_total_precip_mm", "x_holiday"
                               ),
-                              bktr_variables = FALSE,
-                              file_dir = "./article_results/bixi/data/splits/",
-                              temporal = "none",
-                              spatial = "none",
+                              bktr_variables = TRUE,
+                              file_dir = "./article/bixi/data/splits2/",
+                              temporal = "simulated",
+                              spatial = "simulated",
                               ...
                               # these parameters are sent to the kernel generation
 ) {
@@ -362,9 +362,11 @@ prepare_bixi_data <- function(miss_p = 0.5,
   if(train_prefix != "")
     new_prefix <- paste0(prefix, "_train", train_prefix)
   train_df <- mutate_bixi_file(NULL, "train", miss_p, timestamp, new_prefix,
-                               out_dir = file_dir, read=TRUE)
+                               out_dir = file_dir, read=TRUE) %>%
+    mutate(row = as.Date(row))
   test_df <- mutate_bixi_file(NULL, "test", miss_p, timestamp, prefix,
-                               out_dir = file_dir, read=TRUE)
+                               out_dir = file_dir, read=TRUE) %>%
+    mutate(row = as.Date(row))
 
   # Build covariate matrix X ----------------------
   X <- train_df %>%
@@ -441,8 +443,10 @@ prepare_bixi_data <- function(miss_p = 0.5,
   output <- list()
 
   output$modd <- IMR::imr_data(Y, as.matrix(X), as.matrix(Z),
-                               similarity_rows = if(temporal =="none") NULL else imr_similarity(kernels$temporal,invert = FALSE),
-                               similarity_cols = if(spatial == "none") NULL else imr_similarity(kernels$spatial, invert = FALSE),
+                               similarity_rows = if(temporal =="none") NULL else
+                                 IMR::imr_similarity(kernels$temporal,invert = FALSE),
+                               similarity_cols = if(spatial == "none") NULL else
+                                 IMR::imr_similarity(kernels$spatial, invert = FALSE),
                                val_prop = val_prop, seed = seed )
   # output$modd <- IMR::prepare_data(Y,
   #   X = as.matrix(X), Z = as.matrix(Z),

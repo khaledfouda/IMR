@@ -3,7 +3,7 @@ library(devtools)
 load_all()
 #devtools::uninstall(); devtools::install()
 require(tidyverse)
-source("./article_results/simulation/generate_simu_dat.R")
+source("/article_results/simulation/generate_simu_dat.R")
 
 n = 800; m = 900;
 dat <-

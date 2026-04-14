@@ -5,9 +5,9 @@ library(devtools)
 devtools::load_all()
 library(tidyverse)
 library(magrittr)
-source("./article/bixi/data_bixi.R")
+source("./article/Bixi/data_bixi.R")
 source("./other_models/SoftImpute_cv.R")
-source("./article/bixi/fit_bktr.R")
+source("./article/Bixi/fit_bktr.R")
 source("./article/bixi/helpers_bixi.R")
 #------------------------------------------------
 # we begin by generating the data

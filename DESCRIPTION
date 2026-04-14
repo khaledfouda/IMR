@@ -26,3 +26,5 @@ LazyData: true
 RoxygenNote: 7.3.3
 SystemRequirements: C++17
 Roxygen: list(markdown = TRUE)
+Depends: 
+    R (>= 3.5)

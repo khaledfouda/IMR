@@ -2,7 +2,7 @@
 #' @importClassesFrom softImpute Incomplete
 as.Incomplete <- function(x) {
   stopifnot(inherits(x, c("matrix", "Matrix")))
-  x <- as(x, "dgCMatrix")
+  x <- as(x, "CsparseMatrix")
   na <- is.na(x@x)
   if (any(na)) {
     x@x[na] <- 0
@@ -24,5 +24,5 @@ setAs("Matrix", "Incomplete", function(from) as.Incomplete(from))
 #  to allow converting an Incomplete back to a dense matrix
 #' @export
 setMethod("as.matrix", "Incomplete", function(x) {
-  as.matrix(as(x, "dgCMatrix"))
+  as.matrix(as(x, "CsparseMatrix"))
 })

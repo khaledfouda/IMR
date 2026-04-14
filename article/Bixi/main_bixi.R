@@ -2,10 +2,10 @@ library(tidyverse)
 library(devtools)
 load_all()
 library(magrittr)
-source("./article_results/bixi/preprocess_data.R")
+source("./article/Bixi/preprocess_data.R")
 source("./other_models/SoftImpute_cv.R")
-source("./article_results/bixi/fit_bktr.R")
-source("./article_results/bixi/helpers.R")
+source("./article/bixi/fit_bktr.R")
+source("./article/bixi/helpers.R")
 
 # the following line is needed only once. The data is already created.
 # preprocess_bixi_data(.6, "25Sep", 2025)

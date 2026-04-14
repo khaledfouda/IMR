@@ -491,6 +491,11 @@ imr_tune <- function(data,
   tune_beta <- data$model$row_covariates && data$meta$has_X && grid$beta$length > 1
   tune_gamma <- data$model$col_covariates && data$meta$has_Z && grid$gamma$length > 1
 
+  if(data$model$row_covariates && grid$beta$length == 1)
+    default_lambda_beta <- grid$beta$min
+  if(data$model$col_covariates && grid$gamma$length == 1)
+    default_lambda_gamma <- grid$gamma$min
+
   #----------------------------------------------------------
   # Scenario 1: Tune Laplace Only
   #------------------------------------------------------------
