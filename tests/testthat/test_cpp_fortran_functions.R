@@ -1,9 +1,4 @@
-library(testthat)
-
-
-test_that("C++/Fortran functions", {
-  library(Matrix)
-  library(softImpute)
+testthat::test_that("C++/Fortran functions", {
   # -------------------------------------------------------------------
   #  Data Preparations
   # -------------------------------------------------------------------
@@ -29,7 +24,7 @@ test_that("C++/Fortran functions", {
   }
   mat[dat$y == 0] = NA
   mat <- as.Incomplete(mat)
-  expect_equal(x_row_test, mat@x,
+  testthat::expect_equal(x_row_test, mat@x,
                info = "Row additions failed to update correct indices.")
 
   # -------------------------------------------------------------------
@@ -46,7 +41,7 @@ test_that("C++/Fortran functions", {
   }
   mat[dat$y == 0] = NA
   mat <- as.Incomplete(mat)
-  expect_equal(x_row_test,  mat@x,
+  testthat::expect_equal(x_row_test,  mat@x,
                info = "Column additions failed to update correct indices.")
   #-----------------------------------------------------------------------
   # Test 3,4: row and column means
@@ -61,10 +56,10 @@ test_that("C++/Fortran functions", {
   actual_row_means <- row_means_cpp(mat@x, mat@i, nr, nc)
   actual_col_means <- col_means_cpp(mat@x, mat@p, nr, nc)
 
-  expect_equal(actual_row_means, expected_row_means,
+  testthat::expect_equal(actual_row_means, expected_row_means,
                info = "row means do not match base R.")
 
-  expect_equal(actual_col_means, expected_col_means,
+  testthat::expect_equal(actual_col_means, expected_col_means,
                info = "col means do not match base R.")
   #-----------------------------------------------------------------------
   # Test 5,6: Soft-Thresholding
@@ -76,11 +71,11 @@ test_that("C++/Fortran functions", {
     ncol = ncol(dat$beta)
   )
   actual_beta <- soft_threshold_cpp(dat$beta, lambda)
-  expect_equal(actual_beta, expected_beta,
+  testthat::expect_equal(actual_beta, expected_beta,
                info = "Fast soft-thresholding failed to match base R.")
   zeros_expected <- sum(expected_beta == 0)
   zeros_actual   <- sum(actual_beta == 0)
-  expect_equal(zeros_actual, zeros_expected,
+  testthat::expect_equal(zeros_actual, zeros_expected,
                info = "C++ function did not produce the correct number of exact zeros.")
   #-----------------------------------------------------------------------
   # Test 7: Frob ratio
@@ -92,7 +87,7 @@ test_that("C++/Fortran functions", {
 
   expected <- softImpute:::Frob(U1, d1, V1, U2, d2, V2)
   actual <- frob_ratio_cpp(U1, d1, V1, U2, d2, V2)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "Frob ratio does not match.")
   #-----------------------------------------------------------------------
   # Test 8: Updating A without similarity
@@ -103,7 +98,7 @@ test_that("C++/Fortran functions", {
     diag(1 / (1 + lambda / d1),100,100) %>%
     as.matrix()
   actual <- update_A_cpp(mat, U1, V1, d1, 1.2)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "update_A does not match.")
   #-----------------------------------------------------------------------
   # Test 9: Updating B without similarity
@@ -114,7 +109,7 @@ test_that("C++/Fortran functions", {
     diag(1 / (1 + lambda / d1),100,100) %>%
     as.matrix()
   actual <- update_B_cpp(mat, U1, V1, d1, 1.2)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "update_B does not match.")
   #-----------------------------------------------------------------------
   # Test 10: Updating A with similarity
@@ -128,7 +123,7 @@ test_that("C++/Fortran functions", {
     t(S$U) %*% W[,j]
 
   actual <- update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "update_A_sim does not match.")
   #-----------------------------------------------------------------------
   # Test 11: Updating B with similarity
@@ -141,7 +136,7 @@ test_that("C++/Fortran functions", {
                                 (1/(S2$d+d1[j]))) %*% t(S2$U) %*% W[,j]
 
   actual <- update_B_sim_cpp(mat, U1, V1, d1, S2$U, S2$d)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "update_A_sim does not match.")
   #-----------------------------------------------------------------------
   # Test 12,13: SVD small nr
@@ -149,32 +144,32 @@ test_that("C++/Fortran functions", {
   unsvd <- function(x) x$u %*% (t(x$v) * x$d)
   expected <- svd(t(dat$x))
   actual <- svd_small_nr_cpp(t(dat$x))
-  expect_equal(actual$d, expected$d,
+  testthat::expect_equal(actual$d, expected$d,
                info = "SVD small nr eigenvalues don't match")
-  expect_equal(unsvd(actual), unsvd(expected),
+  testthat::expect_equal(unsvd(actual), unsvd(expected),
                info = "SVD small nr reconstructions don't match")
   #-----------------------------------------------------------------------
   # Test 14,15: SVD small nc
   #-----------------------------------------------------------------------
   expected <- svd((dat$x))
   actual <- svd_small_nc_cpp((dat$x))
-  expect_equal(actual$d, expected$d,
+  testthat::expect_equal(actual$d, expected$d,
                info = "SVD small nr eigenvalues don't match")
-  expect_equal(unsvd(actual), unsvd(expected),
+  testthat::expect_equal(unsvd(actual), unsvd(expected),
                info = "SVD small nr reconstructions don't match")
   #-----------------------------------------------------------------------
   # Test 16: [Fortran]  crossprod.f90
   #-----------------------------------------------------------------------
   actual <- (dat$x %*% dat$beta)[as.matrix(data$valid_mask)==1]
   expected <- partial_crossprod(dat$x, dat$beta, data$valid_mask@i, data$valid_mask@p)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "Crossprod don't match")
   #-----------------------------------------------------------------------
   # Test 17: [Fortran]  crossprodt.f90
   #-----------------------------------------------------------------------
   actual <- (dat$gamma %*% t(dat$z))[as.matrix(data$valid_mask)==1]
   expected <- partial_crossprod(dat$gamma, dat$z, data$valid_mask@i, data$valid_mask@p,T)
-  expect_equal(actual, expected,
+  testthat::expect_equal(actual, expected,
                info = "Crossprod don't match")
 
 

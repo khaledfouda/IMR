@@ -1,14 +1,17 @@
 #' @export
-#' @importClassesFrom softImpute Incomplete
+#' @importClassesFrom Matrix dgCMatrix
+setClass("Incomplete", "dgCMatrix")
+
+#' @export
 as.Incomplete <- function(x) {
   stopifnot(inherits(x, c("matrix", "Matrix")))
-  x <- as(x, "CsparseMatrix")
+  x <- as(x, "dgCMatrix")
   na <- is.na(x@x)
   if (any(na)) {
     x@x[na] <- 0
     x <- Matrix::drop0(x)
   }
-  methods::new("Incomplete", x)
+  new("Incomplete", x)
 }
 
 #' @export
@@ -20,15 +23,20 @@ setAs("matrix", "Incomplete", function(from) as.Incomplete(from))
 #' @export
 setAs("Matrix", "Incomplete", function(from) as.Incomplete(from))
 
+
+
 #' @export
-#' @exportS3Method base::as.matrix
+#' @method as.matrix Incomplete
 as.matrix.Incomplete <- function(x, ...) {
-  # Unwrap and force into a standard base R dense matrix
-  base::as.matrix(methods::as(x, "CsparseMatrix"))
+  out <- as.matrix(as(x, "dgCMatrix"))
+  return(out)
 }
+
 #' @export
-#' @exportS3Method base::t
+setMethod("as.matrix", "Incomplete", as.matrix.Incomplete)
+
+#' @export
+#' @importMethodsFrom Matrix t
 t.Incomplete <- function(x) {
-  # Unwrap, transpose, and re-wrap as Incomplete
-  as.Incomplete(t(methods::as(x, "CsparseMatrix")))
+  as.Incomplete(t(as(x, "dgCMatrix")))
 }
