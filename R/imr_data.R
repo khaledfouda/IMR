@@ -619,14 +619,7 @@ imr_similarity <- function(x,
   }
 
   if (invert) {
-    S <- tryCatch(
-      {
-        chol2inv(chol(S))
-      },
-      error = function(e) {
-        stop("Matrix inversion failed (matrix might be singular).")
-      }
-    )
+    S <- inv(S)
     source_type <- paste(source_type, "(Inverted)")
   }
 

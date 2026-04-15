@@ -10,10 +10,9 @@ as.Incomplete <- function(x) {
   }
   methods::new("Incomplete", x)
 }
+
 #' @export
 is.Incomplete <- function(x) inherits(x, "Incomplete")
-#' @export
-setMethod("as.matrix", "Incomplete", as.Incomplete)
 
 #' @export
 setAs("matrix", "Incomplete", function(from) as.Incomplete(from))
@@ -21,8 +20,15 @@ setAs("matrix", "Incomplete", function(from) as.Incomplete(from))
 #' @export
 setAs("Matrix", "Incomplete", function(from) as.Incomplete(from))
 
-#  to allow converting an Incomplete back to a dense matrix
 #' @export
-setMethod("as.matrix", "Incomplete", function(x) {
-  as.matrix(as(x, "CsparseMatrix"))
-})
+#' @exportS3Method base::as.matrix
+as.matrix.Incomplete <- function(x, ...) {
+  # Unwrap and force into a standard base R dense matrix
+  base::as.matrix(methods::as(x, "CsparseMatrix"))
+}
+#' @export
+#' @exportS3Method base::t
+t.Incomplete <- function(x) {
+  # Unwrap, transpose, and re-wrap as Incomplete
+  as.Incomplete(t(methods::as(x, "CsparseMatrix")))
+}

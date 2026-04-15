@@ -1,63 +1,65 @@
 library(testthat)
-library(Matrix)
+
 
 test_that("C++/Fortran functions", {
+  library(Matrix)
+  library(softImpute)
   # -------------------------------------------------------------------
   #  Data Preparations
   # -------------------------------------------------------------------
-  source("./article/simulation/generate_simu_dat.R")
+  #source("./tests/testthat/helper_generate_simulations.R")
   dat <- generate_simulated_data(100, 200, 5, 5, 5,sparsity_beta = 0)
   d1 <-  matrix(rbinom(10000,100,.2), 100, 100);d1 <- (d1 + t(d1)) / 2
   d2 <-  matrix(rbinom(20000,200,.2), 200, 200);d2 <- (d2 + t(d2)) / 2
-  S <- generate_similarity(d1, invert = T, jitter = 1);S
-  S2 <- generate_similarity(d2, invert = T, jitter = 1);S
-  data <- prepare_data(dat$Y, dat$X, dat$Z,val_prop = 0.2, S, S2);data
+  S <- imr_similarity(d1, invert = T, jitter = 1);S
+  S2 <- imr_similarity(d2, invert = T, jitter = 1);S
+  data <- imr_data(dat$y, dat$x, dat$z, S, S2, 0.2);data
 
   # -------------------------------------------------------------------
   # Test 1: Row Addition
   # -------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   add_per_row <- rnorm(nrow(mat))
   x_row_test <- mat@x + 0
 
-  IMR:::add_to_rows_inplace_cpp(x_row_test, mat@i, add_per_row)
+  add_to_rows_inplace_cpp(x_row_test, mat@i, add_per_row)
 
   for(i in 1:ncol(mat)){
     mat[,i] <- mat[,i] + add_per_row
   }
-  mat[dat$Y == 0] = NA
-  mat <- IMR::as.Incomplete(mat)
+  mat[dat$y == 0] = NA
+  mat <- as.Incomplete(mat)
   expect_equal(x_row_test, mat@x,
                info = "Row additions failed to update correct indices.")
 
   # -------------------------------------------------------------------
   # Test 2: Column Addition
   # -------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   add_per_col <- rnorm(ncol(mat))
   x_row_test <- mat@x + 0 # this is very important
 
-  IMR:::add_to_cols_inplace_cpp(x_row_test, mat@p, add_per_col)
+  add_to_cols_inplace_cpp(x_row_test, mat@p, add_per_col)
 
   for(i in 1:nrow(mat)){
     mat[i,] <- mat[i,] + add_per_col
   }
-  mat[dat$Y == 0] = NA
-  mat <- IMR::as.Incomplete(mat)
+  mat[dat$y == 0] = NA
+  mat <- as.Incomplete(mat)
   expect_equal(x_row_test,  mat@x,
                info = "Column additions failed to update correct indices.")
   #-----------------------------------------------------------------------
-  # Test 3: row and column means
+  # Test 3,4: row and column means
   #-----------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   nr <- nrow(mat)
   nc <- ncol(mat)
 
-  expected_row_means <- rowMeans(dat$Y)
-  expected_col_means <- colMeans(dat$Y)
+  expected_row_means <- rowMeans(dat$y)
+  expected_col_means <- colMeans(dat$y)
 
-  actual_row_means <- IMR:::row_means_cpp(mat@x, mat@i, nr, nc)
-  actual_col_means <- IMR:::col_means_cpp(mat@x, mat@p, nr, nc)
+  actual_row_means <- row_means_cpp(mat@x, mat@i, nr, nc)
+  actual_col_means <- col_means_cpp(mat@x, mat@p, nr, nc)
 
   expect_equal(actual_row_means, expected_row_means,
                info = "row means do not match base R.")
@@ -65,7 +67,7 @@ test_that("C++/Fortran functions", {
   expect_equal(actual_col_means, expected_col_means,
                info = "col means do not match base R.")
   #-----------------------------------------------------------------------
-  # Test 4: Soft-Thresholding
+  # Test 5,6: Soft-Thresholding
   #-----------------------------------------------------------------------
   lambda <- 0.2
   expected_beta <- matrix(
@@ -73,7 +75,7 @@ test_that("C++/Fortran functions", {
     nrow = nrow(dat$beta),
     ncol = ncol(dat$beta)
   )
-  actual_beta <- IMR:::soft_threshold_cpp(dat$beta, lambda)
+  actual_beta <- soft_threshold_cpp(dat$beta, lambda)
   expect_equal(actual_beta, expected_beta,
                info = "Fast soft-thresholding failed to match base R.")
   zeros_expected <- sum(expected_beta == 0)
@@ -81,43 +83,43 @@ test_that("C++/Fortran functions", {
   expect_equal(zeros_actual, zeros_expected,
                info = "C++ function did not produce the correct number of exact zeros.")
   #-----------------------------------------------------------------------
-  # Test 5: Frob ratio
+  # Test 7: Frob ratio
   #-----------------------------------------------------------------------
-  s1 <- svd(dat$Y)
-  s2 <- svd(dat$Y + matrix(rnorm(2000),100,200))
+  s1 <- svd(dat$y)
+  s2 <- svd(dat$y + matrix(rnorm(2000),100,200))
   U1 <- s1$u; V1 <- s1$v; d1 <- s1$d
   U2 <- s2$u; V2 <- s2$v; d2 <- s2$d
 
   expected <- softImpute:::Frob(U1, d1, V1, U2, d2, V2)
-  actual <- IMR:::frob_ratio_cpp(U1, d1, V1, U2, d2, V2)
+  actual <- frob_ratio_cpp(U1, d1, V1, U2, d2, V2)
   expect_equal(actual, expected,
                info = "Frob ratio does not match.")
   #-----------------------------------------------------------------------
-  # Test 6: Updating A without similarity
+  # Test 8: Updating A without similarity
   #-----------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   lambda <- 1.2
   expected <-(mat %*% V1 + U1 %*% diag(d1,100,100)) %*%
     diag(1 / (1 + lambda / d1),100,100) %>%
     as.matrix()
-  actual <- IMR:::update_A_cpp(mat, U1, V1, d1, 1.2)
+  actual <- update_A_cpp(mat, U1, V1, d1, 1.2)
   expect_equal(actual, expected,
                info = "update_A does not match.")
   #-----------------------------------------------------------------------
-  # Test 7: Updating B without similarity
+  # Test 9: Updating B without similarity
   #-----------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   lambda <- 1.2
   expected <-( t(mat) %*% U1 + V1 %*% diag(d1,100,100)) %*%
     diag(1 / (1 + lambda / d1),100,100) %>%
     as.matrix()
-  actual <- IMR:::update_B_cpp(mat, U1, V1, d1, 1.2)
+  actual <- update_B_cpp(mat, U1, V1, d1, 1.2)
   expect_equal(actual, expected,
                info = "update_B does not match.")
   #-----------------------------------------------------------------------
-  # Test 8: Updating A with similarity
+  # Test 10: Updating A with similarity
   #-----------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   W = mat %*% V1 %*% diag(d1) + U1 %*% diag(d1^2)
   expected = matrix(NA, nrow(U1), ncol(U1))
   for(j in 1:ncol(expected))
@@ -125,71 +127,55 @@ test_that("C++/Fortran functions", {
                                (1/(S$d+d1[j]))) %*%
     t(S$U) %*% W[,j]
 
-  actual <- IMR:::update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d)
+  actual <- update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d)
   expect_equal(actual, expected,
                info = "update_A_sim does not match.")
   #-----------------------------------------------------------------------
-  # Test 9: Updating B with similarity
+  # Test 11: Updating B with similarity
   #-----------------------------------------------------------------------
-  mat <- IMR::as.Incomplete(dat$Y)
+  mat <- as.Incomplete(dat$y)
   W = t(diag(d1) %*% t(U1) %*% mat + diag(d1^2) %*% t(V1))
   expected = matrix(NA, nrow(V1), ncol(V1))
   for(j in 1:ncol(expected))
     expected[,j] <- S2$U %*% (diag(1,nrow(expected)) *
                                 (1/(S2$d+d1[j]))) %*% t(S2$U) %*% W[,j]
 
-  actual <- IMR:::update_B_sim_cpp(mat, U1, V1, d1, S2$U, S2$d)
+  actual <- update_B_sim_cpp(mat, U1, V1, d1, S2$U, S2$d)
   expect_equal(actual, expected,
                info = "update_A_sim does not match.")
   #-----------------------------------------------------------------------
-  # Test 10: SVD small nr
+  # Test 12,13: SVD small nr
   #-----------------------------------------------------------------------
   unsvd <- function(x) x$u %*% (t(x$v) * x$d)
-  expected <- svd(t(dat$X))
-  actual <- IMR:::svd_small_nr_cpp(t(dat$X))
+  expected <- svd(t(dat$x))
+  actual <- svd_small_nr_cpp(t(dat$x))
   expect_equal(actual$d, expected$d,
                info = "SVD small nr eigenvalues don't match")
   expect_equal(unsvd(actual), unsvd(expected),
                info = "SVD small nr reconstructions don't match")
   #-----------------------------------------------------------------------
-  # Test 11: SVD small nc
+  # Test 14,15: SVD small nc
   #-----------------------------------------------------------------------
-  expected <- svd((dat$X))
-  actual <- IMR:::svd_small_nc_cpp((dat$X))
+  expected <- svd((dat$x))
+  actual <- svd_small_nc_cpp((dat$x))
   expect_equal(actual$d, expected$d,
                info = "SVD small nr eigenvalues don't match")
   expect_equal(unsvd(actual), unsvd(expected),
                info = "SVD small nr reconstructions don't match")
   #-----------------------------------------------------------------------
-  # Test 12: [Fortran]  crossprod.f90
+  # Test 16: [Fortran]  crossprod.f90
   #-----------------------------------------------------------------------
-  actual <- (dat$X %*% dat$beta)[as.matrix(data$valid_mask)==1]
-  expected <- IMR:::partial_crossprod(dat$X, dat$beta, data$valid_mask@i, data$valid_mask@p)
+  actual <- (dat$x %*% dat$beta)[as.matrix(data$valid_mask)==1]
+  expected <- partial_crossprod(dat$x, dat$beta, data$valid_mask@i, data$valid_mask@p)
   expect_equal(actual, expected,
                info = "Crossprod don't match")
   #-----------------------------------------------------------------------
-  # Test 13: [Fortran]  crossprodt.f90
+  # Test 17: [Fortran]  crossprodt.f90
   #-----------------------------------------------------------------------
-  actual <- (dat$gamma %*% t(dat$Z))[as.matrix(data$valid_mask)==1]
-  expected <- IMR:::partial_crossprod(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T)
+  actual <- (dat$gamma %*% t(dat$z))[as.matrix(data$valid_mask)==1]
+  expected <- partial_crossprod(dat$gamma, dat$z, data$valid_mask@i, data$valid_mask@p,T)
   expect_equal(actual, expected,
                info = "Crossprod don't match")
 
 
 })
-#
-#
-# bench::mark(
-#
-#   actual <- (dat$gamma %*% t(dat$Z))[as.matrix(data$valid_mask)==1],
-#   expected_old  <- IMR:::partial_crossprod(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T),
-#   expected_old2  <- IMR:::partial_crossprod(dat$gamma, t(dat$Z), data$valid_mask@i, data$valid_mask@p),
-#   expected_fast <- IMR:::partial_crossprod_fast(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T),
-#
-#   check = TRUE,
-#   iterations = 10000
-# )
-#
-#
-# clean_dll(); Rcpp::compileAttributes(); document(); load_all()
-
