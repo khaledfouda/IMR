@@ -72,23 +72,26 @@ generate_simulated_data <- function(
   e_mat <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
 
   y_mat <- (theta + e_mat) * mask
+  if(100 < max(n/2, m/2)){
+    rank_theta <- sum(irlba::irlba(theta, nv = 100)$d)
+  }else
   rank_theta <- qr(theta)$rank
 
   #  Done :) ------------------------------------------------------------------
   out <- list(
     theta = theta,
     mask  = mask,
-    y     = y_mat,
-    m     = m_mat,
+    Y     = y_mat,
+    M     = m_mat,
     rank  = rank_theta
   )
 
   if (p > 0) {
-    out$x <- x_mat
+    out$X <- x_mat
     out$beta <- beta_mat
   }
   if (q > 0) {
-    out$z <- z_mat
+    out$Z <- z_mat
     out$gamma <- gamma_mat
   }
 

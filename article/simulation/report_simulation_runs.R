@@ -4,9 +4,8 @@ load_all()
 # devtools::uninstall(); devtools::install()
 require(tidyverse)
 require(magrittr)
-source("./article/simulation/generate_simu_dat.R")
-source("./other_models/SoftImpute_cv.R")
-source("./other_models/MCCI.R")
+source("./article/other_models/SoftImpute_cv.R")
+source("./article/other_models/MCCI.R")
 
 
 
@@ -83,10 +82,8 @@ for(b in 1:500){
     dat <-
       generate_simulated_data(n, m, r, p, 0, .8,
                               sparsity_beta = 0,
-                              intercept = FALSE,
-                              structured_error_A = F, SNR = 1,
-                              structured_error_B = F,
-                              prepare_for_fitting = F, mv_coeffs = T, seed = seed)
+                              snr = 1,
+                              seed = seed)
 
 
     mdat <- IMR::imr_data(Y = dat$Y, X = dat$X, seed = seed, val_prop = 0.2);
@@ -191,10 +188,8 @@ for(b in 1:500){
     generate_simulated_data(n, m, r, p, q, .7,
                             sparsity_beta = 0,
                             sparsity_gamma = 0,
-                            intercept = FALSE,
-                            structured_error_A = F, SNR = 1,
-                            structured_error_B = F,
-                            prepare_for_fitting = F, mv_coeffs = T, seed = seed)
+                             snr = 1,
+                             seed = seed)
   for(pct in 1:length(missing_pct)){
     start2 = Sys.time()
     if(pct > 1)
@@ -300,10 +295,8 @@ for(b in 1:500){
     generate_simulated_data(n, m, r, p, q, .7,
                             sparsity_beta = 0,
                             sparsity_gamma = 0,
-                            intercept = FALSE,
-                            structured_error_A = F, SNR = 1,
-                            structured_error_B = F,
-                            prepare_for_fitting = F, mv_coeffs = T, seed = seed)
+                             snr = 1,
+                             seed = seed)
   for(pct in 1:length(missing_pct)){
     start2 = Sys.time()
     if(pct > 1)

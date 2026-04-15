@@ -187,7 +187,7 @@ get_metric <- function(metric) {
     return(error_metrics$mape)
   }
   if (stringr::str_to_lower(metric) == "spearman") {
-    return(error_metric$spearman)
+    return(error_metrics$spearman)
   }
   stop("Unvalid error metric")
 }
