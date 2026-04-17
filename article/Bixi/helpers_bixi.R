@@ -181,7 +181,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
   if(temporal_jitter & temporal != "none") temporal_kernel <- temporal_kernel +
     diag(choose_jitter(temporal_kernel, jitter_kappa_max, jitter_tau_max), nrow(temporal_kernel))
   if(temporal != "none")
-    temporal_kernel <- chol2inv(temporal_kernel)
+    temporal_kernel <- IMR:::inv(temporal_kernel)
 
   if(spatial == "Matern"){
 
@@ -204,7 +204,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
   if(spatial_jitter & spatial != "none") spatial_kernel <- spatial_kernel +
     diag(choose_jitter(spatial_kernel, jitter_kappa_max, jitter_tau_max), nrow(spatial_kernel))
   if(spatial != "none")
-    spatial_kernel <- chol2inv(spatial_kernel)
+    spatial_kernel <- IMR:::inv(spatial_kernel)
 
   list(spatial=spatial_kernel, temporal=temporal_kernel)
 }

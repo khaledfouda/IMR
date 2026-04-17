@@ -13,126 +13,155 @@ editor_options:
 bibliography: references.bib
 ---
 
-```{r, echo = FALSE, message = FALSE}
+```{r, echo = FALSE, message = FALSE, warning=FALSE}
 knitr::opts_chunk$set(collapse = T, comment = "#>")
 options(tibble.print_min = 4L, tibble.print_max = 4L)
-#library(IMR)
+library(IMR)
 library(dplyr)
 library(magrittr)
 set.seed(2026)
-#source("../article/bixi/data_bixi.R")
-#source("../article/bixi/helpers_bixi.R")
+
 ```
 
-IMR is feasible on any data that can be expressed in the form of a matrix of real numbers. Moreover, there is a wide range of accepted side information. We will begin by discussing the data and how to prepare the data for our model.
+IMR is framework for matrix regression on incomplete matrices. Let $\boldsymbol{Y} \in \Re^{n\times m}$ be the incomplete matrix we observe. Missing values can be either set to `NA` or zeros. Our estimates for each entry in the matrix follow the model
+
+$$
+\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z_j} + \boldsymbol{\hat M_{ij}}
+$$ 
+
+where $\boldsymbol{X}\in \Re^{n\times p},\boldsymbol{Z}\in \Re^{m\times q}$ are matrices of r row and q column covariates, respectively. $\boldsymbol{\hat\beta_{o}}\in \Re^{n},\boldsymbol{\hat\Gamma_{o}}\in \Re^{n}$ are row-level and column-level vector intercepts. $\boldsymbol{\hat\beta}$ are the row covariate coefficients. They could be either a $p\times m$ matrix where the coefficients differ from one column to another or a $p$ vector where all columns share the same coefficient for each covariate. Similarly, the column covariate coefficients $\boldsymbol{\hat\Gamma}$ are either a $n \times q$ matrix or a $q$ vector where all rows share the same coefficient for each covariate. Finally, $\boldsymbol{M}$ is a low-rank matrix with a nuclear norm penalty. We also place lasso penalty on the row and column covariates. In particular, we place the following set of penalties:
+
+$$
+\mathrm{Penalty} = \lambda_\beta \|\boldsymbol{\beta}\|_{1} + \lambda_\Gamma \|\boldsymbol{\Gamma}\|_{1} + \lambda_m \|\boldsymbol{S_r^{1/2}MS_c^{1/2}}\|_{*},
+$$ 
+
+where $\boldsymbol{S_r} \in \Re^{n\times n}$ and $\boldsymbol{S_c} \in \Re^{m \times m}$ are similarity matrices (or information matrices) that describe the correlation structure between the rows and columns of the response matrix. Of course, when no such correlation structure is available (or known), then this penalty term reduces to $\|\boldsymbol{M}\|_{*}$. Now, we might now always need (or have) all these components. Therefore, we may fit any subset of these models. For example, here are a few possible combinations:
+
+1.   $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{X_i\hat\beta}$ (where $\boldsymbol{\hat\beta}$ is a p-vector)
+2.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} +\boldsymbol{\hat M_{ij}}$ with $\boldsymbol{S_r}$ set to a the inverse of a Matern kernel and $S_c$ not specified.
+3.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat M_{ij}}$ with neither $\boldsymbol{S_r}$ or $S_c$ are specified. This corresponds exactly to the Soft-Impute model [@hastie2015].
+
+This vignette is structured as follows: we begin by discussing the data and and how to prepare it for our model, using a prepared example data. Seocond, we show to specify the model structure we want to fit and how to modify it. Third, we show how to use the fit function when we know the values of the regularization paramters. We also show how to interpret the results, obtain test estimates, and assess the performance. Next, we describe our precedure in tuning the regularization parameters. Finally, we finish the vignette by discussing the matrices $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$, how to create them, and add them to our model. 
 
 ## Data
 
-As an example, we will simulated data from the distributions as our Simulation Studies section in the paper. We will simulated a matrix of dimension $500\times 600$ of rank 5 and with $80\%$ of it being missing. We will simulate 3 row covariates that change from on row to another of dimension $500\times 3$. We will simulated 4 column covariates that are shared among the columns, with dimension $4\times 1$.
-
-
-As our example, we will use the BIXI [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains daily departure counts for each of 587 stations over 196 days (April 15 to October 27, 2019). The data is normalized between 0 and 1. The data is accompanied with side information. We will first
+As our example, we will use the BIXI [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains daily departure counts for each of 587 stations over 196 days (April 15 to October 27, 2019). The data is normalized between 0 and 1. The data is accompanied with side informations. We select two time variables (temperature and perciptation) and one location variable (park's area). Here's a quick look on the data. (Note: the data also contains similarity matrices but we will discuss that later in the last section)
 
 [^1]: website: <https://bixi.com/>
-
-```{r echo=FALSE, eval=FALSE}
-#=================
-dat <- prepare_bixi_data()
-X <- dat$X %>% as.matrix()
-Z <- dat$Z %>% as.matrix()
-Y <- dat$modd$Y
-kernels <- generate_similarity_bixi(0.25, "Feb_last", prefix = "1",
-                                      train_prefix = "65",
-                                    "./article/bixi/data/splits2")
-bixi_example <- list(Y=Y, X=X,Z=Z, kernels = kernels, test = dat$test)
-usethis::use_data(bixi_example)
-
-saveRDS(data_obj, "./data/bixi_example.rda")
-saveRDS(dat$test, "./data/bixi_test.rda")
-#----------------------------------------------
-```
 
 
 ```{r}
 bixi <- IMR::bixi_example
 
-head(bixi$X)
-head(bixi$Z)
+head(bixi$X,2)
+head(bixi$Z,3)
 dim(bixi$Y)
-bixi$Y[1:10,11:12]
+bixi$Y[1:6,11:12]
 
-print(length(bixi$test@x)/length(bixi$test))
-print(length(bixi$Y@x)/length(bixi$Y))
+sprintf("Percentage of observed entries in Y: %.1f%%", 100*sum(bixi$Y != 0)/length(bixi$Y))
+sprintf("Percentage of entries in the test set: %.1f%%", 100* sum(bixi$test != 0)/length(bixi$test))
 ```
+To facilitate the integration of data to our method, we create the class `imr_data` which takes care of formatting the data into the format that the model accepts. Note that in the matrix above, missing entries are set to 0. They could also be set to NA. However, the model will always treat zero entries as missing and therefore, the user should not use zero as a value. We now create our data class.
 
 
 ```{r}
 
-data <- IMR::imr_data(bixi$Y, bixi$X, bixi$Z, val_prop = 0.2, seed = 2026)
-
-data
-
-```
-
-## Model Structure
-
-```{r}
-data <- update(data, shared_gamma = TRUE, col_intercept = TRUE, row_intercept = TRUE)
+data <- imr_data(Y = bixi$Y, X =  bixi$X, Z =  bixi$Z, val_prop = 0.2, seed = 2026)
 print(data)
 
 ```
+The parameter Y in the function above can be of any matrix class in base R or in the "Matrix" package. However, the will always be transformed into a variation of "CSparseMatrix" which we call "Incomplete", motivated by the Incomplete class in the SoftImpute package. This data class has the same properties as the "dgCMatrix" class. To transform any matrix to that class we simply do
+
+```{r}
+bixi$test <- as.Incomplete(bixi$test)
+bixi$test[3:5,3:5]
+```
+Moreover, we note that functions performs QR-decomposition on both X and Z and keeps them in `XQ`, `XR`, `ZQ` and `ZR`. This is because the model is fit on the Q matrices (see the article for more detail on this) but the final results are based on the original X and Z matrices.
+
+
+## Model Structure
+
+Looking at the second half of the data description above, we see the model configuration specified. First, in the first row, we see information above the provided side information. For example, we have 2 row covariates and 1 column covariate. The second column contains which part of the model is activated. By default, the low-rank matrix and any included side-information will be an active part of the model. Note that the `(Unshared)` word means that the covariate coefficients vary among rows/columns. ie, the coefficients are matrices and not vectors as we explained earlier. However, we could change that using the `update()` function. For example, let's include row and column intercepts and have row covariate coefficients to be shared among the columns. ie, the effect of temperature and perciptation is the same on each of the stations.
+
+```{r}
+data <- update(data, shared_beta = TRUE, col_intercept = TRUE, row_intercept = TRUE)
+print(data)
+
+```
+The update function is very simple in its usage. We simply turn the components on/off using "True" and "False".
+We now fit a simple model.
 
 
 ## Fit function
 
+The fit function requires fixed values for the regularization parameters: the 3 lambdas and the rank of the low-rank component. For now, let's assume fixed values for these paramters and we will later show how to find the optimal values. 
+
 
 ```{r}
-convergence <- IMR::imr_convergence(maxit = 600, thresh=1e-4, trace = TRUE)
-fit <- IMR::imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = .02, lambda_gamma = 0)
+fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
+```
+
+
+The `print` function will give us information about the fitting procedure and the `summary` function will give more information on the estimates. We can obtain the estimated coefficients using the `coef` function or by accessing `fit$coefficients` object. Note that in the summary function above, the information about the covariate coefficients are based on the original X and Z matrices. However, the coefficients are based on the Q matrices.
+
+```{r}
 print(fit)
 summary(fit)
 names(coef(fit))
-
 ```
 
+We could also control convergence by controlling the maximum number of iterations and the threshold using the `imr_convergence` class as follows:
+
+```{r}
+convergence <- imr_convergence(maxit = 15, thresh = 1e-5, trace = TRUE)
+fit2 <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02,
+                convergence = convergence)
+```
+Above, obj is the value of the objective function at this iteration and ratio is the Frobenius difference between the estimates at that iteration and the iteration before it. Training stops either when max iteration is reached or that the ratio falls below the assigned threshold. 
 
 
 ## Interpretting the results and assessing the performance
 
+We begin by showing the two imputation methods we have. We begin by full reconstruction of the response matrix.
+
 ```{r}
-
-data_out <- IMR::reconstruct(fit, data)
-
+data_out <- reconstruct(fit, data)
 print(names(data_out))
+```
+The reconstruct outputs all model components as well as the imputed response matrix (`$estimates`). Note that the beta and gamma estimates are set to the original X and Z matrices. As an example of our estimates, here's how we estimated the first element of the matrix. 
 
 
-data_out$xbeta[1,1] + data_out$gammaz[1,1] + data_out$M[1,1] + coef(fit)$beta0[1] +
-  coef(fit)$gamma0[1]
+```{r}
+sprintf("True value of the entry (1,1) int he data matrix is %.4f and the estimated value is %.4f",
+        data$Y[1,1],
+        data_out$beta0[1] + # row intercept
+        data_out$gamma0[1] + # column intercept
+        bixi$X[1,] %*% data_out$beta + # row covariates
+        data_out$gamma[1,] %*% t(bixi$Z)[,1] + # column covariates
+        data_out$M[1,1]) # low-rank matrix
 
 ```
 
+This reconstruction function might not be a good choice in high-dimensional setting. However, in high-dimensional settings, we might not be in need of estimating every element 
 
 ```{r}
-preds <- IMR::reconstruct_partial(fit, data, bixi$test, trace=TRUE)
+preds <- reconstruct_partial(fit, data, bixi$test, trace=TRUE)
 print(preds[1:10,1:10])
 print("Test Error")
-print(IMR::evaluate(preds@x, bixi$test@x))
+print(evaluate(preds@x, bixi$test@x))
 ```
-
 
 ```{r}
-preds <- IMR::reconstruct_partial(fit, data, data$y_train, trace=TRUE)
+preds <- reconstruct_partial(fit, data, data$y_train, trace=TRUE)
 print("Training Error")
-print(IMR::evaluate(preds@x, data$y_train@x))
+print(evaluate(preds@x, data$y_train@x))
 
 ```
-
-
 
 ## Hyperparameter Tuning
 
 ```{r}
-grid <- IMR::imr_tune_grid(
+grid <- imr_tune_grid(
   beta = c(0, NA, 40), # (min, max, length)
   gamma = c(0, NA, 40), #(min, max, length)
   laplace = c(0, NA, 40, 2), #(min, max, length, early-stopping tolerance)
@@ -142,43 +171,38 @@ print(grid)
 
 ```
 
-
 ```{r}
-grid <- IMR::imr_set_grid_limits(data, grid, verbose = TRUE)
+grid <- imr_set_grid_limits(data, grid, verbose = TRUE)
 print(grid)
 
 ```
 
 ```{r}
-cv_out <- IMR::imr_tune(data, grid, n_cores=5, seed = 2026, verbose=1)
+cv_out <- imr_tune(data, grid, n_cores=9, seed = 2026, verbose=1)
 summary(cv_out$fit)
 print(cv_out$fit)
 ```
 
-
 ```{r}
-preds <- IMR::reconstruct_partial(cv_out$fit, data, bixi$test, trace=TRUE)
-print(IMR::evaluate(preds@x, bixi$test@x))
+preds <- reconstruct_partial(cv_out$fit, data, bixi$test, trace=TRUE)
+print(evaluate(preds@x, bixi$test@x))
 
   
 ```
 
-
-
 ## Similarity Matrices and within-rows and within-columns autocorrelation
 
 ```{r}
-similarity_cols <- IMR::imr_similarity(bixi$kernels$spatial, invert=FALSE, jitter = 0.01)
-similarity_rows <- IMR::imr_similarity(bixi$kernels$temporal, invert=FALSE, jitter = FALSE)
+similarity_cols <- imr_similarity(bixi$kernels$spatial, invert=FALSE, jitter = 0.01)
+similarity_rows <- imr_similarity(bixi$kernels$temporal, invert=FALSE, jitter = FALSE)
 print(similarity_rows)
 print(similarity_cols)
 
-#IMR::imr_similarity("matern", d = ..., matern_params = c(smoothness= 2.5, range = 1))
+#imr_similarity("matern", d = ..., matern_params = c(smoothness= 2.5, range = 1))
 ```
 
-
 ```{r}
-data <- IMR::imr_data(bixi$Y, bixi$X, bixi$Z, 
+data <- imr_data(bixi$Y, bixi$X, bixi$Z, 
                       similarity_rows = similarity_rows,
                       similarity_cols = similarity_cols,
                       val_prop = 0.2, seed = 2026)
@@ -186,20 +210,19 @@ data <- IMR::imr_data(bixi$Y, bixi$X, bixi$Z,
 data <- update(data, shared_gamma = TRUE, col_intercept = TRUE, row_intercept = TRUE)
 print(data)
 
-grid <- IMR::imr_tune_grid(
+grid <- imr_tune_grid(
   beta = cv_out$params$lambda_beta,
   gamma = cv_out$params$lambda_gamma,
   laplace = c(0, NA, 40, 2), #(min, max, length, early-stopping tolerance)
   rank = c(2, 15, 1) #(min, max, step)
 )
 print(grid)
-grid <- IMR::imr_set_grid_limits(data, grid, verbose = TRUE)
-cv2_out <- IMR::imr_tune(data, grid, n_cores=9, seed = 2026, verbose=1)
+grid <- imr_set_grid_limits(data, grid, verbose = TRUE)
+cv2_out <- imr_tune(data, grid, n_cores=9, seed = 2026, verbose=1)
 summary(cv2_out$fit)
 print(cv2_out$fit)
-preds <- IMR::reconstruct_partial(cv2_out$fit, data, bixi$test, trace=TRUE)
-print(IMR::evaluate(preds@x, bixi$test@x))
+preds <- reconstruct_partial(cv2_out$fit, data, bixi$test, trace=TRUE)
+print(evaluate(preds@x, bixi$test@x))
 
 
 ```
-
