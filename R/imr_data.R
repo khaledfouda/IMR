@@ -476,6 +476,12 @@ reconstruct_partial <- function(fit, data, target, trace = FALSE) {
   stopifnot(inherits(data, "imr_data"))
   stopifnot(IMR::is.Incomplete(target))
 
+  target <- new("Incomplete",
+                i = irow,
+                p = pcol,
+                x = numeric(length(irow)),
+                Dim = fit$meta_data$dimensions)
+
   coefs <- fit$coefficients
   meta <- fit$meta
 
