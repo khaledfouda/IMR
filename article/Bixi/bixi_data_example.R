@@ -8,6 +8,9 @@ Z <- dat$Z %>% as.matrix()
 Y <- dat$modd$Y
 kernels <- generate_similarity_bixi(0.25, "Feb_last", prefix = "1",
                                     train_prefix = "65",
-                                    "./article/bixi/data/splits2")
-bixi_example <- list(Y=as.matrix(Y), X=X,Z=Z, kernels = kernels, test = as.matrix(dat$test))
+                                    "./article/bixi/data/splits2",return_distance = TRUE)
+
+bixi_example <- list(Y=as.matrix(Y), X=X,Z=Z, kernels = kernels, test = as.matrix(dat$test),
+                     spatial_distance = kernels$distance$spatial,
+                     temporal_positions = kernels$distance$temporal)
 usethis::use_data(bixi_example, overwrite = TRUE)

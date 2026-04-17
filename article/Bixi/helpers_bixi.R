@@ -103,7 +103,8 @@ generate_similarity_bixi <- function(miss      = 0.8,
                                      jitter_tau_max = 1e-2,
                                      RBF_ell_t = 1.3,
                                      RBF_ell_s = 1.3,
-                                     matern_scale = NULL){
+                                     matern_scale = NULL,
+                                     return_distance){
   library(BKTR)
   bkdat <- BixiData$new()
   stopifnot(temporal %in% c("Matern", "original", "RBF", "none", "simulated"))
@@ -145,6 +146,12 @@ generate_similarity_bixi <- function(miss      = 0.8,
   spatial_kernel = BKTR::KernelMatern$new(smoothness_factor = 5,lengthscale = sp_lgth)
   spatial_kernel$set_positions(bkdat$spatial_positions_df)
 
+  distance = list()
+  if(return_distance)
+    distance = list(
+      spatial = as.matrix(spatial_kernel$distance_matrix),
+      temporal = as.matrix(temporal_kernel$distance_matrix)
+    )
 
   choose_jitter <- function(K, jitter_kappa_max = 1e4, jitter_tau_max = 1e-2, tau0 = 1e-12) {
     s <- mean(diag(K))
@@ -206,7 +213,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
   if(spatial != "none")
     spatial_kernel <- IMR:::inv(spatial_kernel)
 
-  list(spatial=spatial_kernel, temporal=temporal_kernel)
+  list(spatial=spatial_kernel, temporal=temporal_kernel, distance=distance)
 }
 
 

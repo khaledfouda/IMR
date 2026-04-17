@@ -471,16 +471,9 @@ reconstruct <- function(fit, data, trace = TRUE) {
 #'   replaced by the model's reconstructed predictions for those coordinates.
 #'
 #' @export
-reconstruct_partial <- function(fit, data, target, trace = FALSE) {
+reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_matrix = FALSE) {
   stopifnot(inherits(fit, "imr_fit"))
   stopifnot(inherits(data, "imr_data"))
-  stopifnot(IMR::is.Incomplete(target))
-
-  target <- new("Incomplete",
-                i = irow,
-                p = pcol,
-                x = numeric(length(irow)),
-                Dim = fit$meta_data$dimensions)
 
   coefs <- fit$coefficients
   meta <- fit$meta
@@ -488,13 +481,13 @@ reconstruct_partial <- function(fit, data, target, trace = FALSE) {
   # --- Reconstruct M ---
   if (!is.null(coefs$u) && !is.null(coefs$d) && !is.null(coefs$v)) {
     if (trace) message("Constructing M ...")
-    target@x <- IMR:::partial_crossprod(
+    target <- IMR:::partial_crossprod(
       coefs$u,
       sweep(t(coefs$v), 1, coefs$d, "*"),
-      target@i, target@p
+      irow, pcol
     )
   } else {
-    target@x <- rep(0.0, length(target@i))
+    target <- rep(0.0, length(irow))
   }
 
   # --- reconstruct row covariate effects ---
@@ -503,9 +496,9 @@ reconstruct_partial <- function(fit, data, target, trace = FALSE) {
 
     if (meta$shared_effects["beta"]) {
       xbeta_vec <- as.numeric(data$Xq %*% coefs$beta)
-      IMR:::add_to_rows_inplace_cpp(target@x, target@i, xbeta_vec)
+      IMR:::add_to_rows_inplace_cpp(target, irow, xbeta_vec)
     } else {
-      target@x <- target@x + IMR:::partial_crossprod(data$Xq, coefs$beta, target@i, target@p)
+      target <- target + IMR:::partial_crossprod(data$Xq, coefs$beta, irow, pcol)
     }
   }
 
@@ -515,22 +508,29 @@ reconstruct_partial <- function(fit, data, target, trace = FALSE) {
 
     if (meta$shared_effects["gamma"]) {
       gammaz_vec <- as.numeric(coefs$gamma %*% t(data$Zq))
-      IMR:::add_to_cols_inplace_cpp(target@x, target@p, gammaz_vec)
+      IMR:::add_to_cols_inplace_cpp(target, pcol, gammaz_vec)
     } else {
-      target@x <- target@x + IMR:::partial_crossprod(coefs$gamma, data$Zq, target@i, target@p, vtranspose = TRUE)
+      target <- target + IMR:::partial_crossprod(coefs$gamma, data$Zq, irow, pcol, vtranspose = TRUE)
     }
   }
 
   # ---  Intercepts ---
   if (!is.null(coefs$beta0)) {
     if (trace) message("Constructing row intercepts ...")
-    IMR:::add_to_rows_inplace_cpp(target@x, target@i, coefs$beta0)
+    IMR:::add_to_rows_inplace_cpp(target, irow, coefs$beta0)
   }
 
   if (!is.null(coefs$gamma0)) {
     if (trace) message("Constructing column intercepts ...")
-    IMR:::add_to_cols_inplace_cpp(target@x, target@p, coefs$gamma0)
+    IMR:::add_to_cols_inplace_cpp(target, pcol, coefs$gamma0)
   }
+
+  if(return_matrix)
+    target <- new("Incomplete",
+                  i = irow,
+                  p = pcol,
+                  x = target,
+                  Dim = fit$meta_data$dimensions)
 
   return(target)
 }

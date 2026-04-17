@@ -5,7 +5,7 @@ description: >
   Learn how to use IMR package for matrix regression. We will go over how to create the data object, select the model structure,
   how to choose the model's hyperparameters, and interpret the output and assess the performance of the model.
 vignette: >
-  %\VignetteIndexEntry{Introduction to IMR}
+  %\VignetteIndexEntry{Introduction to Incomplete Matrix Regression (IMR)}
   \usepackage[utf8]{inputenc}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
@@ -23,32 +23,31 @@ set.seed(2026)
 
 ```
 
-IMR is framework for matrix regression on incomplete matrices. Let $\boldsymbol{Y} \in \Re^{n\times m}$ be the incomplete matrix we observe. Missing values can be either set to `NA` or zeros. Our estimates for each entry in the matrix follow the model
+The IMR package provides a framework for matrix regression on incomplete matrices. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either `NA` or zero. The estimator for each entry of the matrix is specified by the model
 
 $$
-\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z_j} + \boldsymbol{\hat M_{ij}}
-$$ 
+\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z^{'}_j} + \boldsymbol{\hat M_{ij}}
+$$
 
-where $\boldsymbol{X}\in \Re^{n\times p},\boldsymbol{Z}\in \Re^{m\times q}$ are matrices of r row and q column covariates, respectively. $\boldsymbol{\hat\beta_{o}}\in \Re^{n},\boldsymbol{\hat\Gamma_{o}}\in \Re^{n}$ are row-level and column-level vector intercepts. $\boldsymbol{\hat\beta}$ are the row covariate coefficients. They could be either a $p\times m$ matrix where the coefficients differ from one column to another or a $p$ vector where all columns share the same coefficient for each covariate. Similarly, the column covariate coefficients $\boldsymbol{\hat\Gamma}$ are either a $n \times q$ matrix or a $q$ vector where all rows share the same coefficient for each covariate. Finally, $\boldsymbol{M}$ is a low-rank matrix with a nuclear norm penalty. We also place lasso penalty on the row and column covariates. In particular, we place the following set of penalties:
+where $\boldsymbol{X}\in \Re^{n\times p} and  \boldsymbol{Z}\in \Re^{m\times q}$ are matrices of $p$ row and $q$ column covariates, respectively. The vectors$\boldsymbol{\hat\beta_{o}}\in \Re^{n}$ and $\boldsymbol{\hat\Gamma_{o}}\in \Re^{n}$ represent the row-level and column-level intercepts. The term $\boldsymbol{\hat\beta}$ denotes the row covariate coefficients, which may be structured as either an $p\times m$ matrix, allowing coefficients to vary across columns, or a $p$-dimensional vector, forcing coefficients to be equal across all columns for each covariate. Similarly, the column covariate coefficients, denoted by $\boldsymbol{\hat\Gamma}$, can be either an $n \times q$ matrix or a $q$-dimensional vector where all rows share the same coefficient for each covariate. Finally, $\boldsymbol{M}$ is a rank-r (r is a hyperparameter) matrix subject to a nuclear norm penalty. Lasso (\$L_1\$) penalties are imposed on the row and column covariates as well, yielding the following penalty structure:
 
 $$
-\mathrm{Penalty} = \lambda_\beta \|\boldsymbol{\beta}\|_{1} + \lambda_\Gamma \|\boldsymbol{\Gamma}\|_{1} + \lambda_m \|\boldsymbol{S_r^{1/2}MS_c^{1/2}}\|_{*},
-$$ 
+\mathrm{Penalty} = \lambda_\beta {\|\boldsymbol{\beta}\|}_{1} + \lambda_\Gamma {\|\boldsymbol{\Gamma}\|}_{1} + \lambda_m {\|\boldsymbol{S_r^{1/2}MS_c^{1/2}}\|}_{*},
+$$
 
-where $\boldsymbol{S_r} \in \Re^{n\times n}$ and $\boldsymbol{S_c} \in \Re^{m \times m}$ are similarity matrices (or information matrices) that describe the correlation structure between the rows and columns of the response matrix. Of course, when no such correlation structure is available (or known), then this penalty term reduces to $\|\boldsymbol{M}\|_{*}$. Now, we might now always need (or have) all these components. Therefore, we may fit any subset of these models. For example, here are a few possible combinations:
+where $\boldsymbol{S_r} \in \Re^{n\times n}$ and $\boldsymbol{S_c} \in \Re^{m \times m}$ are similarity (or information) matrices that describe the correlation structure among the rows and columns of the response matrix, respectively. In the absence of a known correlation when no such correlation structure is available (or known), then this penalty term reduces to $\|\boldsymbol{M}\|_{*}$. Now, we might now always need (or have) all these components. Therefore, we may fit any subset of these models. For example, here are a few possible combinations:
 
-1.   $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{X_i\hat\beta}$ (where $\boldsymbol{\hat\beta}$ is a p-vector)
+1.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{X_i\hat\beta}$ (where $\boldsymbol{\hat\beta}$ is a p-vector)
 2.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} +\boldsymbol{\hat M_{ij}}$ with $\boldsymbol{S_r}$ set to a the inverse of a Matern kernel and $S_c$ not specified.
 3.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat M_{ij}}$ with neither $\boldsymbol{S_r}$ or $S_c$ are specified. This corresponds exactly to the Soft-Impute model [@hastie2015].
 
-This vignette is structured as follows: we begin by discussing the data and and how to prepare it for our model, using a prepared example data. Seocond, we show to specify the model structure we want to fit and how to modify it. Third, we show how to use the fit function when we know the values of the regularization paramters. We also show how to interpret the results, obtain test estimates, and assess the performance. Next, we describe our precedure in tuning the regularization parameters. Finally, we finish the vignette by discussing the matrices $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$, how to create them, and add them to our model. 
+This vignette is structured as follows: we begin by discussing the data and and how to prepare it for our model, using a prepared example data. Seocond, we show to specify the model structure we want to fit and how to modify it. Third, we show how to use the fit function when we know the values of the regularization paramters. We also show how to interpret the results, obtain test estimates, and assess the performance. Next, we describe our precedure in tuning the regularization parameters. Finally, we finish the vignette by discussing the matrices $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$, how to create them, and add them to our model.
 
 ## Data
 
 As our example, we will use the BIXI [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains daily departure counts for each of 587 stations over 196 days (April 15 to October 27, 2019). The data is normalized between 0 and 1. The data is accompanied with side informations. We select two time variables (temperature and perciptation) and one location variable (park's area). Here's a quick look on the data. (Note: the data also contains similarity matrices but we will discuss that later in the last section)
 
 [^1]: website: <https://bixi.com/>
-
 
 ```{r}
 bixi <- IMR::bixi_example
@@ -61,8 +60,8 @@ bixi$Y[1:6,11:12]
 sprintf("Percentage of observed entries in Y: %.1f%%", 100*sum(bixi$Y != 0)/length(bixi$Y))
 sprintf("Percentage of entries in the test set: %.1f%%", 100* sum(bixi$test != 0)/length(bixi$test))
 ```
-To facilitate the integration of data to our method, we create the class `imr_data` which takes care of formatting the data into the format that the model accepts. Note that in the matrix above, missing entries are set to 0. They could also be set to NA. However, the model will always treat zero entries as missing and therefore, the user should not use zero as a value. We now create our data class.
 
+To facilitate the integration of data to our method, we create the class `imr_data` which takes care of formatting the data into the format that the model accepts. Note that in the matrix above, missing entries are set to 0. They could also be set to NA. However, the model will always treat zero entries as missing and therefore, the user should not use zero as a value. We now create our data class.
 
 ```{r}
 
@@ -70,14 +69,15 @@ data <- imr_data(Y = bixi$Y, X =  bixi$X, Z =  bixi$Z, val_prop = 0.2, seed = 20
 print(data)
 
 ```
+
 The parameter Y in the function above can be of any matrix class in base R or in the "Matrix" package. However, the will always be transformed into a variation of "CSparseMatrix" which we call "Incomplete", motivated by the Incomplete class in the SoftImpute package. This data class has the same properties as the "dgCMatrix" class. To transform any matrix to that class we simply do
 
 ```{r}
 bixi$test <- as.Incomplete(bixi$test)
 bixi$test[3:5,3:5]
 ```
-Moreover, we note that functions performs QR-decomposition on both X and Z and keeps them in `XQ`, `XR`, `ZQ` and `ZR`. This is because the model is fit on the Q matrices (see the article for more detail on this) but the final results are based on the original X and Z matrices.
 
+Moreover, we note that functions performs QR-decomposition on both X and Z and keeps them in `XQ`, `XR`, `ZQ` and `ZR`. This is because the model is fit on the Q matrices (see the article for more detail on this) but the final results are based on the original X and Z matrices.
 
 ## Model Structure
 
@@ -88,19 +88,16 @@ data <- update(data, shared_beta = TRUE, col_intercept = TRUE, row_intercept = T
 print(data)
 
 ```
-The update function is very simple in its usage. We simply turn the components on/off using "True" and "False".
-We now fit a simple model.
 
+The update function is very simple in its usage. We simply turn the components on/off using "True" and "False". We now fit a simple model.
 
 ## Fit function
 
-The fit function requires fixed values for the regularization parameters: the 3 lambdas and the rank of the low-rank component. For now, let's assume fixed values for these paramters and we will later show how to find the optimal values. 
-
+The fit function requires fixed values for the regularization parameters: the 3 lambdas and the rank of the low-rank component. For now, let's assume fixed values for these paramters and we will later show how to find the optimal values.
 
 ```{r}
 fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
 ```
-
 
 The `print` function will give us information about the fitting procedure and the `summary` function will give more information on the estimates. We can obtain the estimated coefficients using the `coef` function or by accessing `fit$coefficients` object. Note that in the summary function above, the information about the covariate coefficients are based on the original X and Z matrices. However, the coefficients are based on the Q matrices.
 
@@ -117,8 +114,8 @@ convergence <- imr_convergence(maxit = 15, thresh = 1e-5, trace = TRUE)
 fit2 <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02,
                 convergence = convergence)
 ```
-Above, obj is the value of the objective function at this iteration and ratio is the Frobenius difference between the estimates at that iteration and the iteration before it. Training stops either when max iteration is reached or that the ratio falls below the assigned threshold. 
 
+Above, obj is the value of the objective function at this iteration and ratio is the Frobenius difference between the estimates at that iteration and the iteration before it. Training stops either when max iteration is reached or that the ratio falls below the assigned threshold.
 
 ## Interpretting the results and assessing the performance
 
@@ -128,8 +125,8 @@ We begin by showing the two imputation methods we have. We begin by full reconst
 data_out <- reconstruct(fit, data)
 print(names(data_out))
 ```
-The reconstruct outputs all model components as well as the imputed response matrix (`$estimates`). Note that the beta and gamma estimates are set to the original X and Z matrices. As an example of our estimates, here's how we estimated the first element of the matrix. 
 
+The reconstruct outputs all model components as well as the imputed response matrix (`$estimates`). Note that the beta and gamma estimates are set to the original X and Z matrices. As an example of our estimates, here's how we estimated the first element of the matrix.
 
 ```{r}
 sprintf("True value of the entry (1,1) int he data matrix is %.4f and the estimated value is %.4f",
@@ -142,64 +139,116 @@ sprintf("True value of the entry (1,1) int he data matrix is %.4f and the estima
 
 ```
 
-This reconstruction function might not be a good choice in high-dimensional setting. However, in high-dimensional settings, we might not be in need of estimating every element 
+This reconstruction function might not be a good choice in high-dimensional setting. However, in high-dimensional settings, we might not be in need of estimating every element. For example, let's estimate only the elements in our test matrix above.
 
 ```{r}
-preds <- reconstruct_partial(fit, data, bixi$test, trace=TRUE)
+preds <- reconstruct_partial(fit, data, bixi$test@i, bixi$test@p, trace=TRUE, return_matrix = TRUE)
 print(preds[1:10,1:10])
-print("Test Error")
-print(evaluate(preds@x, bixi$test@x))
 ```
 
-```{r}
-preds <- reconstruct_partial(fit, data, data$y_train, trace=TRUE)
-print("Training Error")
-print(evaluate(preds@x, data$y_train@x))
+The `reconstruct_partial` matrix takes two extra parameters. The i and p vectors which corresponds to the row and column locations to be estimated. If return_matrix is true, then it returns a sparse matrix with those estimates. If it's false, then it'll return a vector of estimates matching `@x` object. We also implemented an evaluation function for common error metrics between two vectors. As such, the performance of our fitted model on the test set is
 
+```{r}
+knitr::kable(evaluate(preds@x, bixi$test@x),format = "pipe",digits = 5)
 ```
 
 ## Hyperparameter Tuning
+
+We now turn into regularization parameters' tuning. We have 4 parameters. Three lambdas and the rank of the low-rank component. We begin by creating a grid object for these parameters. For beta and gamma, we need a minimum, maximum and length of the grids. For the rank, we need a minimum, maximum and a step size. For both the laplace and rank, we need an early-stopping tolerance. Usually, setting to 2 or 3 is more than enough.For beta, gamma, and laplace, we may not know the value of the maxium. In that case, set it to NA when you define the grid and we later have a function to estimate the upperlimit using KKT conditions.
 
 ```{r}
 grid <- imr_tune_grid(
   beta = c(0, NA, 40), # (min, max, length)
   gamma = c(0, NA, 40), #(min, max, length)
   laplace = c(0, NA, 40, 2), #(min, max, length, early-stopping tolerance)
-  rank = c(2, 15, 1) #(min, max, step)
+  rank = c(2, 15, 1,2) #(min, max, step, early-stopping tolerance)
 )
 print(grid)
 
 ```
 
-```{r}
-grid <- imr_set_grid_limits(data, grid, verbose = TRUE)
-print(grid)
+Finally, if we wish to set any of the parameters to a fixed value, we do this by setting it to a vector of length 1. We also do not need to set values for each paramter. Missing values will be set to the default values. For example
 
+```{r}
+imr_tune_grid(
+  beta = 3, 
+  gamma = c(0, NA),
+  laplace = c(0),
+  rank = c(0, 10)
+)
 ```
 
+Going back to the grid we defined. We need to find the upperlimits for our lambdas. We use an adaptive function that works as follows:
+
+For each parameter with a missing maximum value we do the following two-step process:
+
+1- Use KKT conditions to find an initial upper limit. 2- Through experiment we noticed that sometimes, the KKT value could be too small or too large. Which is why we added another step of a bisection search where we try to find the smallest lambda value that sets all the coefficients to zero, starting with the KKT estimate. We searching for the maximum $\lambda_\beta$ or $\lambda_\Gamma$, the other covariate penalty is set to infinity, which the low-rank component is fixed at a default value set below. Conversely, when searching for the upper-limit to $\lambda_m$, the other two lambdas are set to the default values set below.
+
 ```{r}
-cv_out <- imr_tune(data, grid, n_cores=9, seed = 2026, verbose=1)
+convergence <- imr_convergence(maxit = 1000, thresh = 1e-5)
+grid <- imr_set_grid_limits(data, grid,
+                            default_rank = 5, default_lambda_m = 0, 
+                            default_lambda_beta = 0, default_lambda_gamma = 0,
+                            bisection_iter = 10, # number of iteration in the second step
+                            verbose = TRUE,convergence = convergence )
+
+print(grid)
+```
+
+Now that our grid is set. We are ready to find the optimal values. The tuning function selects one of three scenarios:
+
+1- Tuning $\lambda_m,r$ Only: If both beta and gamma are either fixed or not part of the model, tuning operates strictly sequentially over the low-rank component parameters.
+
+2.  One Covariate: If only one covariate penalty (either beta or gamma) requires tuning, the function parallelizes over the covariate grid. For each covariate penalty value, it runs Scenario 1 to find the optimal Laplace parameters.
+
+3.  Alternating Optimization: If both beta and gamma require tuning, an alternating loop is used. It fixes gamma, tunes beta + Laplace (Scenario 2), then fixes beta, tunes gamma + Laplace, and repeats.
+
+For the first scenario, we have two modes:
+
+1.  Fast Mode: Starts at the maximum lambda_m and minimum rank. It simultaneously steps down lambda_m while stepping up the rank at each iteration. It stops when validation performance ceases to improve based on $\lambda_m$'s patience parameter.
+
+2.  Slow Mode: Creates a complete nested grid. For every value of lambda_m, it iteratively tests ranks from smallest to largest until performance ceases to improve based on $rank$'s patience parameter.
+
+Since all paramters are being tuned in our case, then we are in scenario 3. We will choose the fast mode which provides great results. However, for final fine-tuning, slow model is more suitable as it explores spaces not reached by the fast model (ie, all possible combinations of $\lambda_m$ and the rank)
+
+```{r}
+cv_out <- imr_tune(data, grid, fast_laplace = TRUE, n_cores=9, seed = 2026, verbose=1)
 summary(cv_out$fit)
 print(cv_out$fit)
 ```
 
 ```{r}
-preds <- reconstruct_partial(cv_out$fit, data, bixi$test, trace=TRUE)
-print(evaluate(preds@x, bixi$test@x))
+preds <- reconstruct_partial(cv_out$fit, data, bixi$test@i, bixi$test@p, return_matrix = FALSE)
+knitr::kable(evaluate(preds, bixi$test@x),format = "simple",digits = 5)
 
   
 ```
 
 ## Similarity Matrices and within-rows and within-columns autocorrelation
 
-```{r}
-similarity_cols <- imr_similarity(bixi$kernels$spatial, invert=FALSE, jitter = 0.01)
-similarity_rows <- imr_similarity(bixi$kernels$temporal, invert=FALSE, jitter = FALSE)
-print(similarity_rows)
-print(similarity_cols)
+We now move our focus to the last component of our methodology, the similarity matrices. In some situations, the response matrix may exhibit correlations within its rows and/or columns. This structure of this correlation can be represented by a similarity or a covariance matrix. We allow our estimates of the low-rank component to adjust for this correlation structure, when available. Of course, we need to make an assumption about the behaviour of such correlation.
 
-#imr_similarity("matern", d = ..., matern_params = c(smoothness= 2.5, range = 1))
+Let us consider the Bixi example. The data is accompanied with another two matrices, one containing the distances between spatial locations (laitude and longitudes) of the stations (columns) and temporal distance matrix for the days (rows). We will assume that the columns have a Matern 5/2 variance structure and that the rows have gaussian kernel with length of 6. We define the kernels using the `imr_similarity` function.
+
+```{r}
+
 ```
+
+```{r}
+similarity_cols <- imr_similarity(x = "matern", d = bixi$spatial_distance, invert=TRUE, jitter = .1,
+                                  matern_smoothness = 5/2, matern_range = .018); print(similarity_cols)
+
+similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_positions, invert=TRUE, jitter = .1,
+                                  rbf_ell = 6); print(similarity_rows)
+
+
+```
+
+Notes about the `imr_similarity` functions:
+
+1- The first parameter could be one of three: matern, rbf, or a matrix of the covariance or the information matrix. If it's one of the first two, then a distance matrix is expected `d`, otherwise, no need for a distance matrix if the similarity matrix is already provided. 2. The model expects an information matrix. Hence, if you provide a covariance kernel, make sure to set invert to TRUE to invert the matrix. 3. Jitter values greater than 0 helps decreasing the condition number of ill-conditioned matrices. 4. The output is two matrices U and d corresponding to the eigenvectors and eigenvalues of the similarity matrices which is what the model expects.
+
+We now put these matrices in our data and update our model structure
 
 ```{r}
 data <- imr_data(bixi$Y, bixi$X, bixi$Z, 
@@ -207,22 +256,28 @@ data <- imr_data(bixi$Y, bixi$X, bixi$Z,
                       similarity_cols = similarity_cols,
                       val_prop = 0.2, seed = 2026)
 
-data <- update(data, shared_gamma = TRUE, col_intercept = TRUE, row_intercept = TRUE)
+data <- update(data, shared_beta = TRUE, col_intercept = TRUE, row_intercept = TRUE)
 print(data)
+```
 
+We now redo the paramter tuning but only for $\lambda_m$ and the rank as $\lambda_\beta$, $\lambda_\Gamma$ remain fixed.
+
+```{r}
 grid <- imr_tune_grid(
   beta = cv_out$params$lambda_beta,
   gamma = cv_out$params$lambda_gamma,
-  laplace = c(0, NA, 40, 2), #(min, max, length, early-stopping tolerance)
-  rank = c(2, 15, 1) #(min, max, step)
+  laplace = c(0, NA, 40, 2),
+  rank = c(2, 15, 2) 
 )
 print(grid)
 grid <- imr_set_grid_limits(data, grid, verbose = TRUE)
 cv2_out <- imr_tune(data, grid, n_cores=9, seed = 2026, verbose=1)
 summary(cv2_out$fit)
 print(cv2_out$fit)
-preds <- reconstruct_partial(cv2_out$fit, data, bixi$test, trace=TRUE)
-print(evaluate(preds@x, bixi$test@x))
+```
 
+```{r}
+preds <- reconstruct_partial(cv2_out$fit, data, bixi$test@i, bixi$test@p)
+knitr::kable(evaluate(preds, bixi$test@x),format = "pipe",digits = 5)
 
 ```

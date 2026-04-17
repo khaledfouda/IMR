@@ -72,7 +72,7 @@ imr_tune_laplace_fast <- function(data,
       warm_start = mfit
     )
     # compute validation error
-    vestim <- IMR::reconstruct_partial(mfit, data, data$valid_mask)@x
+    vestim <- IMR::reconstruct_partial(mfit, data, virow, vpcol)
     verror <- error_function(vestim, reference)
     # compute rank
     rank_out <- sum(mfit$coefficients$d > 1e-4)
@@ -237,7 +237,7 @@ imr_tune_laplace_slow <- function(data,
         warm_start = mfit
       )
       # compute validation error
-      vestim <- IMR::reconstruct_partial(mfit, data, data$valid_mask)@x
+      vestim <- IMR::reconstruct_partial(mfit, data, virow, vpcol)
       verror <- error_function(vestim, reference)
       # compute rank
       rank_out <- sum(mfit$coefficients$d > 1e-4)
