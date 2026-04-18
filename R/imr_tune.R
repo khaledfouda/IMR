@@ -1,5 +1,5 @@
 #----------------------------------------------------------
-imr_tune_laplace_fast <- function(data,
+imr_tune_nuclear_fast <- function(data,
                                   grid,
                                   lambda_beta = 0,
                                   lambda_gamma = 0,
@@ -22,26 +22,26 @@ imr_tune_laplace_fast <- function(data,
     is.Incomplete(data$y_valid),
     is.Incomplete(data$y_train)
   )
-  stopifnot(is.numeric(grid$laplace$max))
+  stopifnot(is.numeric(grid$nuclear$max))
   stopifnot(
     grid$rank$min > 0,
     grid$rank$max >= grid$rank$min,
     grid$rank$step >= 0,
-    grid$laplace$length >= 1,
-    grid$laplace$max >= grid$laplace$min
+    grid$nuclear$length >= 1,
+    grid$nuclear$max >= grid$nuclear$min
   )
   #---------------------------------------------------
   # indices
-  if (grid$laplace$max <= 0) grid$laplace$max <- 1e-4
-  if (grid$laplace$min <= 0) grid$laplace$min <- 1e-6
+  if (grid$nuclear$max <= 0) grid$nuclear$max <- 1e-4
+  if (grid$nuclear$min <= 0) grid$nuclear$min <- 1e-6
   if (log_grid) {
-    lambda_seq <- exp(seq(log(grid$laplace$max),
-      log(grid$laplace$min),
-      length.out = grid$laplace$length
+    lambda_seq <- exp(seq(log(grid$nuclear$max),
+      log(grid$nuclear$min),
+      length.out = grid$nuclear$length
     ))
   } else {
-    lambda_seq <- seq(grid$laplace$max, grid$laplace$min,
-      length.out = grid$laplace$length
+    lambda_seq <- seq(grid$nuclear$max, grid$nuclear$min,
+      length.out = grid$nuclear$length
     )
   }
   virow <- data$y_valid@i
@@ -51,7 +51,7 @@ imr_tune_laplace_fast <- function(data,
   mfit <- warm_start
   rank_max <- grid$rank$min
   history <- data.frame(
-    lambda_laplace = lambda_seq,
+    lambda_m = lambda_seq,
     verror = rep(NA_real_, length(lambda_seq)),
     rank_in = rep(NA_integer_, length(lambda_seq)),
     rank_out = rep(NA_integer_, length(lambda_seq))
@@ -79,7 +79,7 @@ imr_tune_laplace_fast <- function(data,
     # verbose
     if (verbose >= 2) {
       message(sprintf(
-        "%2d lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
+        "%2d lambda_m=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
         i,
         lambda_seq[i],
         rank_max,
@@ -103,7 +103,7 @@ imr_tune_laplace_fast <- function(data,
       no_improve_count <- no_improve_count + 1
     }
 
-    if (no_improve_count >= grid$laplace$streaks) {
+    if (no_improve_count >= grid$nuclear$streaks) {
       if (verbose >= 2) {
         message(
           sprintf(
@@ -120,8 +120,8 @@ imr_tune_laplace_fast <- function(data,
   }
   if (verbose > 0) {
     message(sprintf(
-      "Best fit: lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
-      best_params$lambda_laplace,
+      "Best fit: lambda_m=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
+      best_params$lambda_m,
       best_params$rank_in,
       best_params$rank_out,
       best_verror,
@@ -133,7 +133,7 @@ imr_tune_laplace_fast <- function(data,
     if (verbose > 0) message("Fitting final model on full dataset...")
     best_fit_obj <- IMR::imr_fit(data,
       rank = best_params$rank_in,
-      lambda_m = best_params$lambda_laplace,
+      lambda_m = best_params$lambda_m,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
       convergence = convergence,
@@ -148,7 +148,7 @@ imr_tune_laplace_fast <- function(data,
 }
 # ==============================================================================================
 #----------------------------------------------------------
-imr_tune_laplace_slow <- function(data,
+imr_tune_nuclear_slow <- function(data,
                                   grid,
                                   lambda_beta = 0,
                                   lambda_gamma = 0,
@@ -171,26 +171,26 @@ imr_tune_laplace_slow <- function(data,
     is.Incomplete(data$y_valid),
     is.Incomplete(data$y_train)
   )
-  stopifnot(is.numeric(grid$laplace$max))
+  stopifnot(is.numeric(grid$nuclear$max))
   stopifnot(
     grid$rank$min > 0,
     grid$rank$max >= grid$rank$min,
     grid$rank$step >= 0,
-    grid$laplace$length >= 1,
-    grid$laplace$max >= grid$laplace$min
+    grid$nuclear$length >= 1,
+    grid$nuclear$max >= grid$nuclear$min
   )
   #---------------------------------------------------
   # training grids
-  if (grid$laplace$max <= 0) grid$laplace$max <- 1e-4
-  if (grid$laplace$min <= 0) grid$laplace$min <- 1e-6
+  if (grid$nuclear$max <= 0) grid$nuclear$max <- 1e-4
+  if (grid$nuclear$min <= 0) grid$nuclear$min <- 1e-6
   if (log_grid) {
-    lambda_seq <- exp(seq(log(grid$laplace$max),
-                          log(grid$laplace$min),
-                          length.out = grid$laplace$length
+    lambda_seq <- exp(seq(log(grid$nuclear$max),
+                          log(grid$nuclear$min),
+                          length.out = grid$nuclear$length
     ))
   } else {
-    lambda_seq <- seq(grid$laplace$max, grid$laplace$min,
-                      length.out = grid$laplace$length
+    lambda_seq <- seq(grid$nuclear$max, grid$nuclear$min,
+                      length.out = grid$nuclear$length
     )
   }
   rank_seq <- seq(grid$rank$min, grid$rank$max, grid$rank$step)
@@ -204,9 +204,9 @@ imr_tune_laplace_slow <- function(data,
   mfit <- warm_start
   history <- expand.grid(
     rank = rank_seq,
-    lambda_laplace = lambda_seq
+    lambda_m = lambda_seq
   )
-  history <- history[, c("lambda_laplace", "rank")]
+  history <- history[, c("lambda_m", "rank")]
   history$verror <- rep(NA_real_, nrow(history))
   history$rank_in <- rep(NA_integer_, nrow(history))
   history$rank_out <- rep(NA_integer_, nrow(history))
@@ -244,7 +244,7 @@ imr_tune_laplace_slow <- function(data,
       # verbose
       if (verbose >= 2) {
         message(sprintf(
-          "%2d lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
+          "%2d lambda_m=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
           i,
           lambda_seq[i],
           current_rank,
@@ -290,7 +290,7 @@ imr_tune_laplace_slow <- function(data,
       no_improve_count_1 <- no_improve_count_1 + 1
     }
 
-    if (no_improve_count_1 >= grid$laplace$streaks) {
+    if (no_improve_count_1 >= grid$nuclear$streaks) {
       if (verbose >= 2) {
         message(
           sprintf(
@@ -305,8 +305,8 @@ imr_tune_laplace_slow <- function(data,
 
   if (verbose > 0) {
     message(sprintf(
-      "Best fit: lambda_laplace=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
-      best_params_1$lambda_laplace,
+      "Best fit: lambda_m=%.6f | rank_in=%d => rank_out=%d | verr=%.5f | fit_iter=%d",
+      best_params_1$lambda_m,
       best_params_1$rank_in,
       best_params_1$rank_out,
       best_verror_1,
@@ -318,7 +318,7 @@ imr_tune_laplace_slow <- function(data,
     if (verbose > 0) message("Fitting final model on full dataset...")
     best_fit_obj_1 <- IMR::imr_fit(data,
       rank = best_params_1$rank_in,
-      lambda_m = best_params_1$lambda_laplace,
+      lambda_m = best_params_1$lambda_m,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
       convergence = convergence,
@@ -344,8 +344,8 @@ imr_tune_lasso <- function(data,
                            warm_start = NULL,
                            verbose = 1,
                            n_cores = 4,
-                           fast_laplace = TRUE,
-                           laplace_log_scale = TRUE,
+                           fast_nuclear = TRUE,
+                           nuclear_log_scale = TRUE,
                            seed = NULL) {
   #-----------------------------------------------------
   # input verification and seed
@@ -383,7 +383,7 @@ imr_tune_lasso <- function(data,
   }
   #--------------------------------------------------
   # Run the loop
-  laplace_function <- if (fast_laplace) imr_tune_laplace_fast else imr_tune_laplace_slow
+  nuclear_function <- if (fast_nuclear) imr_tune_nuclear_fast else imr_tune_nuclear_slow
   # if(!final_fit) use_warm_in_final = FALSE # not needed.
   lambda_seq <- seq(lambda_obj$min, lambda_obj$max, length.out = lambda_obj$length)
   results_list <- parallel::mclapply(seq_along(lambda_seq), function(i) {
@@ -391,8 +391,8 @@ imr_tune_lasso <- function(data,
     if (verbose >= 2) {
       cat(sprintf("Worker started: %s = %.4f\n", target, lambda))
     }
-    # run full tune_laplace
-    laplace_res <- laplace_function(
+    # run full tune_nuclear
+    nuclear_res <- nuclear_function(
       data = data,
       grid = grid,
       lambda_beta = if (is_beta) lambda else fixed_other_lasso,
@@ -401,16 +401,16 @@ imr_tune_lasso <- function(data,
       convergence = convergence,
       error_function = error_function,
       warm_start = warm_start,
-      log_grid = laplace_log_scale,
+      log_grid = nuclear_log_scale,
       verbose = 0,
       seed = seed
     )
     # return best results
-    best_inner <- laplace_res$params
+    best_inner <- nuclear_res$params
     best_inner[[paste0("lambda_", target)]] <- lambda
     best_inner[[paste0("lambda_", if (is_beta) "gamma" else "beta")]] <- fixed_other_lasso
     # we also return the full history for diagnostics/plots
-    history <- laplace_res$history
+    history <- nuclear_res$history
     history[[paste0("lambda_", target)]] <- lambda
     history[[paste0("lambda_", if (is_beta) "gamma" else "beta")]] <- fixed_other_lasso
 
@@ -419,7 +419,7 @@ imr_tune_lasso <- function(data,
       history = history
     )
     if (use_warm_in_final) {
-      out$fit <- laplace_res$fit
+      out$fit <- nuclear_res$fit
     }
 
     return(out)
@@ -440,9 +440,9 @@ imr_tune_lasso <- function(data,
   best_params <- best_inner[best_idx, ]
   if (verbose > 0) {
     message(sprintf(
-      "Best parameters: %s: %.5f | Laplace: %.4f | Error: %.5f",
+      "Best parameters: %s: %.5f | nuclear: %.4f | Error: %.5f",
       target, best_params[[paste0("lambda_", target)]],
-      best_params$lambda_laplace, best_params$verror
+      best_params$lambda_m, best_params$verror
     ))
   }
   #---------------------------------------------
@@ -454,7 +454,7 @@ imr_tune_lasso <- function(data,
     }
     best_fit_obj <- IMR::imr_fit(data,
       rank = best_params$rank_in,
-      lambda_m = best_params$lambda_laplace,
+      lambda_m = best_params$lambda_m,
       lambda_beta = best_params$lambda_beta,
       lambda_gamma = best_params$lambda_gamma,
       convergence = convergence,
@@ -467,86 +467,90 @@ imr_tune_lasso <- function(data,
   list(fit = best_fit_obj, params = best_params, history = history)
 }
 # =============================================================================================
-
 #' Hyperparameter Tuning for IMR Models
 #'
 #' @description
-#' Performs hyperparameter tuning for an Incomplete Matrix Regression (IMR)
-#' model. It evaluates model performance on a validation set (`y_valid`) while
-#' training on a training set (`y_train`), using a variety of grid search and
-#' alternating optimization strategies.
+#' Executes hyperparameter optimization for Incomplete Matrix Regression (IMR)
+#' models. The procedure evaluates predictive performance on a validation set
+#' (`y_valid`) while estimating the model on a training set (`y_train`).
 #'
 #' @param data An object of class `"imr_data"` containing the training and
-#'   validation splits.
-#' @param grid An object of class `"imr_tune_grid"`. **Note:** Any `"auto"` maximum
-#'   values in this grid must be resolved using \code{\link{imr_set_grid_limits}}
-#'   prior to calling `imr_tune`.
-#' @param final_fit Logical. If `TRUE`, after identifying the optimal hyperparameters,
-#'   the function performs one final model fit on the entire complete dataset (`Y`)
-#'   and returns it. Defaults to `TRUE`.
+#'   validation partitions.
+#' @param grid An object of class `"imr_tune_grid"`. **Note:** Any `"auto"`
+#'   specifications for maximum values within this grid must be resolved via
+#'   \code{\link{imr_set_grid_limits}} prior to invoking `imr_tune`.
+#' @param final_fit Logical. If `TRUE`, the function performs a final model
+#'   estimation on the complete dataset (`Y`) using the identified optimal
+#'   hyperparameters. Defaults to `TRUE`.
 #' @param use_warm_in_final Internal. Pending deprecation.
-#' @param fast_laplace Logical. Toggles the algorithm used for tuning the low-rank
-#'   component (Laplace). See Details for the difference between fast and slow modes.
-#'   Defaults to `TRUE`.
-#' @param convergence An `"imr_convergence"` object controlling the internal model fits.
-#' @param error_function A function used to evaluate prediction error on the validation
-#'   set. Must take two arguments `(predicted, actual)`. Defaults to `IMR::error_metrics$rmse`.
+#' @param fast_nuclear Logical. Specifies the algorithmic approach for tuning the
+#'   low-rank component (nuclear norm penalty). Defaults to `TRUE`.
+#' @param convergence An `"imr_convergence"` object specifying numerical tolerances
+#'   for internal model estimation.
+#' @param error_function A function used to evaluate prediction error on the
+#'   validation set. Must accept two arguments, `(predicted, actual)`.
+#'   Defaults to `IMR::error_metrics$rmse`.
 #' @param warm_start Internal. Pending deprecation.
-#' @param verbose Integer. Controls the level of printed progress output. Defaults to `1`.
-#' @param n_cores Integer. Number of CPU cores to use for parallel execution over
-#'   covariate grids. Defaults to `4`.
-#' @param seed Integer. Random seed for reproducibility. Defaults to `NULL`.
-#' @param laplace_log_scale Logical. If `TRUE`, the `lambda_m` grid is generated on
-#'   a logarithmic scale, concentrating more test values near the minimum. Recommended
-#'   when the maximum `lambda_m` is very large. Defaults to `TRUE`.
-#' @param tune_maxit Integer. The maximum number of alternating optimization iterations
-#'   allowed when tuning all three parameters (Scenario 3). Defaults to `10`.
-#' @param tune_tol Numeric. The relative tolerance for early stopping during alternating
-#'   optimization. If the absolute relative change in validation error falls below this
-#'   threshold, tuning stops. Defaults to `1e-4`.
+#' @param verbose Integer. Controls the level of diagnostic progress output.
+#'   Defaults to `1`.
+#' @param n_cores Integer. Number of CPU cores allocated for parallel execution
+#'   across covariate grids. Defaults to `4`.
+#' @param seed Integer. Seed for random number generation to ensure reproducibility.
+#'   Defaults to `NULL`.
+#' @param nuclear_log_scale Logical. If `TRUE`, the \eqn{\lambda_M} (`lambda_m`)
+#'   grid is constructed on a logarithmic scale, increasing the density of evaluation
+#'   points near the lower bound. Recommended when the maximum \eqn{\lambda_M}
+#'   is large. Defaults to `TRUE`.
+#' @param tune_maxit Integer. Maximum number of alternating optimization iterations
+#'   permitted when simultaneously tuning all three parameters (Scenario 3).
+#'   Defaults to `10`.
+#' @param tune_tol Numeric. Relative tolerance threshold for early stopping during
+#'   alternating optimization. Optimization terminates if the absolute relative
+#'   change in validation error falls below this limit. Defaults to `1e-4`.
 #'
 #' @details
 #' **Tuning Scenarios:**
-#' The function automatically selects one of three tuning scenarios based on the
-#' complexity of the provided `grid` and data structure:
+#' The function selects an optimization trajectory based on the complexity of
+#' the `grid` and model specification:
 #' \enumerate{
-#'   \item \strong{Laplace Only:} If both `beta` and `gamma` are either fixed or
-#'     not part of the model, tuning operates strictly sequentially over the low-rank
-#'     component parameters.
-#'   \item \strong{Laplace + One Covariate:} If only one covariate penalty (either
-#'     `beta` or `gamma`) requires tuning, the function parallelizes over the covariate
-#'     grid. For each covariate penalty value, it runs Scenario 1 to find the optimal
-#'     Laplace parameters.
-#'   \item \strong{Alternating Optimization (All Three):} If `beta`, `gamma`, and
-#'     Laplace all require tuning, an alternating loop is used. It fixes `gamma`,
-#'     tunes `beta` + Laplace (Scenario 2), then fixes `beta`, tunes `gamma` + Laplace,
-#'     and repeats. This continues until the validation error stabilizes (`tune_tol`)
+#'   \item If \eqn{\lambda_\beta} and \eqn{\lambda_\Gamma} are fixed or
+#'     absent from the model, optimization proceeds sequentially over the
+#'     low-rank component parameters.
+#'   \item  If exactly one covariate penalty
+#'     (\eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}) requires tuning, the function parallelizes
+#'     execution across the corresponding covariate grid. For each value,
+#'     Scenario 1 is executed to optimize the nuclear parameters.
+#'   \item When \eqn{\lambda_\beta},
+#'     \eqn{\lambda_\Gamma}, and the nuclear component all require tuning, an
+#'     alternating loop is utilized. The algorithm fixes \eqn{\lambda_\Gamma} and
+#'     optimizes \eqn{\lambda_\beta} + nuclear (Scenario 2), then fixes \eqn{\lambda_\beta}
+#'     and optimizes \eqn{\lambda_\Gamma} + nuclear. This iterates until `tune_tol`
 #'     or `tune_maxit` is reached.
 #' }
 #'
-#' **Laplace Tuning Modes (`fast_laplace`):**
+#' **Nuclear Tuning Modes (`fast_nuclear`):**
 #' \itemize{
-#'   \item \strong{Fast Mode (`TRUE`):} Starts at the maximum `lambda_m` and minimum
-#'     rank. It simultaneously steps down `lambda_m` while stepping up the rank at
-#'     each iteration. It stops when validation performance ceases to improve based
-#'     on the grid's patience/streaks parameter. Excellent for rapid modeling.
-#'   \item \strong{Slow Mode (`FALSE`):} Creates a complete nested grid. For every
-#'     value of `lambda_m`, it iteratively tests ranks from smallest to largest until
-#'     performance degrades. Slower, but exhaustively maps the performance space for
-#'     a final, fine-tuned model.
+#'   \item \strong{Fast Mode (`TRUE`):} Commences at the maximum \eqn{\lambda_M}
+#'     and minimum rank. The algorithm simultaneously decrements \eqn{\lambda_M}
+#'     while incrementing the rank, terminating when validation performance
+#'     stagnates according to the grid's patience parameter.
+#'   \item \strong{Slow Mode (`FALSE`):} Constructs a nested grid.
+#'     For each \eqn{\lambda_M} value, the function iteratively evaluates ranks
+#'     until predictive performance degrades. This mode provides a comprehensive
+#'     mapping of the parameter space.
 #' }
 #'
-#' @return A list containing:
+#' @return A list comprising:
 #' \itemize{
-#'   \item \code{all_params}: A data frame containing the best parameter combinations
-#'         found during each main iteration of the tuning process.
-#'   \item \code{history}: A data frame containing the comprehensive history of all
-#'         evaluated parameter combinations and their associated errors.
-#'   \item \code{fit}: The final fitted `"imr_fit"` object using the best parameters
-#'         (if `final_fit = TRUE`).
-#'   \item \code{params}: A one-row data frame isolating the absolute best hyperparameter
-#'         combination found.
-#'   \item \code{time_secs}: The total tuning execution time in seconds.
+#'   \item \code{all_params}: A data frame recording the optimal parameter
+#'     configurations identified at each major iteration of the tuning process.
+#'   \item \code{history}: A comprehensive data frame of all evaluated parameter
+#'     combinations and their respective validation errors.
+#'   \item \code{fit}: The final estimated `"imr_fit"` object evaluated at the
+#'     global optimal parameters (if `final_fit = TRUE`).
+#'   \item \code{params}: A data frame containing the global optimal
+#'     hyperparameter combination.
+#'   \item \code{time_secs}: Total execution time in seconds.
 #' }
 #'
 #' @export
@@ -554,14 +558,14 @@ imr_tune <- function(data,
                      grid,
                      final_fit = TRUE,
                      use_warm_in_final = TRUE,
-                     fast_laplace = TRUE,
+                     fast_nuclear = TRUE,
                      convergence = IMR::imr_convergence(),
                      error_function = IMR::error_metrics$rmse,
                      warm_start = NULL,
                      verbose = 1,
                      n_cores = 4,
                      seed = NULL,
-                     laplace_log_scale = TRUE,
+                     nuclear_log_scale = TRUE,
                      tune_maxit = 10,
                      tune_tol = 1e-4) {
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
@@ -577,17 +581,17 @@ imr_tune <- function(data,
   #   default_lambda_gamma <- grid$gamma$min
 
   #----------------------------------------------------------
-  # Scenario 1: Tune Laplace Only
+  # Scenario 1: Tune nuclear Only
   #------------------------------------------------------------
   if (!tune_beta && !tune_gamma) {
-    if (verbose > 0) message("Tuning  Laplace (M) only...")
-    laplace_function <- if (fast_laplace) imr_tune_laplace_fast else imr_tune_laplace_slow
-    out_obj <- laplace_function(
+    if (verbose > 0) message("Tuning  nuclear (M) only...")
+    nuclear_function <- if (fast_nuclear) imr_tune_nuclear_fast else imr_tune_nuclear_slow
+    out_obj <- nuclear_function(
       data = data, grid = grid,
       lambda_beta = grid$beta$min, lambda_gamma = grid$gamma$min,
       final_fit = final_fit, convergence = convergence,
       error_function = error_function, warm_start = warm_start,
-      log_grid = laplace_log_scale,
+      log_grid = nuclear_log_scale,
       verbose = verbose, seed = seed
     )
     t_total <- round(difftime(Sys.time(), t_start_global), 2)
@@ -598,18 +602,18 @@ imr_tune <- function(data,
     return(out_obj)
   }
   #---------------------------------------------------------------------
-  # Scenario 2: Tuning Laplace + one of lambda_beta or lambda_gamma
+  # Scenario 2: Tuning nuclear + one of lambda_beta or lambda_gamma
   #-----------------------------------------------------------------
   if (tune_beta != tune_gamma) {
     target <- if (tune_beta) "beta" else "gamma"
     fixed_other <- if (tune_beta) grid$gamma$min else grid$beta$min
 
-    if (verbose > 0) message(sprintf("Tuning %s + Laplace...", (target)))
+    if (verbose > 0) message(sprintf("Tuning %s + nuclear...", (target)))
     out_obj <- imr_tune_lasso(
       data = data, grid = grid, target = target, fixed_other_lasso = fixed_other,
       final_fit = final_fit, use_warm_in_final = use_warm_in_final,
       convergence = convergence, error_function = error_function,
-      warm_start = warm_start, verbose = verbose, fast_laplace = fast_laplace,
+      warm_start = warm_start, verbose = verbose, fast_nuclear = fast_nuclear,
       n_cores = n_cores, seed = seed
     )
     t_total <- difftime(Sys.time(), t_start_global)
@@ -644,7 +648,7 @@ imr_tune <- function(data,
     res_beta <- imr_tune_lasso(
       data = data, grid = grid, target = "beta", fixed_other_lasso = cur_gamma,
       final_fit = final_fit, # if (one_more_fit) final_fit else FALSE,
-      use_warm_in_final = use_warm_in_final, fast_laplace = fast_laplace,
+      use_warm_in_final = use_warm_in_final, fast_nuclear = fast_nuclear,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
       n_cores = n_cores, seed = seed
@@ -669,8 +673,8 @@ imr_tune <- function(data,
     # convergence check
     if (verbose > 0 && iter > 1) {
       message(sprintf(
-        "verror: %.4f | Beta: %.4f | Gamma: %.4f | Laplace: %.4f | Diff: %.6f | Time: %.2fs",
-        res_beta$params$verror, cur_beta, cur_gamma, res_gamma$params$lambda_laplace, diff, iter_time_secs
+        "verror: %.4f | Beta: %.4f | Gamma: %.4f | nuclear: %.4f | Diff: %.6f | Time: %.2fs",
+        res_beta$params$verror, cur_beta, cur_gamma, res_gamma$params$lambda_m, diff, iter_time_secs
       ))
     }
 
@@ -688,7 +692,7 @@ imr_tune <- function(data,
     res_gamma <- imr_tune_lasso(
       data = data, grid = grid, target = "gamma", fixed_other_lasso = cur_beta,
       final_fit = final_fit, # if (one_more_fit) final_fit else FALSE,
-      use_warm_in_final = use_warm_in_final, fast_laplace = fast_laplace,
+      use_warm_in_final = use_warm_in_final, fast_nuclear = fast_nuclear,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
       n_cores = n_cores, seed = seed
@@ -713,8 +717,8 @@ imr_tune <- function(data,
     # convergence check
     if (verbose > 0) {
       message(sprintf(
-        "verror: %.4f | Beta: %.4f | Gamma: %.4f | Laplace: %.4f | Diff: %.6f | Time: %.2fs",
-        res_gamma$params$verror, cur_beta, cur_gamma, res_gamma$params$lambda_laplace, diff, iter_time_secs
+        "verror: %.4f | Beta: %.4f | Gamma: %.4f | nuclear: %.4f | Diff: %.6f | Time: %.2fs",
+        res_gamma$params$verror, cur_beta, cur_gamma, res_gamma$params$lambda_m, diff, iter_time_secs
       ))
     }
 

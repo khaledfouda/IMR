@@ -1,58 +1,64 @@
 #' Define Hyperparameter Tuning Grid for IMR
 #'
 #' @description
-#' Creates a configuration object defining the search space for hyperparameter
-#' tuning in an IMR model. This object
-#' is used by the `imr_tune` function to tuning and finding the optimal hyperparamters.
+#' Constructs a configuration object specifying the search space for hyperparameter
+#' optimization within an Integrated Matrix Regression (IMR) framework. This object
+#' facilitates the execution of the `imr_tune` function by defining the domain for identifying
+#'  optimal hyperparameters.
 #'
-#' @param beta Numeric vector defining the grid for the row covariate penalty
-#'   (`lambda_beta`). Format: `c(min, max, length)`. Defaults to `c(0, NA, 20)`.
-#' @param gamma Numeric vector defining the grid for the column covariate penalty
-#'   (`lambda_gamma`). Format: `c(min, max, length)`. Defaults to `c(0, NA, 20)`.
-#' @param laplace Numeric vector defining the grid for the low-rank component
-#'   penalty (`lambda_m`). Format: `c(min, max, length, streaks)`. The `streaks`
-#'   parameter dictates the patience for early stopping. Defaults to `c(0, NA, 20, 2)`.
-#' @param rank Numeric vector defining the grid for the rank of the low-rank
-#'   component. Format: `c(min, max, step, streaks)`. The `streaks` parameter
-#'   dictates the patience for early stopping. Defaults to `c(2, 30, 2, 2)`.
+#' @param beta A numeric vector defining the search grid for the row-wise covariate
+#'   regularization parameter (\eqn{\lambda_\beta}). Expected format: `c(min, max, length)`.
+#'   Defaults to `c(0, NA, 20)`.
+#' @param gamma A numeric vector defining the search grid for the column-wise covariate
+#'   regularization parameter (\eqn{\lambda_\Gamma}). Expected format: `c(min, max, length)`.
+#'   Defaults to `c(0, NA, 20)`.
+#' @param nuclear A numeric vector defining the search grid for the nuclear norm
+#'   penalty (\eqn{\lambda_M}) applied to the low-rank component. Expected format:
+#'   `c(min, max, length, streaks)`, where `streaks` specifies the patience threshold
+#'   for early stopping. Defaults to `c(0, NA, 20, 2)`.
+#' @param rank A numeric vector defining the search grid for the rank of the
+#'   low-rank component. Expected format: `c(min, max, step, streaks)`, where
+#'   `streaks` specifies the patience threshold for early stopping.
+#'   Defaults to `c(2, 30, 2, 2)`.
 #'
 #' @details
-#' Regarding the inputs for `beta`, `gamma`, and `laplace`:
-#' * **Automatic Maximum:** If the second element (`max`) is `NA`, the upper limit
-#'     can be automatically determined using the function `imr_set_grid_limits`.
-#' * **Fixed Value:** If a vector of length 1 is provided (e.g., `beta = 0.5`),
-#'     the parameter is held constant during tuning, bypassing the grid search
-#'     for that specific hyperparameter. This also holds for the `rank`.
-#' Generally, if the input vector is of length 1, then this value is used as a fixed
-#'    value. If the input vector is of length 2, then they are used as the minimum and
-#'    maximum and values and the rest are set to the default values.
+#' Specifications for `beta`, `gamma`, and `nuclear` parameters are subject to the
+#' following conventions:
+#' * If the second element (`max`) is
+#'     specified as `NA`, the upper bound of the grid is determined internally
+#'     via `imr_set_grid_limits`. You need to call that function before calling `imr_tune`.
+#' *  Providing a vector of length 1 (e.g., `beta = 0.5`)
+#'     constrains the parameter to that value throughout the tuning process.
+#' *  If a vector of length 2 is provided, the elements are
+#'     interpreted as the minimum and maximum bounds, respectively, with remaining
+#'     grid attributes reverting to their default values.
 #'
-#' @return An object of class `"imr_tune_grid"`, which is a list containing the
-#'   parsed grid boundaries, lengths, step sizes, and early stopping criteria
-#'   for each parameter.
+#' @return An object of class `"imr_tune_grid"`, structured as a list containing
+#'   parsed grid boundaries, step sizes, and early stopping
+#'   criteria for each hyperparameter.
 #'
 #' @export
 #'
 #' @examples
-#' # Default grid (max limits to be calculated automatically)
+#' # Initialize default grid with automated limit calculation
 #' default_grid <- imr_tune_grid()
 #'
-#' # Fix beta to 0, tune gamma and laplace, and ranks 2 through 10
+#' # Fix beta at 0 and define custom search spaces for gamma, nuclear, and rank
 #' custom_grid <- imr_tune_grid(
 #'   beta = 0,
 #'   gamma = c(0.01, 1, 10),
-#'   laplace = c(0, NA, 15, 3), # 15 points, patience of 3
+#'   nuclear = c(0, NA, 15, 3), # 15 points, patience threshold of 3
 #'   rank = c(2, 10, 2, 2)
 #' )
 imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
                           gamma = c(0, NA, 20),
-                          laplace = c(0, NA, 20, 2), # min, max, length, streak
+                          nuclear = c(0, NA, 20, 2), # min, max, length, streak
                           rank = c(2, 30, 2, 2) # min, max, step, streak
 ) {
-  parse_param <- function(p, is_rank = FALSE, is_laplace = FALSE) {
+  parse_param <- function(p, is_rank = FALSE, is_nuclear = FALSE) {
     len <- length(p)
     stopifnot(len >= 1)
-    stopifnot(!(is_rank && len < 2))
+    #stopifnot(!(is_rank && len < 2))
     if (is_rank) {
       list(
         min = p[1],
@@ -66,7 +72,7 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
         max     = if (len == 1) p[1] else if (is.na(p[2])) "auto" else p[2],
         length  = if (len == 1) 1 else if (len >= 3) p[3] else 20
       )
-      if (is_laplace) {
+      if (is_nuclear) {
         out$streaks <- if (len >= 4) p[4] else 2
       }
       out
@@ -78,7 +84,7 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
       beta    = parse_param(beta),
       gamma   = parse_param(gamma),
       rank    = parse_param(rank, is_rank = TRUE),
-      laplace = parse_param(laplace, is_laplace = TRUE)
+      nuclear = parse_param(nuclear, is_nuclear = TRUE)
     ),
     class = "imr_tune_grid"
   )
@@ -88,38 +94,32 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
 print.imr_tune_grid <- function(x, ...) {
   cat("\n== IMR Hyperparameter Configuration ==\n")
 
-  fmt_range <- function(param) {
-    if (param$length == 1) {
+  fmt_range <- function(param, nuclear=FALSE, rank = FALSE) {
+    if (param$min == param$max) {
       return(paste0("Fixed at ", param$min))
     }
 
     # max_val <- if (identical(param$max, "auto")) "auto" else param$max
 
+    if(nuclear){
+      text_partial <- sprintf("(Length: %s, Streaks: %s)", param$length, param$streaks)
+    }else if(rank){
+      text_partial <- sprintf("(Step: %s, Streaks: %d)", param$step, param$streaks)
+    }else
+      text_partial <- sprintf("(Grid: %d points)", param$length)
+
+    paste(
     sprintf(
-      "Range: %s -> %s (Grid: %d points)",
-      param$min, if (is.numeric(param$max)) round(param$max, 6) else param$max, param$length
-    )
+      "Range: %s -> %s ",
+      param$min, if (is.numeric(param$max)) round(param$max, 6) else param$max
+    ),
+    text_partial)
   }
 
   cat(sprintf("%-18s %s\n", "Beta:", fmt_range(x$beta)))
   cat(sprintf("%-18s %s\n", "Gamma:", fmt_range(x$gamma)))
-  steps_str <- paste(x$laplace$steps, collapse = ", ")
-  cat(sprintf(
-    "%-18s Range: %s -> %s (Length: %s, Streaks: %s)\n",
-    "Laplace:",
-    x$laplace$min,
-    if (is.numeric(x$laplace$max)) round(x$laplace$max, 6) else x$laplace$max,
-    x$laplace$length,
-    x$laplace$streaks
-  ))
-  cat(sprintf(
-    "%-18s Range: %d -> %d   (Step: %s, Streaks: %d)\n",
-    "Rank:",
-    x$rank$min,
-    x$rank$max,
-    x$rank$step,
-    x$rank$streaks
-  ))
+  cat(sprintf("%-18s %s\n", "Nuclear:", fmt_range(x$nuclear, nuclear=TRUE)))
+  cat(sprintf("%-18s %s\n", "Rank:", fmt_range(x$rank, rank=TRUE)))
 
   cat("===========================================================\n\n")
 
@@ -127,53 +127,54 @@ print.imr_tune_grid <- function(x, ...) {
 }
 
 #-----------------------------------------------------
-#' Automatically Determine Hyperparameter Grid Limits
+#' Automatically Determine Hyperparameter Grid Maximum Values
 #'
 #' @description
-#' Calculates the appropriate upper limits (`max`) for the hyperparameter tuning
-#' grid when they are specified as `"auto"`. It finds the smallest regularization
-#' parameter that forces all corresponding coefficients to zero.
+#' Computes the optimal upper bounds (\eqn{max}) for the hyperparameter tuning
+#' grid when specifications are set to `"auto"`. The function identifies the
+#' minimal regularization parameter required to shrink all corresponding
+#' coefficients to zero.
 #'
-#' @param data An object of class `"imr_data"` containing the model structure
-#'   and matrices.
-#' @param grid An object of class `"imr_tune_grid"`, typically created by
+#' @param data An object of class `"imr_data"` containing the response matrices
+#'   and covariate structures.
+#' @param grid An object of class `"imr_tune_grid"`, initialized via
 #'   `imr_tune_grid()`.
-#' @param default_rank Integer. The default rank to use when searching for the
-#'   maximum `lambda_beta` or `lambda_gamma`. Defaults to `2`.
-#' @param default_lambda_m Numeric. The default penalty for the low-rank component
-#'   when searching for covariate penalty limits. Defaults to `0`.
-#' @param default_lambda_beta Numeric. The default penalty for row covariates
-#'   when searching for the maximum `lambda_m`. Defaults to `0`.
-#' @param default_lambda_gamma Numeric. The default penalty for column covariates
-#'   when searching for the maximum `lambda_m`. Defaults to `0`.
-#' @param convergence An `"imr_convergence"` object controlling the internal model
-#'   fits during the search. Defaults to `IMR::imr_convergence(trace = FALSE, ls_initial = FALSE)`.
-#' @param bisection_iter Integer. The number of iterations to use in the bisection
-#'   algorithm to refine the upper limit. Defaults to `15`.
-#' @param verbose Integer. Controls the level of printed output during the search.
-#'   Defaults to `0` (silent). Set it `1` to output the final parameters and `2` for
-#'   an output at every iteration.
+#' @param default_rank,default_lambda_m Integer,Numeric. The fixed rank and low-rank component
+#'   penalty used as reference when
+#'   estimating the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}.
+#'   Default to `2` and `0`.
+#' @param default_lambda_beta,default_lambda_gamma Numeric. The row and column
+#'   covariate penalties used as
+#'   a reference when estimating the maximum \eqn{\lambda_M}. Defaults to `0`.
+#' @param convergence An `"imr_convergence"` object specifying the numerical
+#'   tolerances and optimization parameters for internal model fits. Defaults
+#'   to `imr_convergence(trace = FALSE, ls_initial = FALSE)`.
+#' @param bisection_iter Integer. The number of iterations for the bisection
+#'   algorithm employed to refine the estimated upper bound. Defaults to `5`.
+#' @param verbose Integer. Level of diagnostic output. `0` (default) is silent,
+#'   `1` reports final parameters, and `2` provides per-iteration updates.
 #'
 #' @details
-#' The function isolates each hyperparameter to find its maximum using a
-#' two-step process:
+#' The procedure isolates each hyperparameter to determine its saturation
+#' point through a two-stage estimation process:
 #' \enumerate{
-#'   \item **KKT Initialization:** It calculates an initial theoretical upper limit
-#'     based on the Karush-Kuhn-Tucker (KKT) conditions.
-#'   \item **Refinement:** Because the theoretical KKT value can sometimes
-#'     be slightly over or underestimated in practice, the function runs a bisection
-#'     search for `bisection_iter` iterations to empirically find the exact smallest
-#'     penalty value that shrinks all targeted parameters to zero.
+#'   \item An initial theoretical upper bound is
+#'     derived based on the Karush-Kuhn-Tucker (KKT)  conditions.
+#'   \item The function executes a bisection search over
+#'     `bisection_iter` iterations using KKT estimates as initial values. This identifies the infimum
+#'     of the penalty values that result in a zero-solution for the
+#'     targeted parameters.
 #' }
 #'
-#' When searching for the maximum `lambda_beta` or `lambda_gamma`, the other
-#' covariate penalty is effectively set to infinity (ignored), while the low-rank
-#' component is fixed at `default_rank` and `default_lambda_m`. Conversely, when
-#' searching for the maximum `lambda_m` (laplace), the covariate penalties are fixed
-#' at `default_lambda_beta` and `default_lambda_gamma`.
+#' During the estimation of the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma},
+#' the other covariate penalty is treated as infinite, while the
+#' low-rank component is set to `default_rank` and `default_lambda_m`.
+#' Conversely, estimation of the maximum \eqn{\lambda_M} (nuclear norm penalty)
+#' assumes the covariate penalties are fixed at `default_lambda_beta` and
+#' `default_lambda_gamma`.
 #'
-#' @return The modified `"imr_tune_grid"` object with all `"auto"` maximums
-#'   replaced by their calculated numeric values.
+#' @return A modified `"imr_tune_grid"` object where all `"auto"` placeholders
+#'   are replaced by the numerically determined maximum values.
 #'
 #' @export
 imr_set_grid_limits <- function(data,
@@ -182,8 +183,8 @@ imr_set_grid_limits <- function(data,
                                 default_lambda_m = 0,
                                 default_lambda_beta = 0,
                                 default_lambda_gamma = 0,
-                                convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE),
-                                bisection_iter = 15,
+                                convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
+                                bisection_iter = 5,
                                 verbose = 0) {
   if (data$model$row_covariates && data$meta$has_X && grid$beta$max == "auto") {
     grid$beta$max <- imr_get_lambda_lasso_max(data, "beta",
@@ -203,8 +204,8 @@ imr_set_grid_limits <- function(data,
       verbose = verbose
     )
   }
-  if (data$model$low_rank_component && grid$laplace$max == "auto") {
-    grid$laplace$max <- imr_get_lambda_m_max(data,
+  if (data$model$low_rank_component && grid$nuclear$max == "auto") {
+    grid$nuclear$max <- imr_get_lambda_m_max(data,
       rank = default_rank,
       lambda_beta = default_lambda_beta,
       lambda_gamma = default_lambda_gamma,
@@ -274,7 +275,7 @@ imr_get_lambda_m_max <-
         upper <- upper * 1.5
       }
       if (verbose >= 2) {
-        message(sprintf("lambda = %.4f, zero ratio = %.2f", upper, zero_ratio))
+        message(sprintf("parameter = %.4f, zero ratio = %.2f", upper, zero_ratio))
       }
     }
 
@@ -291,7 +292,7 @@ imr_get_lambda_m_max <-
         lower <- mid
       }
       if (verbose >= 2) {
-        message(sprintf("lambda = %.4f, zero ratio = %.2f", mid, zero_ratio))
+        message(sprintf("parameter = %.4f, zero ratio = %.2f", mid, zero_ratio))
       }
     }
 
@@ -300,7 +301,7 @@ imr_get_lambda_m_max <-
 
     if (verbose > 0) {
       message(sprintf(
-        "Target: Laplace | KKT max: %.3f | Empiric Sup: %.3f (%.1f%% of KKT)",
+        "Target: nuclear | KKT max: %.3f | Empiric Sup: %.3f (%.1f%% of KKT)",
         lambda_kkt, lambda_sup, 100 * lambda_sup / lambda_kkt
       ))
     }
@@ -399,7 +400,7 @@ imr_get_lambda_lasso_max <- function(
       upper <- upper * 1.5
     }
     if (verbose >= 2) {
-      message(sprintf("lambda = %.4f, zero ratio = %.2f", upper, zero_ratio))
+      message(sprintf("parameter = %.4f, zero ratio = %.2f", upper, zero_ratio))
     }
   }
 
@@ -419,7 +420,7 @@ imr_get_lambda_lasso_max <- function(
       lower <- mid
     }
     if (verbose >= 2) {
-      message(sprintf("lambda = %.4f, zero ratio = %.2f", mid, zero_ratio))
+      message(sprintf("parameter = %.4f, zero ratio = %.2f", mid, zero_ratio))
     }
   }
 

@@ -9,109 +9,114 @@ imr_tune(
   grid,
   final_fit = TRUE,
   use_warm_in_final = TRUE,
-  fast_laplace = TRUE,
+  fast_nuclear = TRUE,
   convergence = IMR::imr_convergence(),
   error_function = IMR::error_metrics$rmse,
   warm_start = NULL,
   verbose = 1,
   n_cores = 4,
   seed = NULL,
-  laplace_log_scale = TRUE,
+  nuclear_log_scale = TRUE,
   tune_maxit = 10,
   tune_tol = 1e-04
 )
 }
 \arguments{
 \item{data}{An object of class \code{"imr_data"} containing the training and
-validation splits.}
+validation partitions.}
 
-\item{grid}{An object of class \code{"imr_tune_grid"}. \strong{Note:} Any \code{"auto"} maximum
-values in this grid must be resolved using \code{\link{imr_set_grid_limits}}
-prior to calling \code{imr_tune}.}
+\item{grid}{An object of class \code{"imr_tune_grid"}. \strong{Note:} Any \code{"auto"}
+specifications for maximum values within this grid must be resolved via
+\code{\link{imr_set_grid_limits}} prior to invoking \code{imr_tune}.}
 
-\item{final_fit}{Logical. If \code{TRUE}, after identifying the optimal hyperparameters,
-the function performs one final model fit on the entire complete dataset (\code{Y})
-and returns it. Defaults to \code{TRUE}.}
+\item{final_fit}{Logical. If \code{TRUE}, the function performs a final model
+estimation on the complete dataset (\code{Y}) using the identified optimal
+hyperparameters. Defaults to \code{TRUE}.}
 
 \item{use_warm_in_final}{Internal. Pending deprecation.}
 
-\item{fast_laplace}{Logical. Toggles the algorithm used for tuning the low-rank
-component (Laplace). See Details for the difference between fast and slow modes.
-Defaults to \code{TRUE}.}
+\item{fast_nuclear}{Logical. Specifies the algorithmic approach for tuning the
+low-rank component (nuclear norm penalty). Defaults to \code{TRUE}.}
 
-\item{convergence}{An \code{"imr_convergence"} object controlling the internal model fits.}
+\item{convergence}{An \code{"imr_convergence"} object specifying numerical tolerances
+for internal model estimation.}
 
-\item{error_function}{A function used to evaluate prediction error on the validation
-set. Must take two arguments \verb{(predicted, actual)}. Defaults to \code{IMR::error_metrics$rmse}.}
+\item{error_function}{A function used to evaluate prediction error on the
+validation set. Must accept two arguments, \verb{(predicted, actual)}.
+Defaults to \code{IMR::error_metrics$rmse}.}
 
 \item{warm_start}{Internal. Pending deprecation.}
 
-\item{verbose}{Integer. Controls the level of printed progress output. Defaults to \code{1}.}
+\item{verbose}{Integer. Controls the level of diagnostic progress output.
+Defaults to \code{1}.}
 
-\item{n_cores}{Integer. Number of CPU cores to use for parallel execution over
-covariate grids. Defaults to \code{4}.}
+\item{n_cores}{Integer. Number of CPU cores allocated for parallel execution
+across covariate grids. Defaults to \code{4}.}
 
-\item{seed}{Integer. Random seed for reproducibility. Defaults to \code{NULL}.}
+\item{seed}{Integer. Seed for random number generation to ensure reproducibility.
+Defaults to \code{NULL}.}
 
-\item{laplace_log_scale}{Logical. If \code{TRUE}, the \code{lambda_m} grid is generated on
-a logarithmic scale, concentrating more test values near the minimum. Recommended
-when the maximum \code{lambda_m} is very large. Defaults to \code{TRUE}.}
+\item{nuclear_log_scale}{Logical. If \code{TRUE}, the \eqn{\lambda_M} (\code{lambda_m})
+grid is constructed on a logarithmic scale, increasing the density of evaluation
+points near the lower bound. Recommended when the maximum \eqn{\lambda_M}
+is large. Defaults to \code{TRUE}.}
 
-\item{tune_maxit}{Integer. The maximum number of alternating optimization iterations
-allowed when tuning all three parameters (Scenario 3). Defaults to \code{10}.}
+\item{tune_maxit}{Integer. Maximum number of alternating optimization iterations
+permitted when simultaneously tuning all three parameters (Scenario 3).
+Defaults to \code{10}.}
 
-\item{tune_tol}{Numeric. The relative tolerance for early stopping during alternating
-optimization. If the absolute relative change in validation error falls below this
-threshold, tuning stops. Defaults to \code{1e-4}.}
+\item{tune_tol}{Numeric. Relative tolerance threshold for early stopping during
+alternating optimization. Optimization terminates if the absolute relative
+change in validation error falls below this limit. Defaults to \code{1e-4}.}
 }
 \value{
-A list containing:
+A list comprising:
 \itemize{
-\item \code{all_params}: A data frame containing the best parameter combinations
-found during each main iteration of the tuning process.
-\item \code{history}: A data frame containing the comprehensive history of all
-evaluated parameter combinations and their associated errors.
-\item \code{fit}: The final fitted \code{"imr_fit"} object using the best parameters
-(if \code{final_fit = TRUE}).
-\item \code{params}: A one-row data frame isolating the absolute best hyperparameter
-combination found.
-\item \code{time_secs}: The total tuning execution time in seconds.
+\item \code{all_params}: A data frame recording the optimal parameter
+configurations identified at each major iteration of the tuning process.
+\item \code{history}: A comprehensive data frame of all evaluated parameter
+combinations and their respective validation errors.
+\item \code{fit}: The final estimated \code{"imr_fit"} object evaluated at the
+global optimal parameters (if \code{final_fit = TRUE}).
+\item \code{params}: A data frame containing the global optimal
+hyperparameter combination.
+\item \code{time_secs}: Total execution time in seconds.
 }
 }
 \description{
-Performs hyperparameter tuning for an Incomplete Matrix Regression (IMR)
-model. It evaluates model performance on a validation set (\code{y_valid}) while
-training on a training set (\code{y_train}), using a variety of grid search and
-alternating optimization strategies.
+Executes hyperparameter optimization for Incomplete Matrix Regression (IMR)
+models. The procedure evaluates predictive performance on a validation set
+(\code{y_valid}) while estimating the model on a training set (\code{y_train}).
 }
 \details{
 \strong{Tuning Scenarios:}
-The function automatically selects one of three tuning scenarios based on the
-complexity of the provided \code{grid} and data structure:
+The function selects an optimization trajectory based on the complexity of
+the \code{grid} and model specification:
 \enumerate{
-\item \strong{Laplace Only:} If both \code{beta} and \code{gamma} are either fixed or
-not part of the model, tuning operates strictly sequentially over the low-rank
-component parameters.
-\item \strong{Laplace + One Covariate:} If only one covariate penalty (either
-\code{beta} or \code{gamma}) requires tuning, the function parallelizes over the covariate
-grid. For each covariate penalty value, it runs Scenario 1 to find the optimal
-Laplace parameters.
-\item \strong{Alternating Optimization (All Three):} If \code{beta}, \code{gamma}, and
-Laplace all require tuning, an alternating loop is used. It fixes \code{gamma},
-tunes \code{beta} + Laplace (Scenario 2), then fixes \code{beta}, tunes \code{gamma} + Laplace,
-and repeats. This continues until the validation error stabilizes (\code{tune_tol})
+\item If \eqn{\lambda_\beta} and \eqn{\lambda_\Gamma} are fixed or
+absent from the model, optimization proceeds sequentially over the
+low-rank component parameters.
+\item  If exactly one covariate penalty
+(\eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}) requires tuning, the function parallelizes
+execution across the corresponding covariate grid. For each value,
+Scenario 1 is executed to optimize the nuclear parameters.
+\item When \eqn{\lambda_\beta},
+\eqn{\lambda_\Gamma}, and the nuclear component all require tuning, an
+alternating loop is utilized. The algorithm fixes \eqn{\lambda_\Gamma} and
+optimizes \eqn{\lambda_\beta} + nuclear (Scenario 2), then fixes \eqn{\lambda_\beta}
+and optimizes \eqn{\lambda_\Gamma} + nuclear. This iterates until \code{tune_tol}
 or \code{tune_maxit} is reached.
 }
 
-\strong{Laplace Tuning Modes (\code{fast_laplace}):}
+\strong{Nuclear Tuning Modes (\code{fast_nuclear}):}
 \itemize{
-\item \strong{Fast Mode (\code{TRUE}):} Starts at the maximum \code{lambda_m} and minimum
-rank. It simultaneously steps down \code{lambda_m} while stepping up the rank at
-each iteration. It stops when validation performance ceases to improve based
-on the grid's patience/streaks parameter. Excellent for rapid modeling.
-\item \strong{Slow Mode (\code{FALSE}):} Creates a complete nested grid. For every
-value of \code{lambda_m}, it iteratively tests ranks from smallest to largest until
-performance degrades. Slower, but exhaustively maps the performance space for
-a final, fine-tuned model.
+\item \strong{Fast Mode (\code{TRUE}):} Commences at the maximum \eqn{\lambda_M}
+and minimum rank. The algorithm simultaneously decrements \eqn{\lambda_M}
+while incrementing the rank, terminating when validation performance
+stagnates according to the grid's patience parameter.
+\item \strong{Slow Mode (\code{FALSE}):} Constructs a nested grid.
+For each \eqn{\lambda_M} value, the function iteratively evaluates ranks
+until predictive performance degrades. This mode provides a comprehensive
+mapping of the parameter space.
 }
 }

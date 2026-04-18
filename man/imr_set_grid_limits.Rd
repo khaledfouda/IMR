@@ -2,7 +2,7 @@
 % Please edit documentation in R/imr_tune_grid.R
 \name{imr_set_grid_limits}
 \alias{imr_set_grid_limits}
-\title{Automatically Determine Hyperparameter Grid Limits}
+\title{Automatically Determine Hyperparameter Grid Maximum Values}
 \usage{
 imr_set_grid_limits(
   data,
@@ -11,64 +11,63 @@ imr_set_grid_limits(
   default_lambda_m = 0,
   default_lambda_beta = 0,
   default_lambda_gamma = 0,
-  convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE),
-  bisection_iter = 15,
+  convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
+  bisection_iter = 5,
   verbose = 0
 )
 }
 \arguments{
-\item{data}{An object of class \code{"imr_data"} containing the model structure
-and matrices.}
+\item{data}{An object of class \code{"imr_data"} containing the response matrices
+and covariate structures.}
 
-\item{grid}{An object of class \code{"imr_tune_grid"}, typically created by
+\item{grid}{An object of class \code{"imr_tune_grid"}, initialized via
 \code{imr_tune_grid()}.}
 
-\item{default_rank}{Integer. The default rank to use when searching for the
-maximum \code{lambda_beta} or \code{lambda_gamma}. Defaults to \code{2}.}
+\item{default_rank, default_lambda_m}{Integer,Numeric. The fixed rank and low-rank component
+penalty used as reference when
+estimating the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}.
+Default to \code{2} and \code{0}.}
 
-\item{default_lambda_m}{Numeric. The default penalty for the low-rank component
-when searching for covariate penalty limits. Defaults to \code{0}.}
+\item{default_lambda_beta, default_lambda_gamma}{Numeric. The row and column
+covariate penalties used as
+a reference when estimating the maximum \eqn{\lambda_M}. Defaults to \code{0}.}
 
-\item{default_lambda_beta}{Numeric. The default penalty for row covariates
-when searching for the maximum \code{lambda_m}. Defaults to \code{0}.}
+\item{convergence}{An \code{"imr_convergence"} object specifying the numerical
+tolerances and optimization parameters for internal model fits. Defaults
+to \code{imr_convergence(trace = FALSE, ls_initial = FALSE)}.}
 
-\item{default_lambda_gamma}{Numeric. The default penalty for column covariates
-when searching for the maximum \code{lambda_m}. Defaults to \code{0}.}
+\item{bisection_iter}{Integer. The number of iterations for the bisection
+algorithm employed to refine the estimated upper bound. Defaults to \code{5}.}
 
-\item{convergence}{An \code{"imr_convergence"} object controlling the internal model
-fits during the search. Defaults to \code{IMR::imr_convergence(trace = FALSE, ls_initial = FALSE)}.}
-
-\item{bisection_iter}{Integer. The number of iterations to use in the bisection
-algorithm to refine the upper limit. Defaults to \code{15}.}
-
-\item{verbose}{Integer. Controls the level of printed output during the search.
-Defaults to \code{0} (silent). Set it \code{1} to output the final parameters and \code{2} for
-an output at every iteration.}
+\item{verbose}{Integer. Level of diagnostic output. \code{0} (default) is silent,
+\code{1} reports final parameters, and \code{2} provides per-iteration updates.}
 }
 \value{
-The modified \code{"imr_tune_grid"} object with all \code{"auto"} maximums
-replaced by their calculated numeric values.
+A modified \code{"imr_tune_grid"} object where all \code{"auto"} placeholders
+are replaced by the numerically determined maximum values.
 }
 \description{
-Calculates the appropriate upper limits (\code{max}) for the hyperparameter tuning
-grid when they are specified as \code{"auto"}. It finds the smallest regularization
-parameter that forces all corresponding coefficients to zero.
+Computes the optimal upper bounds (\eqn{max}) for the hyperparameter tuning
+grid when specifications are set to \code{"auto"}. The function identifies the
+minimal regularization parameter required to shrink all corresponding
+coefficients to zero.
 }
 \details{
-The function isolates each hyperparameter to find its maximum using a
-two-step process:
+The procedure isolates each hyperparameter to determine its saturation
+point through a two-stage estimation process:
 \enumerate{
-\item \strong{KKT Initialization:} It calculates an initial theoretical upper limit
-based on the Karush-Kuhn-Tucker (KKT) conditions.
-\item \strong{Refinement:} Because the theoretical KKT value can sometimes
-be slightly over or underestimated in practice, the function runs a bisection
-search for \code{bisection_iter} iterations to empirically find the exact smallest
-penalty value that shrinks all targeted parameters to zero.
+\item An initial theoretical upper bound is
+derived based on the Karush-Kuhn-Tucker (KKT)  conditions.
+\item The function executes a bisection search over
+\code{bisection_iter} iterations using KKT estimates as initial values. This identifies the infimum
+of the penalty values that result in a zero-solution for the
+targeted parameters.
 }
 
-When searching for the maximum \code{lambda_beta} or \code{lambda_gamma}, the other
-covariate penalty is effectively set to infinity (ignored), while the low-rank
-component is fixed at \code{default_rank} and \code{default_lambda_m}. Conversely, when
-searching for the maximum \code{lambda_m} (laplace), the covariate penalties are fixed
-at \code{default_lambda_beta} and \code{default_lambda_gamma}.
+During the estimation of the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma},
+the other covariate penalty is treated as infinite, while the
+low-rank component is set to \code{default_rank} and \code{default_lambda_m}.
+Conversely, estimation of the maximum \eqn{\lambda_M} (nuclear norm penalty)
+assumes the covariate penalties are fixed at \code{default_lambda_beta} and
+\code{default_lambda_gamma}.
 }

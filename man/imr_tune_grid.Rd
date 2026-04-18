@@ -7,57 +7,63 @@
 imr_tune_grid(
   beta = c(0, NA, 20),
   gamma = c(0, NA, 20),
-  laplace = c(0, NA, 20, 2),
+  nuclear = c(0, NA, 20, 2),
   rank = c(2, 30, 2, 2)
 )
 }
 \arguments{
-\item{beta}{Numeric vector defining the grid for the row covariate penalty
-(\code{lambda_beta}). Format: \code{c(min, max, length)}. Defaults to \code{c(0, NA, 20)}.}
+\item{beta}{A numeric vector defining the search grid for the row-wise covariate
+regularization parameter (\eqn{\lambda_\beta}). Expected format: \code{c(min, max, length)}.
+Defaults to \code{c(0, NA, 20)}.}
 
-\item{gamma}{Numeric vector defining the grid for the column covariate penalty
-(\code{lambda_gamma}). Format: \code{c(min, max, length)}. Defaults to \code{c(0, NA, 20)}.}
+\item{gamma}{A numeric vector defining the search grid for the column-wise covariate
+regularization parameter (\eqn{\lambda_\Gamma}). Expected format: \code{c(min, max, length)}.
+Defaults to \code{c(0, NA, 20)}.}
 
-\item{laplace}{Numeric vector defining the grid for the low-rank component
-penalty (\code{lambda_m}). Format: \code{c(min, max, length, streaks)}. The \code{streaks}
-parameter dictates the patience for early stopping. Defaults to \code{c(0, NA, 20, 2)}.}
+\item{nuclear}{A numeric vector defining the search grid for the nuclear norm
+penalty (\eqn{\lambda_M}) applied to the low-rank component. Expected format:
+\code{c(min, max, length, streaks)}, where \code{streaks} specifies the patience threshold
+for early stopping. Defaults to \code{c(0, NA, 20, 2)}.}
 
-\item{rank}{Numeric vector defining the grid for the rank of the low-rank
-component. Format: \code{c(min, max, step, streaks)}. The \code{streaks} parameter
-dictates the patience for early stopping. Defaults to \code{c(2, 30, 2, 2)}.}
+\item{rank}{A numeric vector defining the search grid for the rank of the
+low-rank component. Expected format: \code{c(min, max, step, streaks)}, where
+\code{streaks} specifies the patience threshold for early stopping.
+Defaults to \code{c(2, 30, 2, 2)}.}
 }
 \value{
-An object of class \code{"imr_tune_grid"}, which is a list containing the
-parsed grid boundaries, lengths, step sizes, and early stopping criteria
-for each parameter.
+An object of class \code{"imr_tune_grid"}, structured as a list containing
+parsed grid boundaries, step sizes, and early stopping
+criteria for each hyperparameter.
 }
 \description{
-Creates a configuration object defining the search space for hyperparameter
-tuning in an IMR model. This object
-is used by the \code{imr_tune} function to tuning and finding the optimal hyperparamters.
+Constructs a configuration object specifying the search space for hyperparameter
+optimization within an Integrated Matrix Regression (IMR) framework. This object
+facilitates the execution of the \code{imr_tune} function by defining the domain for identifying
+optimal hyperparameters.
 }
 \details{
-Regarding the inputs for \code{beta}, \code{gamma}, and \code{laplace}:
+Specifications for \code{beta}, \code{gamma}, and \code{nuclear} parameters are subject to the
+following conventions:
 \itemize{
-\item \strong{Automatic Maximum:} If the second element (\code{max}) is \code{NA}, the upper limit
-can be automatically determined using the function \code{imr_set_grid_limits}.
-\item \strong{Fixed Value:} If a vector of length 1 is provided (e.g., \code{beta = 0.5}),
-the parameter is held constant during tuning, bypassing the grid search
-for that specific hyperparameter. This also holds for the \code{rank}.
-Generally, if the input vector is of length 1, then this value is used as a fixed
-value. If the input vector is of length 2, then they are used as the minimum and
-maximum and values and the rest are set to the default values.
+\item If the second element (\code{max}) is
+specified as \code{NA}, the upper bound of the grid is determined internally
+via \code{imr_set_grid_limits}. You need to call that function before calling \code{imr_tune}.
+\item Providing a vector of length 1 (e.g., \code{beta = 0.5})
+constrains the parameter to that value throughout the tuning process.
+\item If a vector of length 2 is provided, the elements are
+interpreted as the minimum and maximum bounds, respectively, with remaining
+grid attributes reverting to their default values.
 }
 }
 \examples{
-# Default grid (max limits to be calculated automatically)
+# Initialize default grid with automated limit calculation
 default_grid <- imr_tune_grid()
 
-# Fix beta to 0, tune gamma and laplace, and ranks 2 through 10
+# Fix beta at 0 and define custom search spaces for gamma, nuclear, and rank
 custom_grid <- imr_tune_grid(
   beta = 0,
   gamma = c(0.01, 1, 10),
-  laplace = c(0, NA, 15, 3), # 15 points, patience of 3
+  nuclear = c(0, NA, 15, 3), # 15 points, patience threshold of 3
   rank = c(2, 10, 2, 2)
 )
 }

@@ -249,13 +249,13 @@ imr_solver <- function(
   # Laplacian flags (L_* expected as eigendecompositions) -------------------
   beta_flag <- !(is.null(X))
   gamma_flag <- !(is.null(Z))
-  laplace_r_flag <- !(is.null(Ur) || is.null(dr))
-  laplace_c_flag <- !(is.null(Uc) || is.null(dc))
+  nuclear_r_flag <- !(is.null(Ur) || is.null(dr))
+  nuclear_c_flag <- !(is.null(Uc) || is.null(dc))
   low_rank_flag <- !(is.null(r) || is.null(lambda_m) || r <= 0)
   if (!low_rank_flag) ls_initial <- FALSE
   #-------------------------------------------------
-  if (laplace_r_flag) dr <- dr * lambda_m
-  if (laplace_c_flag) dc <- dc * lambda_m
+  if (nuclear_r_flag) dr <- dr * lambda_m
+  if (nuclear_c_flag) dc <- dc * lambda_m
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
@@ -402,7 +402,7 @@ imr_solver <- function(
     if (low_rank_flag) {
       #  Update (V, Dsq, U) from the "B" side --------------------------------
       # B_mat = BD
-      if (laplace_c_flag) {
+      if (nuclear_c_flag) {
         BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
       } else {
         BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_m)
@@ -421,7 +421,7 @@ imr_solver <- function(
 
       # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
       # A_mat <- AD
-      if (laplace_r_flag) {
+      if (nuclear_r_flag) {
         AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
       } else {
         AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_m)
