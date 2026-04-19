@@ -8,7 +8,7 @@ mutate_bixi_file <- function(data,
                            prefix = "",
                            file_override = FALSE,
                            create_folder = FALSE,
-                           out_dir = "./article/bixi/data/splits2/",
+                           out_dir = "./article/bixi/data/splits/",
                            read = FALSE) {
 
   if (!dir.exists(out_dir)) {
@@ -46,13 +46,13 @@ mutate_bixi_file <- function(data,
 
 
 preprocess_bixi_data <- function(miss_pct = 0.5,
-                                 timestamp = format(Sys.Date(), "%d%b"),
+                                 timestamp = "Feb_last",
                                  seed = 2025,
                                  prefix = "",
                                  file_override = FALSE,
                                  decreasing_train = FALSE,
                                  create_folder = FALSE,
-                                 out_dir = "./article_results/bixi/data/splits/",
+                                 out_dir = "./article/bixi/data/split/",
                                  train_n_steps = 5,
                                  train_stepsize = 0.05) {
   require(BKTR)
@@ -352,7 +352,7 @@ prepare_bixi_data <- function(miss_p = 0.25,
                                 "x_total_precip_mm", "x_holiday"
                               ),
                               bktr_variables = TRUE,
-                              file_dir = "./article/bixi/data/splits2/",
+                              file_dir = "./article/bixi/data/splits/",
                               temporal = "simulated",
                               spatial = "simulated",
                               ...
@@ -437,24 +437,26 @@ prepare_bixi_data <- function(miss_p = 0.25,
   message(glue("Test      : {round(100*sum(test_set!=0)/length(test_set),1)}%"))
 
 
-  kernels <- generate_similarity_bixi(miss_p, timestamp, prefix = prefix,
-                                      train_prefix = train_prefix,
-                                      file_dir =file_dir,...)
-  output <- list()
+  # kernels <- generate_similarity_bixi(miss_p, timestamp, prefix = prefix,
+  #                                     train_prefix = train_prefix,
+  #                                     file_dir =file_dir,...)
 
-  output$modd <- IMR::imr_data(Y, as.matrix(X), as.matrix(Z),
-                               similarity_rows = if(temporal =="none") NULL else
-                                 IMR::imr_similarity(kernels$temporal,invert = FALSE),
-                               similarity_cols = if(spatial == "none") NULL else
-                                 IMR::imr_similarity(kernels$spatial, invert = FALSE),
-                               val_prop = val_prop, seed = seed )
-  # output$modd <- IMR::prepare_data(Y,
+
+  # output$modd <- IMR::imr_data(Y, as.matrix(X), as.matrix(Z),
+  #                              #similarity_rows = if(temporal =="none") NULL else
+  #                              #  IMR::imr_similarity(kernels$temporal,invert = FALSE),
+  #                              #similarity_cols = if(spatial == "none") NULL else
+  #                              #  IMR::imr_similarity(kernels$spatial, invert = FALSE),
+  #                              val_prop = val_prop, seed = seed )
+  # # output$modd <- IMR::prepare_data(Y,
   #   X = as.matrix(X), Z = as.matrix(Z),
   #   similarity_rows = kernels$temporal,
   #   similarity_cols = kernels$spatial,
   #   seed = seed, val_prop = val_prop
   # )
 
+  output <- list()
+  output$Y <- Y
   output$test_mask <- IMR::as.Incomplete((test_set != 0) * 1)
   output$test <- test_set
   output$X <- X

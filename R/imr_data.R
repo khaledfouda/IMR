@@ -60,7 +60,7 @@ imr_data <- function(Y,
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
   # ---  Target Matrix Setup ---
-  out$Y <- IMR::as.Incomplete(Y)
+  out$Y <- Y <- IMR::as.Incomplete(Y)
   out$Y@x <- out$Y@x + 0 # this is to force a copy
   obs_mask <- as.matrix(Y != 0)
 

@@ -89,7 +89,7 @@ BKTR_Bixi_Wrapper <- function(
 
 
 generate_similarity_bixi <- function(miss      = 0.8,
-                                     timestamp = "25Sep",
+                                     timestamp = "Feb_last",
                                      prefix    = "",
                                      train_prefix = "",
                                      file_dir = "./article/bixi/data/splits/",
@@ -104,7 +104,7 @@ generate_similarity_bixi <- function(miss      = 0.8,
                                      RBF_ell_t = 1.3,
                                      RBF_ell_s = 1.3,
                                      matern_scale = NULL,
-                                     return_distance){
+                                     return_distance = FALSE){
   library(BKTR)
   bkdat <- BixiData$new()
   stopifnot(temporal %in% c("Matern", "original", "RBF", "none", "simulated"))
@@ -212,6 +212,49 @@ generate_similarity_bixi <- function(miss      = 0.8,
     diag(choose_jitter(spatial_kernel, jitter_kappa_max, jitter_tau_max), nrow(spatial_kernel))
   if(spatial != "none")
     spatial_kernel <- IMR:::inv(spatial_kernel)
+
+  list(spatial=spatial_kernel, temporal=temporal_kernel, distance=distance)
+}
+
+generate_similarity_bixi2 <- function(miss      = 0.8,
+                                     timestamp = "Feb_last",
+                                     prefix    = "",
+                                     train_prefix = "",
+                                     file_dir = "./article/bixi/data/splits/",
+                                     return_distance = FALSE){
+  library(BKTR)
+  bkdat <- BixiData$new()
+  if(train_prefix != "")
+    train_prefix <- paste0(prefix, "_train", train_prefix)
+  train.df <- mutate_bixi_file(NULL, "train", miss, timestamp, train_prefix,
+                               out_dir = file_dir, read=TRUE)
+  train.df %<>% rename(location=column, time = row)
+  bkdat$temporal_positions_df %<>%
+    filter(time %in% train.df$time)
+
+
+  p_lgth <- KernelParameter$new(value = 7, is_fixed = TRUE)
+  se_lgth <- KernelParameter$new(value = 6.427, is_fixed = TRUE)
+  per_lgth <- KernelParameter$new(value = 1.039, is_fixed = TRUE)
+  temporal_kernel <- KernelSE$new(lengthscale = se_lgth) *
+    KernelPeriodic$new(lengthscale = per_lgth, period_length = p_lgth)
+  temporal_kernel$set_positions(bkdat$temporal_positions_df)
+
+  bkdat$spatial_positions_df %<>%
+    filter(location %in% train.df$location)
+    sp_lgth <- KernelParameter$new(value = 0.018, is_fixed = TRUE)
+  spatial_kernel = BKTR::KernelMatern$new(smoothness_factor = 5,lengthscale = sp_lgth)
+  spatial_kernel$set_positions(bkdat$spatial_positions_df)
+
+  distance = list()
+  if(return_distance)
+    distance = list(
+      spatial = as.matrix(spatial_kernel$distance_matrix),
+      temporal = as.matrix(temporal_kernel$distance_matrix)
+    )
+
+    temporal_kernel <- temporal_kernel$kernel_gen() %>% as.matrix()
+    spatial_kernel = spatial_kernel$kernel_gen() %>% as.matrix()
 
   list(spatial=spatial_kernel, temporal=temporal_kernel, distance=distance)
 }

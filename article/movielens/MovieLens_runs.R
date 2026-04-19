@@ -23,7 +23,7 @@ convergence2 <- imr_convergence(maxit=5000, thresh=1e-7)
 
 grid <- imr_tune_grid(beta = c(0, 0.4, 60),
                       gamma = c(0, 0.4, 60),
-                      laplace = c(0, 20, 80, 3),
+                      nuclear = c(0, 20, 80, 3),
                       rank = c(5, 20, 1, 3))
 
 for(model_id in seq_along(model_combn)[c(1,3)]){
@@ -37,17 +37,17 @@ model_data <- update(model_data,
                      row_covariates = row_covariates,
                      col_covariates = col_covariates); model_data
 
-# notes: max for model IMR-I: laplace = 120 but make it 45-16
-#       max for model IMR-IX: beta = 2,  laplace = 135
-#       max for model IMR-IXZ: beta: 1.9, laplace = 109, gamma = 4
+# notes: max for model IMR-I: nuclear = 120 but make it 45-16
+#       max for model IMR-IX: beta = 2,  nuclear = 135
+#       max for model IMR-IXZ: beta: 1.9, nuclear = 109, gamma = 4
 # grid <- imr_set_grid_limits(model_data, grid,default_rank = 10,
 #                             bisection_iter = 5,
 #                             convergence=convergence, verbose=2)
 
 
 fitimr <- IMR::imr_tune(model_data, grid, final_fit = FALSE,
-                                          fast_laplace = FALSE,
-                                          laplace_log_scale = FALSE,
+                                          fast_nuclear = FALSE,
+                                          nuclear_log_scale = FALSE,
                                           convergence=convergence, n_cores=7,
                                           seed = seed, verbose=1)
 
@@ -59,7 +59,7 @@ saveRDS(fitimr, paste0("article/movielens/data/saved_models/March_IMR_I",
 start <- Sys.time()
 fitimr_fit <- IMR::imr_fit(model_data,
                        rank = fitimr$params$rank,
-                       lambda_m = fitimr$params$lambda_laplace,
+                       lambda_m = fitimr$params$lambda_nuclear,
                        lambda_beta = fitimr$params$lambda_beta,
                        lambda_gamma = fitimr$params$lambda_gamma,
                         convergence=convergence2)
