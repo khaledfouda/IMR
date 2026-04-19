@@ -5,3 +5,4 @@
 ^other\_models/.*$
 ^R\_old/.*$
 ^dev$
+^old_to_be_removed/.*$
