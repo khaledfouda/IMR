@@ -274,16 +274,16 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 #' algorithms depending on the scenario:
 #'
 #' \itemize{
-#'   \item \strong{Thin Matrices:} If the matrix is wide
+#'   \item {Thin Matrices:} If the matrix is wide
 #'     (`ncol > 2 * nrow`) or tall (`nrow > 2 * ncol`), it utilizes
 #'     internal C++ functions (`IMR:::svd_small_nr_cpp` or `IMR:::svd_small_nc_cpp`).
 #'     Note: Sparse matrices are coerced to dense matrices for these fast paths.
-#'   \item \strong{Full SVD:} If `k` is `NULL` or requests the full rank, it uses
+#'   \item {Full SVD:} If `k` is `NULL` or requests the full rank, it uses
 #'     base R's standard \code{\link[base]{svd}} function.
-#'   \item \strong{Partial SVD (Sparse or `k <= 5`):} For large matrices where
+#'   \item {Partial SVD (Sparse or `k <= 5`):} For large matrices where
 #'     only a few components are needed or if the matrix is sparse, it
 #'     uses the `irlba` package (\code{\link[irlba]{irlba}}).
-#'   \item \strong{Partial SVD (Dense and `k >= 5`):} For dense matrices where
+#'   \item {Partial SVD (Dense and `k >= 5`):} For dense matrices where
 #'     a larger number of components are requested, it relies on the
 #'     `RSpectra` package (\code{\link[RSpectra]{svds}}).
 #' }

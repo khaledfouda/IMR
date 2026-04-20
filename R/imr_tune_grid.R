@@ -130,7 +130,7 @@ print.imr_tune_grid <- function(x, ...) {
 #' Automatically Determine Hyperparameter Grid Maximum Values
 #'
 #' @description
-#' Computes the optimal upper bounds (\eqn{max}) for the hyperparameter tuning
+#' Computes the optimal upper bounds ({max}) for the hyperparameter tuning
 #' grid when specifications are set to `"auto"`. The function identifies the
 #' minimal regularization parameter required to shrink all corresponding
 #' coefficients to zero.

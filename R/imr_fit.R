@@ -48,7 +48,7 @@ imr_convergence <- function(maxit = 600,
 #'
 #' @param data An object of class `"imr_data"`. This object contains the response
 #'   matrix, optional covariates and similarities, and the specific model structure to be fitted.
-#' @param rank Integer. The rank of the low-rank component ($U D V^T$). This is
+#' @param rank Integer. The rank of the low-rank component (\eqn{M=U D V^T}). This is
 #'   required if the model structure includes a low-rank component. Defaults to `2`.
 #' @param lambda_m Numeric. The regularization parameter for the low-rank component.
 #'   Required if the low-rank component is included in the model. Defaults to `0`.
@@ -78,7 +78,7 @@ imr_convergence <- function(maxit = 600,
 #'   \item \code{Xr}, \code{Zr}: The pxp and qxq R matrices generated from the QR-decomposition
 #'         of the row and column covariates. They are copied from `data` and
 #'         used to transform the estimated coefficients to
-#'         the original scale.
+#'         the original scale. (used for the `summary` method)
 #'   \item \code{meta}: A list of fitting metadata, including the iteration count,
 #'         convergence status, and sum of squares components (used for the `print` method).
 #'   \item \code{convergence}: The convergence control parameters used.
@@ -106,12 +106,16 @@ imr_fit <- function(
     warm_start <- warm_start$coefficients
   }
   model <- data$model
+  stopifnot(model$row_covariates && is.numeric(lambda_beta) && lambda_beta >= 0)
+  stopifnot(model$col_covariates && is.numeric(lambda_gamma) && lambda_gamma >= 0)
+  stopifnot(model$low_rank_component && is.numeric(lambda_m) && lambda_m >= 0)
+  stopifnot(model$low_rank_component && is.numeric(rank) && rank > 0)
 
   result_list <- imr_solver(
     Y = if (training) data$y_train else data$Y,
     X = if (model$row_covariates) data$Xq else NULL,
     Z = if (model$col_covariates) data$Zq else NULL,
-    r = if (model$low_rank_component) rank else NULL,
+    r = if (model$low_rank_component) round(rank) else NULL,
     lambda_m = if (model$low_rank_component) lambda_m else NULL,
     lambda_beta = lambda_beta,
     lambda_gamma = lambda_gamma,

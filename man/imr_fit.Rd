@@ -19,7 +19,7 @@ imr_fit(
 \item{data}{An object of class \code{"imr_data"}. This object contains the response
 matrix, optional covariates and similarities, and the specific model structure to be fitted.}
 
-\item{rank}{Integer. The rank of the low-rank component ($U D V^T$). This is
+\item{rank}{Integer. The rank of the low-rank component (\eqn{M=U D V^T}). This is
 required if the model structure includes a low-rank component. Defaults to \code{2}.}
 
 \item{lambda_m}{Numeric. The regularization parameter for the low-rank component.
@@ -56,7 +56,7 @@ the low-rank matrices (\code{u}, \code{d}, \code{v}), covariate effects
 \item \code{Xr}, \code{Zr}: The pxp and qxq R matrices generated from the QR-decomposition
 of the row and column covariates. They are copied from \code{data} and
 used to transform the estimated coefficients to
-the original scale.
+the original scale. (used for the \code{summary} method)
 \item \code{meta}: A list of fitting metadata, including the iteration count,
 convergence status, and sum of squares components (used for the \code{print} method).
 \item \code{convergence}: The convergence control parameters used.

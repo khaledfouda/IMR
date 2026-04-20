@@ -47,7 +47,7 @@ A modified \code{"imr_tune_grid"} object where all \code{"auto"} placeholders
 are replaced by the numerically determined maximum values.
 }
 \description{
-Computes the optimal upper bounds (\eqn{max}) for the hyperparameter tuning
+Computes the optimal upper bounds ({max}) for the hyperparameter tuning
 grid when specifications are set to \code{"auto"}. The function identifies the
 minimal regularization parameter required to shrink all corresponding
 coefficients to zero.
