@@ -823,9 +823,10 @@ print.imr_convergence <- function(x, ...) {
 }
 
 #' @export
+#' @importFrom stats coef coefficients
 #' @method coef imr_fit
-coef.imr_fit <- function(x, ...) {
-  return(x$coefficients)
+coef.imr_fit <- function(object, ...) {
+  return(object$coefficients)
 }
 #' @export
 #' @method coefficients imr_fit
