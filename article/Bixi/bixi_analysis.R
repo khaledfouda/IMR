@@ -128,7 +128,7 @@ results2 %<>% rbind(
 )
 
 
-results2 %>%
+results3 %>%
   filter(metric == "RRMSE") %>%
   group_by(model, train_size, metric) %>%
   summarise_all(mean) %>%
@@ -148,7 +148,7 @@ readRDS("./article/Bixi/data/final_results/IMR_results_final_25pct.rds") %>%
   view()
 
 # =========================================================
-results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit.rds") %>%
+results3 <- readRDS("./article/Bixi/data/final_results/IMR_results_onefit_f.rds") %>%
   # rbind(readRDS("./article/Bixi/data/final_results/IMR_results_onefit_25pct_2_3.rds")) %>%
   rename(
     time0 = time,
@@ -182,6 +182,19 @@ results3 %>%
 
 # =============================================
 # article table >
+results3 %>%
+    filter(metric == "RMSE") %>%
+    select(model, train_size, time0) %>%
+    mutate(time0 = as.numeric(time0)) %>%
+    group_by(model, train_size) %>%
+    summarize_all(mean) %>%
+    ungroup() %>%
+    arrange(train_size) %>%
+    filter(model == "similarity") -> a2
+
+  mean(a1$time0/a2$time0) +
+  mean(a1$time0/a3$time0)
+
 require(gt)
 results3 |>
   filter(metric == "RRMSE") %>%

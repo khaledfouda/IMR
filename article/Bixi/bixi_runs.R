@@ -157,7 +157,7 @@ for (rep in 1:10) {
         #print(res)
         total_results <- rbind(total_results, res)
       }
-      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final_25pctf.rds")
+      saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_final.rds")
       total_results %>%
         filter(metric == "RRMSE") %>%
         group_by(model, train_size, metric) %>%
@@ -231,10 +231,10 @@ total_results %>%
 
 model_combn %<>%
   left_join(hps, "similarity")
-#
+
 model_combn %<>%
   mutate(
-    lambda = if_else(similarity, 1.214, 0.78),
+    lambda = if_else(similarity, 1.69, 0.775),
     rank = if_else(similarity, 12, 11)
     # lambda = if_else(similarity, 1.2140, 0.7456),
     # rank = if_else(similarity, 12, 10)
@@ -256,14 +256,26 @@ for (prefix in 1:50) {
         jitter_kappa_max = 1e3,
         jitter_tau_max = 1e-2
       )
-      model_data <- dat$modd
+
+
+      if(model_combn$similarity[i]){
+        kernels <- generate_similarity_bixi2(total_miss, "Feb_last", prefix, train_size)
+        sim_cols <- imr_similarity(kernels$spatial, jitter = 0.5,  invert = TRUE); sim_cols
+        sim_rows <- imr_similarity(kernels$temporal, jitter = 0.5, invert = TRUE); sim_rows
+        model_data <- imr_data(dat$Y, similarity_rows = sim_rows, similarity_cols = sim_cols,
+                               val_prop = 0.2, seed = seed)
+      }else
+        model_data <- imr_data(dat$Y, val_prop = 0.2, seed = seed)
+
       model_data <- update(model_data,
                            row_covariates = model_combn$covariates[i],
                            col_covariates = model_combn$covariates[i],
                            row_intercept = model_combn$Intercepts[i],
                            col_intercept = model_combn$Intercepts[i],
                            row_similarity = model_combn$similarity[i],
-                           col_similarity = model_combn$similarity[i]); print(model_data)
+                           col_similarity = model_combn$similarity[i]);# print(model_data)
+      dat$modd <- model_data
+
 
 
       start <- Sys.time()
@@ -327,9 +339,9 @@ for (prefix in 1:50) {
           train_size = train_size
         )
       )
-      print(res)
+      print(res %>% filter(metric == "RRMSE"))
       total_results <- rbind(total_results, res)
     }
-    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefitf.rds")
+    saveRDS(total_results, "./article/Bixi/data/final_results/IMR_results_onefit_f.rds")
   }
 }
