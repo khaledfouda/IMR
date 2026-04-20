@@ -6,3 +6,5 @@
 ^R\_old/.*$
 ^dev$
 ^old_to_be_removed/.*$
+article
+old_to_be_removed
