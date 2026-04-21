@@ -224,7 +224,7 @@ imr_get_lambda_m_max <-
            lambda_gamma = 0,
            rank = 2,
            bisection_iter = 15,
-           convergence = IMR::imr_convergence(trace = FALSE, ls_initial = FALSE),
+           convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
            verbose = 0) {
     need_fit <- any(!is.null(data$Xq), !is.null(data$Zq), data$model$row_intercept, data$model$col_intercept)
 
@@ -241,14 +241,14 @@ imr_get_lambda_m_max <-
       )
       data$model$low_rank_component <- TRUE
       # return largest singular value
-      lambda_kkt <- IMR::svd_opt(fit$residuals, 1)$d[1]
+      lambda_kkt <- svd_opt(fit$residuals, 1)$d[1]
     }
     lower <- 0
     upper <- lambda_kkt
 
     # helper, fits a single model
     fit_test <- function(lam) {
-      IMR::imr_fit(data,
+      imr_fit(data,
         rank = rank,
         lambda_m = lam,
         lambda_beta = lambda_beta,

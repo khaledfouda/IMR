@@ -4,7 +4,7 @@ imr_tune_nuclear_fast <- function(data,
                                   lambda_beta = 0,
                                   lambda_gamma = 0,
                                   final_fit = TRUE,
-                                  convergence = IMR::imr_convergence(),
+                                  convergence = imr_convergence(),
                                   error_function = get_metric("rmse"),
                                   warm_start = NULL,
                                   verbose = 1,
@@ -62,7 +62,7 @@ imr_tune_nuclear_fast <- function(data,
   no_improve_count <- 0
   # main loop
   for (i in seq_along(lambda_seq)) {
-    mfit <- IMR::imr_fit(data,
+    mfit <- imr_fit(data,
       rank = rank_max,
       lambda_m = lambda_seq[i],
       lambda_beta = lambda_beta,
@@ -72,7 +72,7 @@ imr_tune_nuclear_fast <- function(data,
       warm_start = mfit
     )
     # compute validation error
-    vestim <- IMR::reconstruct_partial(mfit, data, virow, vpcol)
+    vestim <- reconstruct_partial(mfit, data, virow, vpcol)
     verror <- error_function(vestim, reference)
     # compute rank
     rank_out <- sum(mfit$coefficients$d > 1e-4)
@@ -131,7 +131,7 @@ imr_tune_nuclear_fast <- function(data,
   # (optional) final fit on full dataset
   if (final_fit) {
     if (verbose > 0) message("Fitting final model on full dataset...")
-    best_fit_obj <- IMR::imr_fit(data,
+    best_fit_obj <- imr_fit(data,
       rank = best_params$rank_in,
       lambda_m = best_params$lambda_m,
       lambda_beta = lambda_beta,
@@ -153,7 +153,7 @@ imr_tune_nuclear_slow <- function(data,
                                   lambda_beta = 0,
                                   lambda_gamma = 0,
                                   final_fit = TRUE,
-                                  convergence = IMR::imr_convergence(),
+                                  convergence = imr_convergence(),
                                   error_function = get_metric("rmse"),
                                   warm_start = NULL,
                                   log_grid = TRUE,
@@ -227,7 +227,7 @@ imr_tune_nuclear_slow <- function(data,
       current_rank <- rank_seq[j]
       row_idx <- (i - 1) * n_ranks + j
 
-      mfit <- IMR::imr_fit(data,
+      mfit <- imr_fit(data,
         rank = current_rank,
         lambda_m = current_lambda,
         lambda_beta = lambda_beta,
@@ -237,7 +237,7 @@ imr_tune_nuclear_slow <- function(data,
         warm_start = mfit
       )
       # compute validation error
-      vestim <- IMR::reconstruct_partial(mfit, data, virow, vpcol)
+      vestim <- reconstruct_partial(mfit, data, virow, vpcol)
       verror <- error_function(vestim, reference)
       # compute rank
       rank_out <- sum(mfit$coefficients$d > 1e-4)
@@ -316,7 +316,7 @@ imr_tune_nuclear_slow <- function(data,
   # (optional) final fit on full dataset
   if (final_fit) {
     if (verbose > 0) message("Fitting final model on full dataset...")
-    best_fit_obj_1 <- IMR::imr_fit(data,
+    best_fit_obj_1 <- imr_fit(data,
       rank = best_params_1$rank_in,
       lambda_m = best_params_1$lambda_m,
       lambda_beta = lambda_beta,
@@ -339,7 +339,7 @@ imr_tune_lasso <- function(data,
                            fixed_other_lasso = 0,
                            final_fit = TRUE,
                            use_warm_in_final = TRUE,
-                           convergence = IMR::imr_convergence(),
+                           convergence = imr_convergence(),
                            error_function = get_metric("rmse"),
                            warm_start = NULL,
                            verbose = 1,
@@ -452,7 +452,7 @@ imr_tune_lasso <- function(data,
     if (use_warm_in_final) {
       warm_start <- results_list[[best_idx]]$fit
     }
-    best_fit_obj <- IMR::imr_fit(data,
+    best_fit_obj <- imr_fit(data,
       rank = best_params$rank_in,
       lambda_m = best_params$lambda_m,
       lambda_beta = best_params$lambda_beta,
@@ -559,7 +559,7 @@ imr_tune <- function(data,
                      final_fit = TRUE,
                      use_warm_in_final = TRUE,
                      fast_nuclear = TRUE,
-                     convergence = IMR::imr_convergence(),
+                     convergence = imr_convergence(),
                      error_function = get_metric("rmse"),
                      warm_start = NULL,
                      verbose = 1,

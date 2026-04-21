@@ -78,7 +78,7 @@ imr_data <- function(Y,
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
   # ---  Target Matrix Setup ---
-  out$Y <- Y <- IMR::as.Incomplete(Y)
+  out$Y <- Y <- as.Incomplete(Y)
   out$Y@x <- out$Y@x + 0 # this is to force a copy
   obs_mask <- as.matrix(Y != 0)
 
@@ -91,12 +91,12 @@ imr_data <- function(Y,
   if (split_data) {
     message("Performing train/valid split...")
 
-    valid_mask_mat <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
+    valid_mask_mat <- mask_train_test_split(obs_mask, val_prop, seed)
     train_mask_mat <- obs_mask * (1 - valid_mask_mat)
 
-    out$valid_mask <- IMR::as.Incomplete(valid_mask_mat)
-    out$y_train <- IMR::as.Incomplete(Y * train_mask_mat)
-    out$y_valid <- IMR::as.Incomplete(Y * valid_mask_mat)
+    out$valid_mask <- as.Incomplete(valid_mask_mat)
+    out$y_train <- as.Incomplete(Y * train_mask_mat)
+    out$y_valid <- as.Incomplete(Y * valid_mask_mat)
 
     n_train <- sum(train_mask_mat)
     n_valid <- sum(valid_mask_mat)
@@ -105,7 +105,7 @@ imr_data <- function(Y,
     n_valid <- 0
   }
 
-  out$obs_mask <- IMR::as.Incomplete(obs_mask * 1)
+  out$obs_mask <- as.Incomplete(obs_mask * 1)
 
   # ---  Similarity Matrices ---
   stopifnot(is.null(similarity_rows) || inherits(similarity_rows, "imr_similarity"))
@@ -514,7 +514,7 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
   # --- Reconstruct M ---
   if (!is.null(coefs$u) && !is.null(coefs$d) && !is.null(coefs$v)) {
     if (trace) message("Constructing M ...")
-    target <- IMR:::partial_crossprod(
+    target <- partial_crossprod(
       coefs$u,
       sweep(t(coefs$v), 1, coefs$d, "*"),
       irow, pcol
@@ -529,9 +529,9 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 
     if (meta$shared_effects["beta"]) {
       xbeta_vec <- as.numeric(data$Xq %*% coefs$beta)
-      IMR:::add_to_rows_inplace_cpp(target, irow, xbeta_vec)
+      add_to_rows_inplace_cpp(target, irow, xbeta_vec)
     } else {
-      target <- target + IMR:::partial_crossprod(data$Xq, coefs$beta, irow, pcol)
+      target <- target + partial_crossprod(data$Xq, coefs$beta, irow, pcol)
     }
   }
 
@@ -541,21 +541,21 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 
     if (meta$shared_effects["gamma"]) {
       gammaz_vec <- as.numeric(coefs$gamma %*% t(data$Zq))
-      IMR:::add_to_cols_inplace_cpp(target, pcol, gammaz_vec)
+      add_to_cols_inplace_cpp(target, pcol, gammaz_vec)
     } else {
-      target <- target + IMR:::partial_crossprod(coefs$gamma, data$Zq, irow, pcol, vtranspose = TRUE)
+      target <- target + partial_crossprod(coefs$gamma, data$Zq, irow, pcol, vtranspose = TRUE)
     }
   }
 
   # ---  Intercepts ---
   if (!is.null(coefs$beta0)) {
     if (trace) message("Constructing row intercepts ...")
-    IMR:::add_to_rows_inplace_cpp(target, irow, coefs$beta0)
+    add_to_rows_inplace_cpp(target, irow, coefs$beta0)
   }
 
   if (!is.null(coefs$gamma0)) {
     if (trace) message("Constructing column intercepts ...")
-    IMR:::add_to_cols_inplace_cpp(target, pcol, coefs$gamma0)
+    add_to_cols_inplace_cpp(target, pcol, coefs$gamma0)
   }
 
   if(return_matrix)

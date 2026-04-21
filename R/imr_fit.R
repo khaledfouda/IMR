@@ -210,7 +210,7 @@ imr_fit <- function(
       sum_squares$ssci <- 0
     }
     if (data$model$low_rank_component) {
-      sum_squares$ssm <- ss(IMR:::partial_crossprod(
+      sum_squares$ssm <- ss(partial_crossprod(
         result_list$u,
         t(t(result_list$v) * result_list$d),
         data$Y@i, data$Y@p, TRUE
@@ -371,7 +371,7 @@ imr_solver <- function(
         gamma0 <- mfit$gamma0
       }
 
-      init <- IMR::svd_opt(mfit$residuals, r)
+      init <- svd_opt(mfit$residuals, r)
     } else {
       if (beta_flag) {
         if (shared_beta) {
@@ -398,7 +398,7 @@ imr_solver <- function(
         gamma0 <- rep(0, nc)
       }
       if (low_rank_flag) {
-        init <- IMR::svd_opt(Y, r)
+        init <- svd_opt(Y, r)
       }
     }
 
@@ -441,12 +441,12 @@ imr_solver <- function(
       #  Update (V, Dsq, U) from the "B" side --------------------------------
       # B_mat = BD
       if (nuclear_c_flag) {
-        BD <- IMR:::update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
+        BD <- update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
       } else {
-        BD <- IMR:::update_B_cpp(Y, U, V, Dsq, lambda_m)
+        BD <- update_B_cpp(Y, U, V, Dsq, lambda_m)
       }
 
-      BD <- IMR:::svd_small_nc_cpp(BD)
+      BD <- svd_small_nc_cpp(BD)
       V <- BD$u
       Dsq <- tidyr::replace_na(BD$d, 0)
       U <- U %*% BD$v
@@ -460,12 +460,12 @@ imr_solver <- function(
       # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
       # A_mat <- AD
       if (nuclear_r_flag) {
-        AD <- IMR:::update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
+        AD <- update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
       } else {
-        AD <- IMR:::update_A_cpp(Y, U, V, Dsq, lambda_m)
+        AD <- update_A_cpp(Y, U, V, Dsq, lambda_m)
       }
 
-      AD <- IMR:::svd_small_nc_cpp(AD)
+      AD <- svd_small_nc_cpp(AD)
       U <- AD$u
       Dsq <- tidyr::replace_na(AD$d, 0)
       V <- V %*% AD$v
@@ -801,7 +801,7 @@ summary.imr_fit <- function(object, ...) {
   }
 
   if (object$model$row_covariates) {
-    beta <- IMR:::inv(object$Xr) %*% object$coefficients$beta
+    beta <- inv(object$Xr) %*% object$coefficients$beta
     summarize_covariates(
       t(beta), object$meta_data$names_X_vars,
       TRUE,
@@ -809,7 +809,7 @@ summary.imr_fit <- function(object, ...) {
     )
   }
   if (object$model$col_covariates) {
-    gamma <- tcrossprod(object$coefficients$gamma, IMR:::inv(object$Zr))
+    gamma <- tcrossprod(object$coefficients$gamma, inv(object$Zr))
     summarize_covariates(
       gamma, object$meta_data$names_Z_vars,
       FALSE,
@@ -912,9 +912,9 @@ coef.imr_fit <- function(object, ...) {
 #' mc_with_means(mat)
 mc_with_means <- function(mat) {
   # Calculate row and column means, excluding NAs
-  if (!IMR::is.Incomplete(mat)) mat <- IMR::as.Incomplete(mat)
-  row_means <- IMR:::row_means_cpp(mat@x, mat@i, nrow(mat), ncol(mat))
-  col_means <- IMR:::col_means_cpp(mat@x, mat@p, nrow(mat), ncol(mat))
+  if (!is.Incomplete(mat)) mat <- as.Incomplete(mat)
+  row_means <- row_means_cpp(mat@x, mat@i, nrow(mat), ncol(mat))
+  col_means <- col_means_cpp(mat@x, mat@p, nrow(mat), ncol(mat))
   ij <- Matrix::which(mat == 0, arr.ind = TRUE)
   mat[ij] <- (row_means[ij[, 1]] + col_means[ij[, 2]]) / 2
   mat <- Matrix::drop0(mat)

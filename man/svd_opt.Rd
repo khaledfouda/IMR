@@ -38,8 +38,8 @@ algorithms depending on the scenario:
 \itemize{
 \item {Thin Matrices:} If the matrix is wide
 (\code{ncol > 2 * nrow}) or tall (\code{nrow > 2 * ncol}), it utilizes
-internal C++ functions (\code{IMR:::svd_small_nr_cpp} or
-\code{IMR:::svd_small_nc_cpp}).
+internal C++ functions (\code{svd_small_nr_cpp} or
+\code{svd_small_nc_cpp}).
 \item {Full SVD:} If \code{k} is \code{NULL} or requests the full rank, it uses
 base R's \code{\link[base]{svd}} function.
 \item {Partial SVD (Sparse or \code{k <= 5}):} For large matrices where

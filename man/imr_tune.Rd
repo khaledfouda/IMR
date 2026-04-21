@@ -10,7 +10,7 @@ imr_tune(
   final_fit = TRUE,
   use_warm_in_final = TRUE,
   fast_nuclear = TRUE,
-  convergence = IMR::imr_convergence(),
+  convergence = imr_convergence(),
   error_function = get_metric("rmse"),
   warm_start = NULL,
   verbose = 1,

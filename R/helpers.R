@@ -271,8 +271,8 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 #' \itemize{
 #'   \item {Thin Matrices:} If the matrix is wide
 #'     (`ncol > 2 * nrow`) or tall (`nrow > 2 * ncol`), it utilizes
-#'     internal C++ functions (`IMR:::svd_small_nr_cpp` or
-#'     `IMR:::svd_small_nc_cpp`).
+#'     internal C++ functions (`svd_small_nr_cpp` or
+#'     `svd_small_nc_cpp`).
 #'   \item {Full SVD:} If `k` is `NULL` or requests the full rank, it uses
 #'     base R's \code{\link[base]{svd}} function.
 #'   \item {Partial SVD (Sparse or `k <= 5`):} For large matrices where
@@ -316,10 +316,10 @@ svd_opt <- function(mat,
   if (rthin || cthin || is.null(k)) {
     if (rthin) {
       if (inherits(mat, "sparseMatrix")) mat <- as.matrix(mat)
-      dec <- IMR:::svd_small_nr_cpp(mat)
+      dec <- svd_small_nr_cpp(mat)
     } else if (cthin) {
       if (inherits(mat, "sparseMatrix")) mat <- as.matrix(mat)
-      dec <- IMR:::svd_small_nc_cpp(mat)
+      dec <- svd_small_nc_cpp(mat)
     } else {
       dec <- base::svd(mat)
     }
