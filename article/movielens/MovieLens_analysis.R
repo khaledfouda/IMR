@@ -56,7 +56,7 @@ for (i in 1:4) {
     obs.test = data$test.truths,
     obs.train = model_data$Y[model_data$Y != 0],
     M.estim = out[[i]]$M,
-    test_error = IMR:::error_metrics$rmse,
+    test_error = get_metric("rmse"),
     rank.M = fits[[i]]$rank_M
   )
 }

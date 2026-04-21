@@ -14,5 +14,5 @@ as.Incomplete <- function(x, ...) {
 #' @export
 is.Incomplete <- function(x, ...) inherits(x, "dgCMatrix")
 #' @export
-setMethod("as.matrix", "Incomplete", as.Incomplete)
-setAs("matrix", "Incomplete", function(from) as.Incomplete(from))
+setMethod("as.matrix", "imr_incomplete", as.Incomplete)
+setAs("matrix", "imr_incomplete", function(from) as.Incomplete(from))

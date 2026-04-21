@@ -28,8 +28,8 @@ simpute.cv <- function(y_full,
     message("Performing train/valid split")
     obs_mask <- as.matrix(Y != 0)
     valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-    y_train <- as(Y * (1-valid_mask), "Incomplete")
-    y_valid <- as(Y * (valid_mask), "Incomplete")
+    y_train <- as(Y * (1-valid_mask), "imr_incomplete")
+    y_valid <- as(Y * (valid_mask), "imr_incomplete")
     rm(obs_mask)
     rm(valid_mask)
   }else{

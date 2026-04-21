@@ -84,7 +84,7 @@ print(prepare_output_movielens(
   estim.test = datrec$estimates[data$test.idx],
   estim.train = as.Incomplete(datrec$estimates * data$obs_mask)@x,
   obs.test = data$test.truths,
-  test_error = IMR:::error_metrics$rmse,
+  test_error = get_metric("rmse"),
   obs.train = data$Y[data$Y != 0],
   M.estim = datrec$M,
   rank.M = fitimr$params$rank

@@ -1,6 +1,6 @@
 #' @export
 #' @importClassesFrom Matrix dgCMatrix
-setClass("Incomplete", "dgCMatrix")
+setClass("imr_incomplete", "dgCMatrix")
 
 #' @export
 as.Incomplete <- function(x) {
@@ -11,17 +11,17 @@ as.Incomplete <- function(x) {
     x@x[na] <- 0
     x <- Matrix::drop0(x)
   }
-  new("Incomplete", x)
+  new("imr_incomplete", x)
 }
 
 #' @export
-is.Incomplete <- function(x) inherits(x, "Incomplete")
+is.Incomplete <- function(x) inherits(x, "imr_incomplete")
 
 #' @export
-setAs("matrix", "Incomplete", function(from) as.Incomplete(from))
+setAs("matrix", "imr_incomplete", function(from) as.Incomplete(from))
 
 #' @export
-setAs("Matrix", "Incomplete", function(from) as.Incomplete(from))
+setAs("Matrix", "imr_incomplete", function(from) as.Incomplete(from))
 
 
 
@@ -41,4 +41,4 @@ t.Incomplete <- function(x) {
 #   return(out)
 # }
 # #' @export
-# setMethod("as.matrix", "Incomplete", as.matrix.Incomplete)
+# setMethod("as.matrix", "imr_incomplete", as.matrix.Incomplete)

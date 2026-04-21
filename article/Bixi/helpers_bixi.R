@@ -270,7 +270,7 @@ prepare_output_bixi <- function(
     beta.estim  = NA,
     gamma.estim = NA,
     M.estim     = NA,
-    test_error  = IMR:::error_metrics$rmse,
+    test_error  = get_metric("rmse"),
     digits = 5
 ) {
   # Core metrics
@@ -332,7 +332,7 @@ prepare_output_bixi <- function(
 
 
 output_wrapper_bixi <- function(fit, dat, shared_information = FALSE,
-                                test_error  = IMR:::error_metrics$rmse){
+                                test_error  = get_metric("rmse")){
 
 
 

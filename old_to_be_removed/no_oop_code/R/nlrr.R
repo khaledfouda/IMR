@@ -200,8 +200,8 @@ nlrr.cv <- function(
 
   inp.dat$y_train <- IMR::as.Incomplete(nfit$resid * inp.dat$train_mask)
   inp.dat$y_valid <- IMR::as.Incomplete(nfit$resid * inp.dat$valid_mask)
-  # inp.dat$y_train <- as(nfit$resid * (1 - inp.dat$valid_mask), "Incomplete")
-  # inp.dat$y_valid <- as(nfit$resid * (inp.dat$valid_mask), "Incomplete")
+  # inp.dat$y_train <- as(nfit$resid * (1 - inp.dat$valid_mask), "imr_incomplete")
+  # inp.dat$y_valid <- as(nfit$resid * (inp.dat$valid_mask), "imr_incomplete")
   mfit <- IMR::imr.cv_M(inp.dat$y_train, inp.dat$y_valid,
     Y_full = nfit$resid, hpar = hpar,
     error_function = error_function, trace = verbose > 0,

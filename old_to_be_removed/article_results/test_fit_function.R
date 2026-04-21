@@ -89,7 +89,7 @@ seed = 2021
 iter = 1
 fixed_other_lasso = 0
 warm_start = NULL
-error_function = IMR::error_metrics$rmse
+error_function = get_metric("rmse")
 default_lambda_beta = default_lambda_gamma = 0
 
 rank = 2

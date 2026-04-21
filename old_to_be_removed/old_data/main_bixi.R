@@ -49,7 +49,7 @@ for (rep in 10:10) {
           return_fit = TRUE,
           burn_in_iter = 1000,
           sampling_iter = 500,
-          test_error = IMR:::error_metrics$rmse
+          test_error = get_metric("rmse")
         )
 
 

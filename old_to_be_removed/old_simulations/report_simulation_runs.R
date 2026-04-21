@@ -48,7 +48,7 @@ sim1_res <- function(dat, fit, name="",
   stopifnot(all(estimates!=0))
   out$theta <- error_metric(estimates, dat$theta)
   test.obs <- dat$Y == 0
-  out$test_rel <- IMR:::error_metrics$rrmse(estimates[test.obs], dat$theta[test.obs])
+  out$test_rel <- get_metric("rrmse")(estimates[test.obs], dat$theta[test.obs])
   out$test <- error_metric(estimates[test.obs], dat$theta[test.obs])
   train.obs <- dat$Y != 0
   out$train <- error_metric(estimates[train.obs], dat$theta[train.obs])

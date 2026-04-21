@@ -125,7 +125,7 @@ for (rep in 1:10) {
 
         s0 <- output_wrapper_bixi(fitimr$fit, dat,
           shared_information = T,
-          test_error = IMR:::error_metrics$rrmse
+          test_error = get_metric("rrmse")
         )
         res <- rbind(
           res, data.frame(
@@ -316,7 +316,7 @@ for (prefix in 1:50) {
 
       s0 <- output_wrapper_bixi(fitimr, dat,
         shared_information = T,
-        test_error = IMR:::error_metrics$rrmse
+        test_error = get_metric("rrmse")
       )
       res <- rbind(
         res, data.frame(

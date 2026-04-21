@@ -11,7 +11,7 @@ imr_tune(
   use_warm_in_final = TRUE,
   fast_nuclear = TRUE,
   convergence = IMR::imr_convergence(),
-  error_function = IMR::error_metrics$rmse,
+  error_function = get_metric("rmse"),
   warm_start = NULL,
   verbose = 1,
   n_cores = 4,
@@ -43,7 +43,7 @@ for internal model estimation.}
 
 \item{error_function}{A function used to evaluate prediction error on the
 validation set. Must accept two arguments, \verb{(predicted, actual)}.
-Defaults to \code{IMR::error_metrics$rmse}.}
+Defaults to \code{get_metric("rmse")}.}
 
 \item{warm_start}{Internal. Pending deprecation.}
 

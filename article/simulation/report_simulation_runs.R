@@ -12,7 +12,7 @@ source("./article/other_models/MCCI.R")
 
 #==============================================
 sim1_res <- function(dat, fit, name="",
-                     error_metric=IMR:::error_metrics$rrmse,
+                     error_metric=get_metric("rrmse"),
                      coeffs_transformed = TRUE){
   # prepare data : we need values for: M, beta, theta
   # expect fit$ to contain (u, d, and v) or (M)
@@ -51,7 +51,7 @@ sim1_res <- function(dat, fit, name="",
   stopifnot(all(estimates!=0))
   out$theta <- error_metric(estimates, dat$theta)
   test.obs <- dat$Y == 0
-  out$test_rel <- IMR:::error_metrics$rrmse(estimates[test.obs], dat$theta[test.obs])
+  out$test_rel <- get_metric("rrmse")(estimates[test.obs], dat$theta[test.obs])
   out$test <- error_metric(estimates[test.obs], dat$theta[test.obs])
   train.obs <- dat$Y != 0
   out$train <- error_metric(estimates[train.obs], dat$theta[train.obs])
@@ -97,7 +97,7 @@ for(b in 1:500){
                         n.lambda = grid$laplace$length,
                         maxit = convergence$maxit,
                         thresh = convergence$thresh,
-                        test_error = IMR:::error_metrics$rmse,
+                        test_error = get_metric("rmse"),
                         seed = seed)
 
 
@@ -109,7 +109,7 @@ for(b in 1:500){
 
     fitmcci <- MCCI.cv(Y = dat$Y, X = dat$X, W = dat$mask, n_folds = 5,numCores = 9,
                        seed = seed,
-                       test_error = IMR:::error_metrics$rmse,
+                       test_error = get_metric("rmse"),
                        lambda_1_grid = c(0),#seq(0, 1, length = 10),
                        lambda_2_grid = seq(2.9, 0.1, length = 18),
                        alpha_grid = c(1),#seq(0.992, 1, length = 10),
@@ -117,12 +117,12 @@ for(b in 1:500){
                        return_diagn = FALSE)
 
     dat$Xr <- mdat$Xr
-    errorm <- IMR:::error_metrics$rmse
+    errorm <- get_metric("rmse")
     sim1_res(dat, fitsi$fit, "SI", errorm) %>% rbind(
       sim1_res(dat, fitmcci$fit, "MCCI", errorm, coeffs_transformed = FALSE),
       sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)
     ) -> res
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- get_metric("rrmse")
     res %<>% rbind(sim1_res(dat, fitsi$fit, "SI", errorm) %>% rbind(
       sim1_res(dat, fitmcci$fit, "MCCI", errorm, coeffs_transformed = FALSE),
       sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)
@@ -206,7 +206,7 @@ for(b in 1:500){
                         maxit = convergence$maxit,
                         thresh = convergence$thresh,
                         n.lambda = grid$laplace$length,
-                        test_error = IMR:::error_metrics$rmse,
+                        test_error = get_metric("rmse"),
                         seed = seed)
 
 
@@ -223,13 +223,13 @@ for(b in 1:500){
 
     dat$Xr <- mdat$Xr
     dat$Zr <- mdat$Zr
-    errorm <- IMR:::error_metrics$rmse
+    errorm <- get_metric("rmse")
     sim1_res(dat, fitsi$fit, "SI", errorm) %>%
       rbind(sim1_res(dat, fitimr$fit$coefficients, "IMR", errorm)) %>%
       mutate(metric = "RMSE")->
       res
 
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- get_metric("rrmse")
 
     res %<>%
       rbind(sim1_res(dat, fitsi$fit, "SI", errorm) %>%
@@ -323,13 +323,13 @@ for(b in 1:500){
 
     dat$Xr <- mdat$Xr
     dat$Zr <- mdat$Zr
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- get_metric("rrmse")
     mutate(sim1_res(dat, fitsi, "SI", errorm),time=time.si) %>%
       rbind(mutate(sim1_res(dat, fitimr$coefficients, "IMR", errorm), time=time.imr)) %>%
       mutate(metric = "RMSE")->
       res
 
-    errorm <- IMR:::error_metrics$rrmse
+    errorm <- get_metric("rrmse")
 
     res %<>%
       rbind(mutate(sim1_res(dat, fitsi, "SI", errorm),time=time.si) %>%

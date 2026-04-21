@@ -559,7 +559,7 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
   }
 
   if(return_matrix)
-    target <- new("Incomplete",
+    target <- new("imr_incomplete",
                   i = irow,
                   p = pcol,
                   x = target,
