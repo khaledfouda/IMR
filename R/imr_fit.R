@@ -106,10 +106,12 @@ imr_fit <- function(
     warm_start <- warm_start$coefficients
   }
   model <- data$model
-  stopifnot(model$row_covariates && is.numeric(lambda_beta) && lambda_beta >= 0)
-  stopifnot(model$col_covariates && is.numeric(lambda_gamma) && lambda_gamma >= 0)
-  stopifnot(model$low_rank_component && is.numeric(lambda_m) && lambda_m >= 0)
-  stopifnot(model$low_rank_component && is.numeric(rank) && rank > 0)
+  if(model$row_covariates)
+    stopifnot(is.numeric(lambda_beta) && lambda_beta >= 0)
+  if(model$col_covariates)
+    stopifnot(is.numeric(lambda_gamma) && lambda_gamma >= 0)
+  if(model$low_rank_component)
+    stopifnot(is.numeric(rank) && rank > 0 && is.numeric(lambda_m) && lambda_m >= 0)
 
   result_list <- imr_solver(
     Y = if (training) data$y_train else data$Y,

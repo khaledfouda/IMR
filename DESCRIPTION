@@ -27,3 +27,7 @@ SystemRequirements: C++17
 Roxygen: list(markdown = TRUE)
 Depends: 
     R (>= 3.5)
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

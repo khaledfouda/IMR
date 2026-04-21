@@ -16,3 +16,17 @@ bixi_example <- list(Y=as.matrix(Y), X=X,Z=Z,
                      spatial_distance = kernels$distance$spatial,
                      temporal_positions = kernels$distance$temporal)
 usethis::use_data(bixi_example, overwrite = TRUE, compress = "xz")
+
+n <- 100; m <- 150
+rind <- sample.int(nrow(IMR::bixi_example$Y),n)
+cind <- sample.int(ncol(IMR::bixi_example$Y),m)
+
+bixi_sample <- list( Y = IMR::bixi_example$Y[rind,cind],
+                     test = IMR::bixi_example$test[rind,cind],
+                      X = as.matrix(IMR::bixi_example$X[rind,]),
+                      Z = as.matrix(IMR::bixi_example$Z[cind,]),
+                      spatial_distance = IMR::bixi_example$spatial_distance[cind,cind],
+                      temporal_distance = IMR::bixi_example$temporal_positions[rind,rind])
+
+
+usethis::use_data(bixi_sample, overwrite = TRUE, compress = "xz")

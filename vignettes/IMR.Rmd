@@ -1,25 +1,93 @@
 ---
 title: "Incomplete Matrix Regression (IMR) Vignette"
 output: rmarkdown::html_vignette
-description: >
-  Learn how to use IMR package for matrix regression. We will go over how to create the data object, select the model structure,
-  how to choose the model's hyperparameters, and interpret the output and assess the performance of the model.
 vignette: >
   %\VignetteIndexEntry{Incomplete Matrix Regression (IMR) Vignette}
-  \usepackage[utf8]{inputenc}
   %\VignetteEngine{knitr::rmarkdown}
-editor_options: 
-  chunk_output_type: inline
-bibliography: references.bib
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r, echo = FALSE, message = FALSE, warning=FALSE}
-knitr::opts_chunk$set(collapse = T, comment = "#>> ", cache = FALSE)
-options(tibble.print_min = 4L, tibble.print_max = 4L)
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
 library(IMR)
-library(dplyr)
-library(magrittr)
-set.seed(2026)
+```
+
+```{r echo=FALSE, eval=FALSE}
+# to be run once and save objects
+bixi <- IMR::bixi_sample
+data <- imr_data(Y = bixi$Y, X =  bixi$X, Z =  bixi$Z, val_prop = 0.2, seed = 2026)
+data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
+fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
+grid <- imr_tune_grid(
+  beta = c(0, NA, 40), # (min, max, length)
+  gamma = c(0, NA, 40), #(min, max, length)
+  nuclear = c(0, NA, 40, 2), #(min, max, length, early-stopping tolerance)
+  rank = c(2, 15, 1,2) #(min, max, step, early-stopping tolerance)
+)
+convergence <- imr_convergence(maxit = 1000, thresh = 1e-5)
+grid <- imr_set_grid_limits(data, grid,
+                            default_rank = 2, default_lambda_m = 0, 
+                            default_lambda_beta = 0, default_lambda_gamma = 0,
+                            bisection_iter = 10, # number of iteration in the second step
+                            verbose = TRUE,convergence = convergence )
+cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, convergence = convergence,
+                   n_cores=  7, seed = 2026, verbose=1)
+similarity_cols <- imr_similarity(x = "matern", d = bixi$spatial_distance, 
+                                  invert=TRUE, jitter = 1,
+                                  matern_smoothness = 5/2, matern_range = .018);
+
+similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
+                                  invert=TRUE, jitter = 1,
+                                  rbf_ell = 6); 
+data <- imr_data(bixi$Y, bixi$X, bixi$Z, 
+                      similarity_rows = similarity_rows,
+                      similarity_cols = similarity_cols,
+                      val_prop = 0.2, seed = 2026)
+
+data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
+grid2 <- imr_tune_grid(
+  #beta = c(0, NA, 40), # (min, max, length)
+  # gamma = c(0, NA, 40),
+  beta = cv_out$params$lambda_beta,
+  gamma = cv_out$params$lambda_gamma,
+  nuclear = c(0, NA, 40, 2),
+  rank = c(2, 10, 1) 
+)
+
+grid2 <- imr_set_grid_limits(data, grid2,
+                             default_rank = 7,
+                              bisection_iter = 0,
+                             verbose = 2)
+
+cv_out2 <- imr_tune(data, grid2,fast_nuclear = TRUE,
+                    nuclear_log_scale = FALSE,
+                   n_cores= 7 , seed = 2026, verbose=1)
+
+summary(cv_out2$fit)
+
+prepared_objects <- list(
+  fit = fit,
+  grid1 = grid,
+  cv1 = cv_out,
+  grid2 = grid2,
+  cv2 = cv_out2
+)
+saveRDS(prepared_objects, "vignette_prepared_objects.rda")
+```
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE}
+# knitr::opts_chunk$set(collapse = T, comment = "#>> ", cache = FALSE)
+# options(tibble.print_min = 4L, tibble.print_max = 4L)
+# library(IMR)
+# library(dplyr)
+# library(magrittr)
+# set.seed(2026)
 
 ```
 
@@ -51,7 +119,7 @@ To illustrate the standard workflow within the package, assume the matrices $\bo
 
 ```{r eval=FALSE, echo=TRUE}
 # load the library
-library(IMR)
+require(IMR)
 # set the hyperparameter value.
 lambda_beta <- 0.02
 # create the data object
@@ -72,12 +140,13 @@ This vignette is structured as follows: we first discuss the data structure and 
 
 ## Data
 
-As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 193 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). Below is a summary of the data (Note that the dataset also contains similarity matrices which we we discuss them in the final section).
+As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 193 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). We also consider a sample of
+100 stations and 100 consecutive days. Below is a summary of the data (Note that the dataset also contains similarity matrices which we we discuss them in the final section).
 
 [^1]: website: <https://bixi.com/>
 
 ```{r}
-bixi <- IMR::bixi_example
+bixi <- IMR::bixi_sample
 
 head(bixi$X,2)
 head(bixi$Z,3)
@@ -121,13 +190,17 @@ The `update` function modifies the model architecture through logical arguments 
 
 The fit function requires fixed values for the regularization parameters: the three penalty terms and the rank of the low-rank component. For now, let's set artibrary values for these parameters. Tuning procedure is detailed ina subsequent section.
 
+
+
+
+
 ```{r echo=TRUE, eval=FALSE}
 fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
 ```
 
 ```{r echo=FALSE, eval=TRUE}
-fit_path <- system.file("extdata", "bixi_fit.rds", package = "IMR")
-fit <- readRDS(fit_path)
+prepared <- readRDS("vignette_prepared_objects.rda")
+fit <- prepared$fit
 ```
 
 The `print` function yields diagnostic information regarding the estimation procedure, while the `summary` function provides an overview of the resultant estimates. The estimated coefficients can be extracted using `coef` function or directly by accessing the `fit$coefficients` object. It should be noted that the `summary` function show the covariate coefficients with respect to the original covariate matrices $\boldsymbol{X}$ and $\boldsymbol{Z}$, while the raw extracted coefficients in `coef()` correspond to the orthonormal matrices `XQ` and `ZQ`.
@@ -226,8 +299,7 @@ grid <- imr_set_grid_limits(data, grid,
 
 ```{r echo=FALSE, eval=TRUE}
 convergence <- imr_convergence(maxit = 1000, thresh = 1e-5)
-grid_path <- system.file("extdata", "bixi_grid1.rds", package = "IMR")
-grid <- readRDS(grid_path)
+grid <- prepared$grid1
 ```
 
 
@@ -248,14 +320,14 @@ With the grid fully specified, we proceed to find the optimal hyperparameters. T
 
 Given that all parameters in our example require tuning, the algorithm uses the third scheme. We use the fast mode, which generally yields good performance. For an exhaustive final tuning, however, the slow model is recommended, as it evaluates the complete the parameter space of $\lambda_m$ and $r$.
 
+
 ```{r eval=FALSE, echo=TRUE}
 cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, convergence = convergence,
                    n_cores=  1, seed = 2026, verbose=1)
 ```
 
-```{r echo=TRUE, eval=FALSE}
-cv_path <- system.file("extdata", "bixi_cv1.rds", package = "IMR")
-cv_out <- readRDS(grid_path)
+```{r echo=FALSE, eval=TRUE}
+cv_out <- prepared$cv1
 ```
 
 ```{r}
@@ -279,7 +351,7 @@ similarity_cols <- imr_similarity(x = "matern", d = bixi$spatial_distance,
                                   invert=TRUE, jitter = .1,
                                   matern_smoothness = 5/2, matern_range = .018); print(similarity_cols)
 
-similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_positions,
+similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
                                   invert=TRUE, jitter = .1,
                                   rbf_ell = 6); print(similarity_rows)
 
@@ -329,13 +401,8 @@ cv_out <- imr_tune(data, grid,
 ```
 
 ```{r echo=FALSE, eval=TRUE}
-grid_path <- system.file("extdata", "bixi_grid2.rds", package = "IMR")
-grid <- readRDS(grid_path)
-```
-
-```{r echo=FALSE, eval=TRUE}
-cv_path <- system.file("extdata", "bixi_cv2.rds", package = "IMR")
-cv_out <- readRDS(cv_path)
+grid <- prepared$grid2
+cv_out <- prepared$cv2
 ```
 
 ```{r}
