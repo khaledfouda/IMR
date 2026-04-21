@@ -1,3 +1,12 @@
+Frob_R <- function (Uold, Dsqold, Vold, U, Dsq, V)
+{
+  denom = sum(Dsqold^2)
+  utu = Dsq * (t(U) %*% Uold)
+  vtv = Dsqold * (t(Vold) %*% V)
+  uvprod = sum(diag(utu %*% vtv))
+  num = denom + sum(Dsq^2) - 2 * uvprod
+  num/max(denom, 1e-09)
+}
 generate_simulated_data <- function(
     n = 300,
     m = 400,
@@ -75,7 +84,7 @@ generate_simulated_data <- function(
   if(100 < max(n/2, m/2)){
     rank_theta <- sum(irlba::irlba(theta, nv = 100)$d)
   }else
-  rank_theta <- qr(theta)$rank
+    rank_theta <- qr(theta)$rank
 
   #  Done :) ------------------------------------------------------------------
   out <- list(

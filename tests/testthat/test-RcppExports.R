@@ -25,7 +25,7 @@ testthat::test_that("C++/Fortran functions", {
   mat[dat$Y == 0] = NA
   mat <- as.Incomplete(mat)
   testthat::expect_equal(x_row_test, mat@x,
-               info = "Row additions failed to update correct indices.")
+                         info = "Row additions failed to update correct indices.")
 
   # -------------------------------------------------------------------
   # Test 2: Column Addition
@@ -42,7 +42,7 @@ testthat::test_that("C++/Fortran functions", {
   mat[dat$Y == 0] = NA
   mat <- as.Incomplete(mat)
   testthat::expect_equal(x_row_test,  mat@x,
-               info = "Column additions failed to update correct indices.")
+                         info = "Column additions failed to update correct indices.")
   #-----------------------------------------------------------------------
   # Test 3,4: row and column means
   #-----------------------------------------------------------------------
@@ -57,10 +57,10 @@ testthat::test_that("C++/Fortran functions", {
   actual_col_means <- col_means_cpp(mat@x, mat@p, nr, nc)
 
   testthat::expect_equal(actual_row_means, expected_row_means,
-               info = "row means do not match base R.")
+                         info = "row means do not match base R.")
 
   testthat::expect_equal(actual_col_means, expected_col_means,
-               info = "col means do not match base R.")
+                         info = "col means do not match base R.")
   #-----------------------------------------------------------------------
   # Test 5,6: Soft-Thresholding
   #-----------------------------------------------------------------------
@@ -72,11 +72,11 @@ testthat::test_that("C++/Fortran functions", {
   )
   actual_beta <- soft_threshold_cpp(dat$beta, lambda)
   testthat::expect_equal(actual_beta, expected_beta,
-               info = "Fast soft-thresholding failed to match base R.")
+                         info = "Fast soft-thresholding failed to match base R.")
   zeros_expected <- sum(expected_beta == 0)
   zeros_actual   <- sum(actual_beta == 0)
   testthat::expect_equal(zeros_actual, zeros_expected,
-               info = "C++ function did not produce the correct number of exact zeros.")
+                         info = "C++ function did not produce the correct number of exact zeros.")
   #-----------------------------------------------------------------------
   # Test 7: Frob ratio
   #-----------------------------------------------------------------------
@@ -85,10 +85,10 @@ testthat::test_that("C++/Fortran functions", {
   U1 <- s1$u; V1 <- s1$v; d1 <- s1$d
   U2 <- s2$u; V2 <- s2$v; d2 <- s2$d
 
-  expected <- softImpute:::Frob(U1, d1, V1, U2, d2, V2)
+  expected <- Frob_R(U1, d1, V1, U2, d2, V2)
   actual <- frob_ratio_cpp(U1, d1, V1, U2, d2, V2)
   testthat::expect_equal(actual, expected,
-               info = "Frob ratio does not match.")
+                         info = "Frob ratio does not match.")
   #-----------------------------------------------------------------------
   # Test 8: Updating A without similarity
   #-----------------------------------------------------------------------
@@ -99,7 +99,7 @@ testthat::test_that("C++/Fortran functions", {
     as.matrix()
   actual <- update_A_cpp(mat, U1, V1, d1, 1.2)
   testthat::expect_equal(actual, expected,
-               info = "update_A does not match.")
+                         info = "update_A does not match.")
   #-----------------------------------------------------------------------
   # Test 9: Updating B without similarity
   #-----------------------------------------------------------------------
@@ -110,7 +110,7 @@ testthat::test_that("C++/Fortran functions", {
     as.matrix()
   actual <- update_B_cpp(mat, U1, V1, d1, 1.2)
   testthat::expect_equal(actual, expected,
-               info = "update_B does not match.")
+                         info = "update_B does not match.")
   #-----------------------------------------------------------------------
   # Test 10: Updating A with similarity
   #-----------------------------------------------------------------------
@@ -124,7 +124,7 @@ testthat::test_that("C++/Fortran functions", {
 
   actual <- update_A_sim_cpp(mat, U1, V1, d1, S$U, S$d)
   testthat::expect_equal(actual, expected,
-               info = "update_A_sim does not match.")
+                         info = "update_A_sim does not match.")
   #-----------------------------------------------------------------------
   # Test 11: Updating B with similarity
   #-----------------------------------------------------------------------
@@ -137,7 +137,7 @@ testthat::test_that("C++/Fortran functions", {
 
   actual <- update_B_sim_cpp(mat, U1, V1, d1, S2$U, S2$d)
   testthat::expect_equal(actual, expected,
-               info = "update_A_sim does not match.")
+                         info = "update_A_sim does not match.")
   #-----------------------------------------------------------------------
   # Test 12,13: SVD small nr
   #-----------------------------------------------------------------------
@@ -145,32 +145,32 @@ testthat::test_that("C++/Fortran functions", {
   expected <- svd(t(dat$X))
   actual <- svd_small_nr_cpp(t(dat$X))
   testthat::expect_equal(actual$d, expected$d,
-               info = "SVD small nr eigenvalues don't match")
+                         info = "SVD small nr eigenvalues don't match")
   testthat::expect_equal(unsvd(actual), unsvd(expected),
-               info = "SVD small nr reconstructions don't match")
+                         info = "SVD small nr reconstructions don't match")
   #-----------------------------------------------------------------------
   # Test 14,15: SVD small nc
   #-----------------------------------------------------------------------
   expected <- svd((dat$X))
   actual <- svd_small_nc_cpp((dat$X))
   testthat::expect_equal(actual$d, expected$d,
-               info = "SVD small nr eigenvalues don't match")
+                         info = "SVD small nr eigenvalues don't match")
   testthat::expect_equal(unsvd(actual), unsvd(expected),
-               info = "SVD small nr reconstructions don't match")
+                         info = "SVD small nr reconstructions don't match")
   #-----------------------------------------------------------------------
   # Test 16: [Fortran]  crossprod.f90
   #-----------------------------------------------------------------------
   actual <- (dat$X %*% dat$beta)[as.matrix(data$valid_mask)==1]
   expected <- partial_crossprod(dat$X, dat$beta, data$valid_mask@i, data$valid_mask@p)
   testthat::expect_equal(actual, expected,
-               info = "Crossprod don't match")
+                         info = "Crossprod don't match")
   #-----------------------------------------------------------------------
   # Test 17: [Fortran]  crossprodt.f90
   #-----------------------------------------------------------------------
   actual <- (dat$gamma %*% t(dat$Z))[as.matrix(data$valid_mask)==1]
   expected <- partial_crossprod(dat$gamma, dat$Z, data$valid_mask@i, data$valid_mask@p,T)
   testthat::expect_equal(actual, expected,
-               info = "Crossprod don't match")
+                         info = "Crossprod don't match")
 
 
 })

@@ -7,27 +7,31 @@ Authors@R:
 Description: More about what it does (maybe more than one line).
     Continuation lines should be indented.
 License: GPL-2
+Depends: 
+    R (>= 3.5)
 Imports: 
+    fields,
     irlba,
     MASS,
     Matrix,
+    parallel,
+    Rcpp,
     RSpectra,
     stats,
-    Rcpp,
-    methods,
-    tidyr,
-    foreach
+    stringr,
+    tidyr
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
 LinkingTo: 
     Rcpp,
     RcppArmadillo
+VignetteBuilder: 
+    knitr
+Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 SystemRequirements: C++17
-Roxygen: list(markdown = TRUE)
-Depends: 
-    R (>= 3.5)
-Suggests: 
-    knitr,
-    rmarkdown
-VignetteBuilder: knitr
