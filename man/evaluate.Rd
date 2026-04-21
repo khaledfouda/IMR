@@ -7,10 +7,7 @@
 evaluate(predicted, actual, metric = "all", na.rm = TRUE)
 }
 \arguments{
-\item{predicted}{A numeric vector of predicted values.}
-
-\item{actual}{A numeric vector of actual/observed values. Must be the same
-length as \code{predicted}.}
+\item{predicted, actual}{Numeric vectors or matrices of the same dimension}
 
 \item{metric}{A character string specifying the single metric to compute
 (one of \code{"rmse"}, \code{"rrmse"}, \code{"mae"}, \code{"mape"}, \code{"spearman"}). If set to
@@ -22,33 +19,36 @@ present at a specific index in either \code{predicted} or \code{actual}, that en
 pair is excluded from the calculation.}
 }
 \value{
-If \code{metric = "all"}, returns a one-row data frame containing
-columns for each calculated metric. If a specific metric is requested, returns
-a single numeric value.
+If \code{metric = "all"}, returns a one-row data-frame containing
+columns for each calculated metric.
+If a specific metric is requested, returns a single numeric value.
 }
 \description{
-Computes common error metrics between a vector of predicted
-values and a vector of actual/observed values.
+Computes common error metrics between two vectors or matrices.
 }
 \details{
 The function calculates the following metrics:
 \itemize{
 \item \strong{RMSE}: Root Mean Squared Error.
-\item \strong{Rel_RMSE}: Relative Root Mean Squared Error.
-\item \strong{MAE}: Mean Absolute Error. The average of the absolute differences between predictions and actual observations.
-\item \strong{MAPE}: Mean Absolute Percentage Error. Measures prediction accuracy as a percentage.
-\item \strong{Spearman_Rho}: Spearman's rank correlation coefficient (Spearman's Rho). Measures the monotonic relationship between the predicted and actual values.
+\item \strong{RRMSE}: Relative Root Mean Squared Error.
+\item \strong{MAE}: Mean Absolute Error. The average of the absolute
+differences between predictions and actual observations.
+\item \strong{MAPE}: Mean Absolute Percentage Error. Measures prediction
+accuracy as a percentage.
+\item \strong{Spearman}: Spearman's rank correlation coefficient.
 }
 }
 \examples{
-\dontrun{
+
 actual_vals <- c(10, 15, 20, NA, 30)
 pred_vals <- c(11, 14, 22, 25, 28)
 
-# Get a tibble of all metrics (NAs removed pairwise automatically)
+# Get one row of all metrics (NAs removed pairwise automatically)
 evaluate(pred_vals, actual_vals)
 
 # Get only the Root Mean Squared Error
 evaluate(pred_vals, actual_vals, metric = "rmse")
 }
+\seealso{
+\code{\link[=get_metric]{get_metric()}}
 }

@@ -45,3 +45,17 @@ effects (\eqn{X \beta}), column covariate effects (\eqn{\Gamma Z}), and any inte
 The function automatically handles matrix dimension sweeping for shared vs.
 unshared effects.
 }
+\examples{
+\dontrun{
+# construct the data object
+data <- imr_data(Y = Y, X = X)
+# fit the model
+fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
+# estimate the target matrix
+target <- reconstruct(fit, data)$estimates
+}
+
+}
+\seealso{
+\code{\link[=reconstruct_partial]{reconstruct_partial()}}
+}

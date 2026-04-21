@@ -18,9 +18,8 @@ this value. Defaults to \code{1e-5}.}
 function value at each iteration. Defaults to \code{FALSE}.}
 
 \item{ls_initial}{Logical. If \code{TRUE} (the default), least-squares initial
-values are used. If \code{FALSE}, random initialization is used. It is highly
-recommended to leave this as \code{TRUE} to speed up convergence. Refer to
-the IMR article for more details on initialization.}
+values are used. If \code{FALSE}, random initialization is used. It is
+recommended to leave this as \code{TRUE} to speed up convergence.}
 }
 \value{
 An object of class \code{"imr_convergence"}, which is a list containing
@@ -32,5 +31,10 @@ IMR fit function.
 }
 \examples{
 # Use the default convergence parameters
-imr_convergence()
+convergence <- imr_convergence()
+print(imr_convergence)
+
+}
+\seealso{
+\code{\link[=imr_fit]{imr_fit()}}, \code{\link[=print.imr_convergence]{print.imr_convergence()}}
 }

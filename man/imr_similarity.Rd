@@ -24,18 +24,18 @@ matrix (if \code{invert = TRUE}).}
 \code{"matern"} or \code{"rbf"}. Defaults to \code{NULL}.}
 
 \item{matern_smoothness, matern_range}{the parameters for the Matern kernel:
-\code{smoothness} and \code{range}. Defaults to \code{list(smoothness = 1.5, range = 1)}.}
+\code{smoothness} and \code{range}. Defaults to \verb{(smoothness = 1.5, range = 1)}.}
 
 \item{rbf_ell}{The length-scale parameter for the Radial Basis Function
 (RBF) kernel. Defaults to \code{1}.}
 
 \item{jitter}{Numeric. A small positive value added to the diagonal of the
 matrix to improve numerical stability and reduce the condition number.
-This is applied \emph{before} any inversion. Defaults to \code{0} (no jitter).}
+This is applied before any inversion. Defaults to \code{0}.}
 
-\item{invert}{Logical. Should the matrix be inverted? The IMR model mathematically
-expects an \emph{information} matrix. If your input (or generated kernel)
-represents a \emph{covariance} matrix, you must set this to \code{TRUE} to invert it.
+\item{invert}{Logical. Should the matrix be inverted? The IMR model
+expects an information matrix. If your input (or generated kernel)
+represents a covariance matrix, you must set this to \code{TRUE} to invert it.
 Defaults to \code{FALSE}.}
 }
 \value{
@@ -43,14 +43,32 @@ An object of class \code{"imr_similarity"}. This is a list containing:
 \itemize{
 \item \code{U}: A matrix of eigenvectors.
 \item \code{d}: A vector of absolute eigenvalues.
-\item \code{meta}: A list of metadata including the source type, dimensions,
-kernel parameters, condition number, and whether inversion or jitter
-was applied.
+\item \code{meta}: A list of metadata.
 }
 }
 \description{
-Creates an \code{"imr_similarity"} object containing the eigendecomposition of a
+Creates an \code{"imr_similarity"} object containing the Eigenvalue-decomposition of a
 similarity or information matrix. This object is required for incorporating
-row or column similarities in an IMR model. The function can accept a pre-computed
-matrix or generate a covariance matrix from distance data using specified kernels.
+row or column similarities in an IMR model. The function can accept a
+pre-computed matrix or generate a covariance matrix from distance data using
+specified kernels.
+}
+\examples{
+# generate 5 random spatial locations
+coords <- data.frame(
+x = runif(5, 0, 10),
+y = runif(5, 0 , 10))
+
+# compute the distance matrix
+distance_matrix <- as.matrix(dist(coords))
+
+# generate the similarity object of a 5/2 matern kernel
+sim <- imr_similarity("matern", distance_matrix, matern_smoothness = 1.5, invert = TRUE)
+
+# print the matrix's metadata
+print(sim)
+
+}
+\seealso{
+\code{\link[=imr_data]{imr_data()}}, \code{\link[=print.imr_similarity]{print.imr_similarity()}}
 }

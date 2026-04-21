@@ -12,18 +12,19 @@
 #' @param trace Logical. If `TRUE`, prints the Frobenius ratio and the loss
 #'   function value at each iteration. Defaults to `FALSE`.
 #' @param ls_initial Logical. If `TRUE` (the default), least-squares initial
-#'   values are used. If `FALSE`, random initialization is used. It is highly
-#'   recommended to leave this as `TRUE` to speed up convergence. Refer to
-#'   the IMR article for more details on initialization.
+#'   values are used. If `FALSE`, random initialization is used. It is
+#'   recommended to leave this as `TRUE` to speed up convergence.
 #'
 #' @return An object of class `"imr_convergence"`, which is a list containing
 #'   the specified control parameters.
-#'
+#' @seealso [imr_fit()], [print.imr_convergence()]
 #' @export
 #'
 #' @examples
 #' # Use the default convergence parameters
-#' imr_convergence()
+#' convergence <- imr_convergence()
+#' print(imr_convergence)
+#'
 imr_convergence <- function(maxit = 600,
                             thresh = 1e-5,
                             trace = FALSE,
@@ -85,6 +86,36 @@ imr_convergence <- function(maxit = 600,
 #'   \item \code{model}: The logical model structure inherited from `data`.
 #'   \item \code{meta_data}: Variable metadata inherited from `data`.
 #' }
+#'
+#' @seealso [imr_data()], [imr_convergence()], [print.imr_fit()], [summary.imr_fit()], [coef.imr_fit()]
+#' @examples
+#' # create sample data
+#' Y <- matrix(
+#'   c(2, NA, 3,
+#'   4, .5, NA,
+#'   NA, NA, 5), 3, byrow= TRUE
+#' )
+#'
+#' # create covariate matrix of 2 variables
+#' X <- matrix(rnorm(3*2), 3, 2)
+#'
+#' # create the data object
+#' data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
+#'
+#' # update the model to add row intercepts
+#' data <- update(data, row_intercept = TRUE)
+#'
+#' # fit the model
+#' fit <- imr_fit(data, rank = 2)
+#'
+#' # print the model fit summary
+#' print(fit)
+#'
+#' # print a summary of the fitted coefficients
+#' summary(fit)
+#'
+#' # extract the coefficients
+#' coefs <- coef(fit)
 #'
 #' @export
 imr_fit <- function(
@@ -227,6 +258,7 @@ imr_fit <- function(
 #' Fit Incomplete Matrix Regression (IMR) Model
 #'
 #' Not exported
+#' @noRd
 imr_solver <- function(
   Y, X, Z,
   row_intercept, col_intercept,
@@ -559,6 +591,11 @@ imr_solver <- function(
 }
 
 
+#' @title Summary of the model's fit operation
+#' @param x An `imr_fit` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_fit()], [summary.imr_fit()]
+#' @inherit imr_fit examples
 #' @export
 #' @method print imr_fit
 print.imr_fit <- function(x, ...) {
@@ -662,7 +699,11 @@ print.imr_fit <- function(x, ...) {
   invisible(x)
 }
 
-#' @export
+#' @title Summary of the fitted model's parameters
+#' @param object An `imr_fit` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_fit()], [print.imr_fit()]
+#' @inherit imr_fit examples
 #' @method summary imr_fit
 summary.imr_fit <- function(object, ...) {
   cat("\n=====================================================")
@@ -805,6 +846,11 @@ summary.imr_fit <- function(object, ...) {
 }
 
 
+#' @title Summary of the model's convergence paramters
+#' @param x An `imr_convergence` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_convergence()] [imr_fit()]
+#' @inherit imr_convergence examples
 #' @export
 #' @method print imr_convergence
 print.imr_convergence <- function(x, ...) {
@@ -824,18 +870,20 @@ print.imr_convergence <- function(x, ...) {
   invisible()
 }
 
+#' @title Extract the fitted model's coefficients
+#' @param object An `imr_fit` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_fit()]
+#' @inherit imr_fit examples
 #' @export
 #' @importFrom stats coef coefficients
 #' @method coef imr_fit
 coef.imr_fit <- function(object, ...) {
   return(object$coefficients)
 }
-#' @export
-#' @method coefficients imr_fit
-coefficients.imr_fit <- coef.imr_fit
 
 
-#' Matrix Completion using Row and Column Means
+#' @title Matrix Completion using Row and Column Means
 #'
 #' @description
 #' A naive matrix completion method that imputes missing entries by filling them
@@ -848,21 +896,20 @@ coefficients.imr_fit <- coef.imr_fit
 #' @details
 #' The function efficiently computes row and column means using an internal C++
 #' functions, excluding missing entries. It replaces
-#' each missing value at index $(i, j)$ with the arithmetic mean of the $i$-th
-#' row mean and the $j$-th column mean.
+#' each missing value at index \eqn{(i, j)} with the arithmetic mean of the i-th
+#' row mean and the j-th column mean.
 #'
 #' @return A dense matrix of class `Incomplete`.
 #'
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#'
 #' # Create a sample matrix with missing values (NAs)
 #' mat <- matrix(c(1, NA, 3, 4, 5, NA, 7, 8, 9), nrow = 3)
 #'
 #' # Impute the missing values using row and column averages
-#' mat_completed <- mc_with_means(mat)
-#' }
+#' mc_with_means(mat)
 mc_with_means <- function(mat) {
   # Calculate row and column means, excluding NAs
   if (!IMR::is.Incomplete(mat)) mat <- IMR::as.Incomplete(mat)

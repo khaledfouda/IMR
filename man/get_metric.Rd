@@ -2,12 +2,26 @@
 % Please edit documentation in R/helpers.R
 \name{get_metric}
 \alias{get_metric}
-\title{Return one of the error metrics above.
-Do not export}
+\title{Returns a predefined error metric}
 \usage{
 get_metric(metric)
 }
+\arguments{
+\item{metric}{one of ("rmse", "rrmse", "mae", "mape", "spearman")}
+}
+\value{
+A function that takes two arguments (vectors or matrices)
+}
 \description{
-Return one of the error metrics above.
-Do not export
+\code{get_metric()} returns one of the common error metric functions that takes
+two arguments: predictions and true values.
+}
+\examples{
+rmse_function <- get_metric("rmse")
+true <- c(1,2,3)
+predictions <- c(1,3,NA)
+rmse_function(true, predictions, na.rm = TRUE)
+}
+\seealso{
+\code{\link[=evaluate]{evaluate()}}
 }

@@ -15,8 +15,9 @@ imr_data(
 )
 }
 \arguments{
-\item{Y}{A numeric matrix (dense or sparse) representing the target/response matrix.
-This is the only required parameter. Missing values and Zeros are treated as unobserved.}
+\item{Y}{A numeric matrix (dense or sparse) representing the target/response
+matrix. This is the only required parameter.
+Missing values and Zeros are treated as unobserved.}
 
 \item{X}{A numeric matrix of row covariates. Must have the same number of rows as \code{Y}.
 Defaults to \code{NULL}.}
@@ -42,31 +43,50 @@ train/validation split. Defaults to \code{NULL}.}
 \value{
 An object of class \code{"imr_data"}, containing:
 \itemize{
-\item \code{Y}, \code{y_train}, \code{y_valid}: The target matrix and its splits (as \code{Incomplete} objects).
-\item \code{Xq}, \code{Xr}, \code{Zq}, \code{Zr}: The QR decompositions of the covariates.
-\item \code{similarity_rows}, \code{similarity_cols}: The provided similarity matrices.
+\item \code{Y}, \code{y_train}, \code{y_valid}: The target matrix and its
+splits (as \code{Incomplete} objects).
+\item \code{Xq}, \code{Xr}, \code{Zq}, \code{Zr}: The QR decompositions of
+the covariates.
+\item \code{similarity_rows}, \code{similarity_cols}: The provided similarity
+matrices.
 \item \code{meta}: A list of dataset dimensions, sparsity, and variable counts.
 \item \code{model}: A list of logical flags defining the current model structure.
 }
 }
 \description{
 \code{imr_data} creates a structured data object for Incomplete Matrix Regression (IMR).
-It handles target matrix formatting, optional train/validation splitting, QR decomposition
-of covariates, and initializes a default model structure based on the provided inputs.
+It handles target matrix formatting, optional train/validation splitting,
+QR decomposition of covariates, and initializes a default model structure
+based on the provided inputs.
 }
 \details{
 By default, \code{imr_data} assumes that if you provide \code{X}, \code{Z}, or similarity matrices,
-you want to include them in your IMR model. It sets the internal \verb{$model} logical
+you want to include them in your IMR model. It sets \verb{$model} logical
 flags to \code{TRUE} for any provided data. If you wish to change this model structure
 later without re-processing the data matrices, use the \code{update()} method.
 }
 \examples{
-\dontrun{
-# 1. Prepare data with covariates and a 20\% validation split
-my_data <- imr_data(Y = target_mat, X = row_covs, val_prop = 0.2)
 
-# 2. The default model uses row_covariates because X was provided.
-# We can update the model structure to turn off row covariates or add an intercept.
-my_data <- update(my_data, row_covariates = FALSE, row_intercept = TRUE)
+# create sample data
+Y <- matrix(
+  c(2, NA, 3,
+  4, .5, NA,
+  NA, NA, 5), 3, byrow= TRUE
+)
+
+# create covariate matrix of 2 variables
+X <- matrix(rnorm(3*2), 3, 2)
+
+# create the data object
+data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
+
+# update the model to add row intercepts
+data <- update(data, row_intercept = TRUE)
+
+# print the metadata
+print(data)
+
 }
+\seealso{
+\code{\link[=update.imr_data]{update.imr_data()}}, \code{\link[=imr_similarity]{imr_similarity()}}
 }

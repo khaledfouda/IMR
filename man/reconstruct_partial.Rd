@@ -43,3 +43,18 @@ Unlike the full \code{\link{reconstruct}} function, which allocates and calculat
 every cell of an \eqn{n \times m} matrix, \code{reconstruct_partial} relies on optimized C++
 routines to calculate only the targeted entries.
 }
+\examples{
+\dontrun{
+# construct the data object
+data <- imr_data(Y = Y, X = X)
+# fit the model
+fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
+# compute estimates of the training data
+estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = FALSE)
+# compute the training Root Mean Squared Error
+evaluate(estimates, data$Y@x, metric = "RMSE")
+}
+}
+\seealso{
+\code{\link[=reconstruct]{reconstruct()}}
+}

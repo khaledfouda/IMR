@@ -1,4 +1,5 @@
 #' Do not export
+#' @noRd
 inv <- function(X, tol = sqrt(.Machine$double.eps)) {
   # Ensure X is a base matrix
   if (!is.matrix(X)) X <- as.matrix(X)
@@ -34,6 +35,7 @@ inv <- function(X, tol = sqrt(.Machine$double.eps)) {
 }
 
 #-------------------------------------
+#' @noRd
 mask_train_test_split <-
   function(obs_mask,
            testp = 0.2,
@@ -71,6 +73,7 @@ mask_train_test_split <-
 
 #-------------------------
 # Do not export
+#' @noRd
 verify_low_rank <- function(M, J, min_eigv = .Machine$double.eps) {
   D <- M$d
   # Count valid singular values, cap at length(D)
@@ -111,6 +114,7 @@ verify_low_rank <- function(M, J, min_eigv = .Machine$double.eps) {
 }
 
 # Do not export
+#' @noRd
 verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
   if (is.null(M) || is.null(M$d) || is.null(M$u) || is.null(M$v)) {
     warning("warm start verification failed - missing u, d, or v. Reinitializing...")
@@ -132,75 +136,65 @@ verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
 }
 
 
+
+#' Returns a predefined error metric
+#'
+#' `get_metric()` returns one of the common error metric functions that takes
+#' two arguments: predictions and true values.
+#'
+#' @param metric one of ("rmse", "rrmse", "mae", "mape", "spearman")
+#' @return A function that takes two arguments (vectors or matrices)
+#' @seealso [evaluate()]
+#' @examples
+#' rmse_function <- get_metric("rmse")
+#' true <- c(1,2,3)
+#' predictions <- c(1,3,NA)
+#' rmse_function(true, predictions, na.rm = TRUE)
 #' @export
-error_metrics <- list(
-  # Mean Absolute Percentage Error
-  mape = function(predicted, actual, na.rm = TRUE) {
-    if (na.rm) {
-      idx <- complete.cases(predicted, actual) & actual != 0
-    } else {
-      idx <- actual != 0
-    }
-    mean(abs((actual[idx] - predicted[idx]) / actual[idx])) * 100
-  },
-
-  #  Mean Absolute Error
-  mae = function(predicted, actual, na.rm = TRUE) {
-    mean(abs(actual - predicted), na.rm = na.rm)
-  },
-
-  # RMSE
-  rmse = function(predicted, actual, na.rm = TRUE) {
-    sqrt(mean((actual - predicted)^2, na.rm = na.rm))
-  },
-
-  # 6. Relative RMSE
-  rrmse = function(predicted, actual, na.rm = TRUE) {
-    if (na.rm) {
-      idx <- complete.cases(predicted, actual)
-      predicted <- predicted[idx]
-      actual <- actual[idx]
-    }
-    sqrt(sum((actual - predicted)^2)) / sqrt(sum(actual^2))
-  },
-
-  # 7. Spearman Correlation (Rho)
-  spearman = function(predicted, actual, na.rm = TRUE) {
-    use_method <- if (na.rm) "complete.obs" else "everything"
-    cor(actual, predicted, method = "spearman", use = use_method)
-  }
-)
-
-#' Return one of the error metrics above.
-#' Do not export
 get_metric <- function(metric) {
-  if (stringr::str_to_lower(metric) == "rmse") {
-    return(error_metrics$rmse)
-  }
-  if (stringr::str_to_lower(metric) == "rrmse") {
-    return(error_metrics$rrmse)
-  }
-  if (stringr::str_to_lower(metric) == "mae") {
-    return(error_metrics$mae)
-  }
-  if (stringr::str_to_lower(metric) == "mape") {
-    return(error_metrics$mape)
-  }
-  if (stringr::str_to_lower(metric) == "spearman") {
-    return(error_metrics$spearman)
-  }
-  stop("Unvalid error metric")
+  metric_name <- stringr::str_to_lower(metric)
+  switch(
+    metric_name,
+    "mape" = function(predicted, actual, na.rm = TRUE) {
+      if (na.rm) {
+        idx <- complete.cases(predicted, actual) & actual != 0
+      } else {
+        idx <- actual != 0
+      }
+      mean(abs((actual[idx] - predicted[idx]) / actual[idx])) * 100
+    },
+
+    "mae" = function(predicted, actual, na.rm = TRUE) {
+      mean(abs(actual - predicted), na.rm = na.rm)
+    },
+
+    "rmse" = function(predicted, actual, na.rm = TRUE) {
+      sqrt(mean((actual - predicted)^2, na.rm = na.rm))
+    },
+
+    "rrmse" = function(predicted, actual, na.rm = TRUE) {
+      if (na.rm) {
+        idx <- complete.cases(predicted, actual)
+        predicted <- predicted[idx]
+        actual <- actual[idx]
+      }
+      sqrt(sum((actual - predicted)^2)) / sqrt(sum(actual^2))
+    },
+
+    "spearman" = function(predicted, actual, na.rm = TRUE) {
+      use_method <- if (na.rm) "complete.obs" else "everything"
+      cor(actual, predicted, method = "spearman", use = use_method)
+    },
+
+    stop("Invalid error metric: ", metric, call. = FALSE)
+  )
 }
 
 #' Evaluate Model Predictions
 #'
-#' @description
-#' Computes common error metrics between a vector of predicted
-#' values and a vector of actual/observed values.
+#' Computes common error metrics between two vectors or matrices.
 #'
-#' @param predicted A numeric vector of predicted values.
-#' @param actual A numeric vector of actual/observed values. Must be the same
-#'   length as `predicted`.
+#' @param predicted,actual Numeric vectors or matrices of the same dimension
 #' @param metric A character string specifying the single metric to compute
 #'   (one of `"rmse"`, `"rrmse"`, `"mae"`, `"mape"`, `"spearman"`). If set to
 #'   `"all"` (the default), the function computes and returns all available metrics.
@@ -213,42 +207,43 @@ get_metric <- function(metric) {
 #' The function calculates the following metrics:
 #' \itemize{
 #'   \item \strong{RMSE}: Root Mean Squared Error.
-#'   \item \strong{Rel_RMSE}: Relative Root Mean Squared Error.
-#'   \item \strong{MAE}: Mean Absolute Error. The average of the absolute differences between predictions and actual observations.
-#'   \item \strong{MAPE}: Mean Absolute Percentage Error. Measures prediction accuracy as a percentage.
-#'   \item \strong{Spearman_Rho}: Spearman's rank correlation coefficient (Spearman's Rho). Measures the monotonic relationship between the predicted and actual values.
+#'   \item \strong{RRMSE}: Relative Root Mean Squared Error.
+#'   \item \strong{MAE}: Mean Absolute Error. The average of the absolute
+#'    differences between predictions and actual observations.
+#'   \item \strong{MAPE}: Mean Absolute Percentage Error. Measures prediction
+#'   accuracy as a percentage.
+#'   \item \strong{Spearman}: Spearman's rank correlation coefficient.
 #' }
 #'
 #' @return
-#' If `metric = "all"`, returns a one-row data frame containing
-#' columns for each calculated metric. If a specific metric is requested, returns
-#' a single numeric value.
+#' If `metric = "all"`, returns a one-row data-frame containing
+#' columns for each calculated metric.
+#' If a specific metric is requested, returns a single numeric value.
 #'
-#' @export
-#'
+#' @seealso [get_metric()]
 #' @examples
-#' \dontrun{
+#'
 #' actual_vals <- c(10, 15, 20, NA, 30)
 #' pred_vals <- c(11, 14, 22, 25, 28)
 #'
-#' # Get a tibble of all metrics (NAs removed pairwise automatically)
+#' # Get one row of all metrics (NAs removed pairwise automatically)
 #' evaluate(pred_vals, actual_vals)
 #'
 #' # Get only the Root Mean Squared Error
 #' evaluate(pred_vals, actual_vals, metric = "rmse")
-#' }
+#' @export
 evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
   p <- as.numeric(predicted)
   a <- as.numeric(actual)
   if (stringr::str_to_lower(metric) != "all") {
-    return(IMR:::get_metric(metric)(p, a, na.rm))
+    return(get_metric(metric)(p, a, na.rm))
   }
   data.frame(
-    RMSE            = error_metrics$rmse(p, a, na.rm),
-    Rel_RMSE        = error_metrics$rrmse(p, a, na.rm),
-    MAE             = error_metrics$mae(p, a, na.rm),
-    MAPE            = error_metrics$mape(p, a, na.rm),
-    Spearman_Rho    = error_metrics$spearman(p, a, na.rm)
+    RMSE         = get_metric("rmse")(p, a, na.rm),
+    Rel_RMSE     = get_metric("rrmse")(p, a, na.rm),
+    MAE          = get_metric("mae")(p, a, na.rm),
+    MAPE         = get_metric("mape")(p, a, na.rm),
+    Spearman_Rho = get_metric("spearman")(p, a, na.rm)
   )
 }
 
@@ -257,8 +252,8 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 #'
 #' @description
 #' A general-purpose wrapper for Singular Value Decomposition (SVD) that
-#' selects the most computationally efficient backend based on the matrix dimensions,
-#' sparsity, and the desired number of singular components.
+#' selects the most computationally efficient backend based on the matrix
+#' dimensions, sparsity, and the desired number of singular components.
 #'
 #' @param mat A numeric matrix. Can be a base R dense matrix or a Sparse matrix.
 #' @param k Integer. The number of singular values and corresponding eigenvectors
@@ -276,16 +271,16 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 #' \itemize{
 #'   \item {Thin Matrices:} If the matrix is wide
 #'     (`ncol > 2 * nrow`) or tall (`nrow > 2 * ncol`), it utilizes
-#'     internal C++ functions (`IMR:::svd_small_nr_cpp` or `IMR:::svd_small_nc_cpp`).
-#'     Note: Sparse matrices are coerced to dense matrices for these fast paths.
+#'     internal C++ functions (`IMR:::svd_small_nr_cpp` or
+#'     `IMR:::svd_small_nc_cpp`).
 #'   \item {Full SVD:} If `k` is `NULL` or requests the full rank, it uses
-#'     base R's standard \code{\link[base]{svd}} function.
+#'     base R's \code{\link[base]{svd}} function.
 #'   \item {Partial SVD (Sparse or `k <= 5`):} For large matrices where
 #'     only a few components are needed or if the matrix is sparse, it
-#'     uses the `irlba` package (\code{\link[irlba]{irlba}}).
+#'     uses the \code{\link[irlba]{irlba}}.
 #'   \item {Partial SVD (Dense and `k >= 5`):} For dense matrices where
-#'     a larger number of components are requested, it relies on the
-#'     `RSpectra` package (\code{\link[RSpectra]{svds}}).
+#'     a larger number of components are requested, it uses the
+#'     \code{\link[RSpectra]{svds}}).
 #' }
 #'
 #' @return A list containing the SVD components:
@@ -294,6 +289,11 @@ evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
 #'   \item \code{u}: A matrix whose columns contain the left singular vectors.
 #'   \item \code{v}: A matrix whose columns contain the right singular vectors.
 #' }
+#'
+#' @examples
+#' x <- matrix(rnorm(100),10, 10)
+#' # return the first singular value and vectors
+#' svd_opt(x, k = 1)
 #'
 #' @export
 svd_opt <- function(mat,

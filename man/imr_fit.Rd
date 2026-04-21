@@ -69,3 +69,36 @@ The main function for fitting an Incomplete Matrix Regression (IMR) model.
 It takes a prepared \code{imr_data} object and estimates the parameters based on the
 specified model structure and regularization parameters.
 }
+\examples{
+# create sample data
+Y <- matrix(
+  c(2, NA, 3,
+  4, .5, NA,
+  NA, NA, 5), 3, byrow= TRUE
+)
+
+# create covariate matrix of 2 variables
+X <- matrix(rnorm(3*2), 3, 2)
+
+# create the data object
+data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
+
+# update the model to add row intercepts
+data <- update(data, row_intercept = TRUE)
+
+# fit the model
+fit <- imr_fit(data, rank = 2)
+
+# print the model fit summary
+print(fit)
+
+# print a summary of the fitted coefficients
+summary(fit)
+
+# extract the coefficients
+coefs <- coef(fit)
+
+}
+\seealso{
+\code{\link[=imr_data]{imr_data()}}, \code{\link[=imr_convergence]{imr_convergence()}}, \code{\link[=print.imr_fit]{print.imr_fit()}}, \code{\link[=summary.imr_fit]{summary.imr_fit()}}, \code{\link[=coef.imr_fit]{coef.imr_fit()}}
+}

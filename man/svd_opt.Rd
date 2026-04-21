@@ -28,8 +28,8 @@ A list containing the SVD components:
 }
 \description{
 A general-purpose wrapper for Singular Value Decomposition (SVD) that
-selects the most computationally efficient backend based on the matrix dimensions,
-sparsity, and the desired number of singular components.
+selects the most computationally efficient backend based on the matrix
+dimensions, sparsity, and the desired number of singular components.
 }
 \details{
 To minimize computation time, \code{svd_opt} routes the SVD request to different
@@ -38,15 +38,21 @@ algorithms depending on the scenario:
 \itemize{
 \item {Thin Matrices:} If the matrix is wide
 (\code{ncol > 2 * nrow}) or tall (\code{nrow > 2 * ncol}), it utilizes
-internal C++ functions (\code{IMR:::svd_small_nr_cpp} or \code{IMR:::svd_small_nc_cpp}).
-Note: Sparse matrices are coerced to dense matrices for these fast paths.
+internal C++ functions (\code{IMR:::svd_small_nr_cpp} or
+\code{IMR:::svd_small_nc_cpp}).
 \item {Full SVD:} If \code{k} is \code{NULL} or requests the full rank, it uses
-base R's standard \code{\link[base]{svd}} function.
+base R's \code{\link[base]{svd}} function.
 \item {Partial SVD (Sparse or \code{k <= 5}):} For large matrices where
 only a few components are needed or if the matrix is sparse, it
-uses the \code{irlba} package (\code{\link[irlba]{irlba}}).
+uses the \code{\link[irlba]{irlba}}.
 \item {Partial SVD (Dense and \code{k >= 5}):} For dense matrices where
-a larger number of components are requested, it relies on the
-\code{RSpectra} package (\code{\link[RSpectra]{svds}}).
+a larger number of components are requested, it uses the
+\code{\link[RSpectra]{svds}}).
 }
+}
+\examples{
+x <- matrix(rnorm(100),10, 10)
+# return the first singular value and vectors
+svd_opt(x, k = 1)
+
 }

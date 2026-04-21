@@ -2,11 +2,13 @@
 #'
 #' @description
 #' `imr_data` creates a structured data object for Incomplete Matrix Regression (IMR).
-#' It handles target matrix formatting, optional train/validation splitting, QR decomposition
-#' of covariates, and initializes a default model structure based on the provided inputs.
+#' It handles target matrix formatting, optional train/validation splitting,
+#'  QR decomposition of covariates, and initializes a default model structure
+#'  based on the provided inputs.
 #'
-#' @param Y A numeric matrix (dense or sparse) representing the target/response matrix.
-#'   This is the only required parameter. Missing values and Zeros are treated as unobserved.
+#' @param Y A numeric matrix (dense or sparse) representing the target/response
+#' matrix. This is the only required parameter.
+#' Missing values and Zeros are treated as unobserved.
 #' @param X A numeric matrix of row covariates. Must have the same number of rows as `Y`.
 #'   Defaults to `NULL`.
 #' @param Z A numeric matrix of column covariates. Must have the same number of columns
@@ -25,30 +27,46 @@
 #'
 #' @details
 #' By default, `imr_data` assumes that if you provide `X`, `Z`, or similarity matrices,
-#' you want to include them in your IMR model. It sets the internal `$model` logical
+#' you want to include them in your IMR model. It sets `$model` logical
 #' flags to `TRUE` for any provided data. If you wish to change this model structure
 #' later without re-processing the data matrices, use the `update()` method.
 #'
 #' @return An object of class `"imr_data"`, containing:
 #' \itemize{
-#'   \item \code{Y}, \code{y_train}, \code{y_valid}: The target matrix and its splits (as `Incomplete` objects).
-#'   \item \code{Xq}, \code{Xr}, \code{Zq}, \code{Zr}: The QR decompositions of the covariates.
-#'   \item \code{similarity_rows}, \code{similarity_cols}: The provided similarity matrices.
+#'   \item \code{Y}, \code{y_train}, \code{y_valid}: The target matrix and its
+#'   splits (as `Incomplete` objects).
+#'   \item \code{Xq}, \code{Xr}, \code{Zq}, \code{Zr}: The QR decompositions of
+#'   the covariates.
+#'   \item \code{similarity_rows}, \code{similarity_cols}: The provided similarity
+#'   matrices.
 #'   \item \code{meta}: A list of dataset dimensions, sparsity, and variable counts.
 #'   \item \code{model}: A list of logical flags defining the current model structure.
 #' }
 #'
+#' @seealso [update.imr_data()], [imr_similarity()]
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' # 1. Prepare data with covariates and a 20% validation split
-#' my_data <- imr_data(Y = target_mat, X = row_covs, val_prop = 0.2)
 #'
-#' # 2. The default model uses row_covariates because X was provided.
-#' # We can update the model structure to turn off row covariates or add an intercept.
-#' my_data <- update(my_data, row_covariates = FALSE, row_intercept = TRUE)
-#' }
+#' # create sample data
+#' Y <- matrix(
+#'   c(2, NA, 3,
+#'   4, .5, NA,
+#'   NA, NA, 5), 3, byrow= TRUE
+#' )
+#'
+#' # create covariate matrix of 2 variables
+#' X <- matrix(rnorm(3*2), 3, 2)
+#'
+#' # create the data object
+#' data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
+#'
+#' # update the model to add row intercepts
+#' data <- update(data, row_intercept = TRUE)
+#'
+#' # print the metadata
+#' print(data)
+#'
 imr_data <- function(Y,
                      X = NULL,
                      Z = NULL,
@@ -158,7 +176,7 @@ imr_data <- function(Y,
 #'   (Requires `X` to have been provided to `imr_data`).
 #' @param col_covariates Logical. Include column covariates in the model?
 #'   (Requires `Z` to have been provided to `imr_data`).
-#' @param low_rank_component Logical. Include the low-rank component ($U D V^T$)?
+#' @param low_rank_component Logical. Include the low-rank component (\eqn{M=U D V^T})?
 #' @param row_similarity Logical. Include row similarity penalties?
 #'   (Requires `similarity_rows` to have been provided to `imr_data`).
 #' @param col_similarity Logical. Include column similarity penalties?
@@ -172,6 +190,10 @@ imr_data <- function(Y,
 #' @param ... Additional arguments (ignored).
 #'
 #' @return The modified `"imr_data"` object with updated `$model` flags.
+#'
+#' @seealso [imr_data()], [imr_similarity()]
+#'
+#' @inherit imr_data examples
 #'
 #' @export
 #' @method update imr_data
@@ -233,8 +255,13 @@ update.imr_data <- function(object,
   return(object)
 }
 
-
+#' @title Summary of data and model structure
+#' @param x An `imr_data` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_data()] [update.imr_data()] [imr_similarity()]
+#' @inherit imr_data examples
 #' @export
+#' @method print imr_data
 print.imr_data <- function(x, ...) {
   m <- x$meta # What data is available in memory
   a <- x$model # What the solver is instructed to use
@@ -310,7 +337,7 @@ print.imr_data <- function(x, ...) {
 }
 
 
-#' Reconstruct Model Estimates and Components
+#' @title Reconstruct Model Estimates and Components
 #'
 #' @description
 #' Calculates the estimated response matrix from a fitted IMR model. In addition
@@ -345,6 +372,18 @@ print.imr_data <- function(x, ...) {
 #'   \item \code{beta0}: The estimated row intercepts.
 #'   \item \code{gamma0}: The estimated column intercepts.
 #'   \item \code{estimates}: The final predicted response matrix (the sum of all active components).
+#' }
+#'
+#' @seealso [reconstruct_partial()]
+#'
+#' @examples
+#' \dontrun{
+#' # construct the data object
+#' data <- imr_data(Y = Y, X = X)
+#' # fit the model
+#' fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
+#' # estimate the target matrix
+#' target <- reconstruct(fit, data)$estimates
 #' }
 #'
 #' @export
@@ -451,6 +490,19 @@ reconstruct <- function(fit, data, trace = TRUE) {
 #'
 #' @return Either a `CsparseMatrix` object or a numeric vector (see above).
 #'
+#' @seealso [reconstruct()]
+#'
+#' @examples
+#' \dontrun{
+#' # construct the data object
+#' data <- imr_data(Y = Y, X = X)
+#' # fit the model
+#' fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
+#' # compute estimates of the training data
+#' estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = FALSE)
+#' # compute the training Root Mean Squared Error
+#' evaluate(estimates, data$Y@x, metric = "RMSE")
+#' }
 #' @export
 reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_matrix = FALSE) {
   stopifnot(inherits(fit, "imr_fit"))
@@ -518,13 +570,14 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 
 #----------------------------------------------------------------
 
-#' Generate Similarity or Information Matrix Object
+#' @title Generate Similarity or Information Matrix Object
 #'
 #' @description
-#' Creates an `"imr_similarity"` object containing the eigendecomposition of a
+#' Creates an `"imr_similarity"` object containing the Eigenvalue-decomposition of a
 #' similarity or information matrix. This object is required for incorporating
-#' row or column similarities in an IMR model. The function can accept a pre-computed
-#' matrix or generate a covariance matrix from distance data using specified kernels.
+#' row or column similarities in an IMR model. The function can accept a
+#' pre-computed matrix or generate a covariance matrix from distance data using
+#' specified kernels.
 #'
 #' @param x Either a square numeric matrix, or a character string specifying a
 #'   kernel method (`"matern"` or `"rbf"`). If a matrix is provided, it should
@@ -533,25 +586,39 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 #' @param d A numeric distance matrix. This is strictly required if `x` is set to
 #'   `"matern"` or `"rbf"`. Defaults to `NULL`.
 #' @param matern_smoothness,matern_range  the parameters for the Matern kernel:
-#'   `smoothness` and `range`. Defaults to `list(smoothness = 1.5, range = 1)`.
+#'   `smoothness` and `range`. Defaults to `(smoothness = 1.5, range = 1)`.
 #' @param rbf_ell The length-scale parameter for the Radial Basis Function
 #'   (RBF) kernel. Defaults to `1`.
 #' @param jitter Numeric. A small positive value added to the diagonal of the
 #'   matrix to improve numerical stability and reduce the condition number.
-#'   This is applied *before* any inversion. Defaults to `0` (no jitter).
-#' @param invert Logical. Should the matrix be inverted? The IMR model mathematically
-#'   expects an *information* matrix. If your input (or generated kernel)
-#'   represents a *covariance* matrix, you must set this to `TRUE` to invert it.
+#'   This is applied before any inversion. Defaults to `0`.
+#' @param invert Logical. Should the matrix be inverted? The IMR model
+#'   expects an information matrix. If your input (or generated kernel)
+#'   represents a covariance matrix, you must set this to `TRUE` to invert it.
 #'   Defaults to `FALSE`.
 #'
 #' @return An object of class `"imr_similarity"`. This is a list containing:
 #' \itemize{
 #'   \item \code{U}: A matrix of eigenvectors.
 #'   \item \code{d}: A vector of absolute eigenvalues.
-#'   \item \code{meta}: A list of metadata including the source type, dimensions,
-#'         kernel parameters, condition number, and whether inversion or jitter
-#'         was applied.
+#'   \item \code{meta}: A list of metadata.
 #' }
+#' @seealso [imr_data()], [print.imr_similarity()]
+#'
+#' @examples
+#' # generate 5 random spatial locations
+#' coords <- data.frame(
+#' x = runif(5, 0, 10),
+#' y = runif(5, 0 , 10))
+#'
+#' # compute the distance matrix
+#' distance_matrix <- as.matrix(dist(coords))
+#'
+#' # generate the similarity object of a 5/2 matern kernel
+#' sim <- imr_similarity("matern", distance_matrix, matern_smoothness = 1.5, invert = TRUE)
+#'
+#' # print the matrix's metadata
+#' print(sim)
 #'
 #' @export
 imr_similarity <- function(x,
@@ -632,7 +699,14 @@ imr_similarity <- function(x,
   )
 }
 
+
+#' @title Summary of the similarity matrix
+#' @param x An `imr_similarity` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_similarity()]
+#' @inherit imr_similarity examples
 #' @export
+#' @method print imr_similarity
 print.imr_similarity <- function(x, ...) {
   cat("\n== IMR Similarity Decomposition ==\n")
   cat(sprintf("Source:           %s\n", x$meta$source))

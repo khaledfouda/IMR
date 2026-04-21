@@ -27,7 +27,7 @@
 \item{col_covariates}{Logical. Include column covariates in the model?
 (Requires \code{Z} to have been provided to \code{imr_data}).}
 
-\item{low_rank_component}{Logical. Include the low-rank component ($U D V^T$)?}
+\item{low_rank_component}{Logical. Include the low-rank component (\eqn{M=U D V^T})?}
 
 \item{row_similarity}{Logical. Include row similarity penalties?
 (Requires \code{similarity_rows} to have been provided to \code{imr_data}).}
@@ -54,4 +54,29 @@ The modified \code{"imr_data"} object with updated \verb{$model} flags.
 Updates the logical model structure of an existing \code{"imr_data"} object. This allows
 you to toggle model components (like intercepts, covariates, or low-rank components)
 on or off without needing to re-process the underlying data matrices.
+}
+\examples{
+
+# create sample data
+Y <- matrix(
+  c(2, NA, 3,
+  4, .5, NA,
+  NA, NA, 5), 3, byrow= TRUE
+)
+
+# create covariate matrix of 2 variables
+X <- matrix(rnorm(3*2), 3, 2)
+
+# create the data object
+data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
+
+# update the model to add row intercepts
+data <- update(data, row_intercept = TRUE)
+
+# print the metadata
+print(data)
+
+}
+\seealso{
+\code{\link[=imr_data]{imr_data()}}, \code{\link[=imr_similarity]{imr_similarity()}}
 }
