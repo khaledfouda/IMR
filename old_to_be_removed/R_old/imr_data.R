@@ -12,7 +12,7 @@ imr_data <- function(Y,
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
   # ---  Target Matrix Setup ---
-  out$Y <- IMR::as.Incomplete(Y)
+  out$Y <- IMR::as_incomplete(Y)
   out$Y@x <- out$Y@x + 0 # this is to force a copy
   obs_mask <- as.matrix(Y != 0)
 
@@ -28,9 +28,9 @@ imr_data <- function(Y,
     valid_mask_mat <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
     train_mask_mat <- obs_mask * (1 - valid_mask_mat)
 
-    out$valid_mask <- IMR::as.Incomplete(valid_mask_mat)
-    out$y_train <- IMR::as.Incomplete(Y * train_mask_mat)
-    out$y_valid <- IMR::as.Incomplete(Y * valid_mask_mat)
+    out$valid_mask <- IMR::as_incomplete(valid_mask_mat)
+    out$y_train <- IMR::as_incomplete(Y * train_mask_mat)
+    out$y_valid <- IMR::as_incomplete(Y * valid_mask_mat)
 
     n_train <- sum(train_mask_mat)
     n_valid <- sum(valid_mask_mat)
@@ -39,7 +39,7 @@ imr_data <- function(Y,
     n_valid <- 0
   }
 
-  out$obs_mask <- IMR::as.Incomplete(obs_mask * 1)
+  out$obs_mask <- IMR::as_incomplete(obs_mask * 1)
 
   # ---  Similarity Matrices ---
   if (!is.null(similarity_rows) && !is.null(similarity_rows$d) &&
@@ -313,7 +313,7 @@ reconstruct <- function(fit, data, trace = TRUE) {
 reconstruct_partial <- function(fit, data, target, trace = FALSE) {
   stopifnot(inherits(fit, "imr_fit"))
   stopifnot(inherits(data, "imr_data"))
-  stopifnot(IMR::is.Incomplete(target))
+  stopifnot(IMR::is_incomplete(target))
 
   coefs <- fit$coefficients
   meta <- fit$meta

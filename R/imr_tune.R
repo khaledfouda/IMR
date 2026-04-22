@@ -19,8 +19,8 @@ imr_tune_nuclear_fast <- function(data,
     inherits(convergence, "imr_convergence")
   )
   stopifnot(
-    is.Incomplete(data$y_valid),
-    is.Incomplete(data$y_train)
+    is_incomplete(data$y_valid),
+    is_incomplete(data$y_train)
   )
   stopifnot(is.numeric(grid$nuclear$max))
   stopifnot(
@@ -168,8 +168,8 @@ imr_tune_nuclear_slow <- function(data,
     inherits(convergence, "imr_convergence")
   )
   stopifnot(
-    is.Incomplete(data$y_valid),
-    is.Incomplete(data$y_train)
+    is_incomplete(data$y_valid),
+    is_incomplete(data$y_train)
   )
   stopifnot(is.numeric(grid$nuclear$max))
   stopifnot(
@@ -356,8 +356,8 @@ imr_tune_lasso <- function(data,
     inherits(convergence, "imr_convergence")
   )
   stopifnot(
-    is.Incomplete(data$y_valid),
-    is.Incomplete(data$y_train)
+    is_incomplete(data$y_valid),
+    is_incomplete(data$y_train)
   )
   target <- stringr::str_to_lower(target)
   stopifnot(target %in% c("beta", "gamma"))

@@ -78,7 +78,7 @@ imr_data <- function(Y,
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
   # ---  Target Matrix Setup ---
-  out$Y <- Y <- as.Incomplete(Y)
+  out$Y <- Y <- as_incomplete(Y)
   out$Y@x <- out$Y@x + 0 # this is to force a copy
   obs_mask <- as.matrix(Y != 0)
 
@@ -94,9 +94,9 @@ imr_data <- function(Y,
     valid_mask_mat <- mask_train_test_split(obs_mask, val_prop, seed)
     train_mask_mat <- obs_mask * (1 - valid_mask_mat)
 
-    out$valid_mask <- as.Incomplete(valid_mask_mat)
-    out$y_train <- as.Incomplete(Y * train_mask_mat)
-    out$y_valid <- as.Incomplete(Y * valid_mask_mat)
+    out$valid_mask <- as_incomplete(valid_mask_mat)
+    out$y_train <- as_incomplete(Y * train_mask_mat)
+    out$y_valid <- as_incomplete(Y * valid_mask_mat)
 
     n_train <- sum(train_mask_mat)
     n_valid <- sum(valid_mask_mat)
@@ -105,7 +105,7 @@ imr_data <- function(Y,
     n_valid <- 0
   }
 
-  out$obs_mask <- as.Incomplete(obs_mask * 1)
+  out$obs_mask <- as_incomplete(obs_mask * 1)
 
   # ---  Similarity Matrices ---
   stopifnot(is.null(similarity_rows) || inherits(similarity_rows, "imr_similarity"))
@@ -559,11 +559,11 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
   }
 
   if(return_matrix)
-    target <- new("imr_incomplete",
+    target <- as_incomplete(new("dgCMatrix",
                   i = irow,
                   p = pcol,
                   x = target,
-                  Dim = fit$meta_data$dimensions)
+                  Dim = fit$meta_data$dimensions))
 
   return(target)
 }

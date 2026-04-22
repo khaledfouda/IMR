@@ -1,7 +1,7 @@
 #' @export
 #' @importClassesFrom softImpute Incomplete
 #' @export
-as.Incomplete <- function(x, ...) {
+as_incomplete <- function(x, ...) {
   stopifnot(inherits(x, c("matrix", "Matrix")))
   x <- as(x, "CsparseMatrix")
   na <- is.na(x@x)
@@ -12,7 +12,7 @@ as.Incomplete <- function(x, ...) {
   x
 }
 #' @export
-is.Incomplete <- function(x, ...) inherits(x, "dgCMatrix")
+is_incomplete <- function(x, ...) inherits(x, "dgCMatrix")
 #' @export
-setMethod("as.matrix", "imr_incomplete", as.Incomplete)
-setAs("matrix", "imr_incomplete", function(from) as.Incomplete(from))
+setMethod("as.matrix", "imr_incomplete", as_incomplete)
+setAs("matrix", "imr_incomplete", function(from) as_incomplete(from))

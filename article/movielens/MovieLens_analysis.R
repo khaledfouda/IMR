@@ -52,7 +52,7 @@ for (i in 1:4) {
     beta.estim = out[[i]]$beta,
     gamma.estim = out[[i]]$gamma,
     estim.test = out[[i]]$estimates[data$test.idx],
-    estim.train = as.Incomplete(out[[i]]$estimates * data$obs_mask)@x,
+    estim.train = as_incomplete(out[[i]]$estimates * data$obs_mask)@x,
     obs.test = data$test.truths,
     obs.train = model_data$Y[model_data$Y != 0],
     M.estim = out[[i]]$M,

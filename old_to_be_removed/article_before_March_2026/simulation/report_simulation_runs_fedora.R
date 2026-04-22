@@ -75,7 +75,7 @@ increase_sparsity <- function(dat, step=0.05){
   to_zero_ind <- sample(nonzero_idx, extra_nonzero_frac*length(nonzero_idx),replace = F)
 
   dat$Y[to_zero_ind] <- 0
-  #dat$Y %<>% IMR::as.Incomplete()
+  #dat$Y %<>% IMR::as_incomplete()
   #-- we now recreate the train/test splits
   dat$mask <- as.matrix(dat$Y != 0)
   dat$sparsity <- target_sparsity

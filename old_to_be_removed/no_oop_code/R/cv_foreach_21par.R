@@ -22,9 +22,9 @@ imr.cv_21 <- function(
   separate = FALSE
 ) {
   #-------------------
-  stopifnot(is.Incomplete(data$Y))
-  stopifnot(is.Incomplete(data$y_train))
-  stopifnot(is.Incomplete(data$y_valid))
+  stopifnot(is_incomplete(data$Y))
+  stopifnot(is_incomplete(data$y_train))
+  stopifnot(is_incomplete(data$y_valid))
   if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags

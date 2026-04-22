@@ -63,7 +63,7 @@ fit_IMR_movielens <- function(input_tag = "_c_0_",
   # prepare data
   idx   <- cbind(query[, 1], query[, 2])
   truths <- query[, 3]
-  Y <- IMR::as.Incomplete(Y)
+  Y <- IMR::as_incomplete(Y)
   obs_mask <- as.matrix((Y!=0) * 1)
   mean(obs_mask==1)
   mean(obs_mask==0)

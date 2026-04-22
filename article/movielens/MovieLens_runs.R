@@ -82,7 +82,7 @@ print(prepare_output_movielens(
   beta.estim = datrec$beta,
   gamma.estim = datrec$gamma,
   estim.test = datrec$estimates[data$test.idx],
-  estim.train = as.Incomplete(datrec$estimates * data$obs_mask)@x,
+  estim.train = as_incomplete(datrec$estimates * data$obs_mask)@x,
   obs.test = data$test.truths,
   test_error = get_metric("rmse"),
   obs.train = data$Y[data$Y != 0],

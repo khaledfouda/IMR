@@ -3,7 +3,7 @@
 #' \code{imr.fit} fits the model to the given data and hyper-parameters until
 #' convergence is achieved.
 #'
-#' @param Y An incomplete matrix (class \code{Incomplete}; see \code{\link{as.incomplete}}).
+#' @param Y An incomplete matrix (class \code{Incomplete}; see \code{\link{as_incomplete}}).
 #'   The target matrix to be completed (n by m).
 #' @param X Optional matrix of row covariates (n by p). Default is \code{NULL}.
 #' @param Z Optional matrix of column covariates (m by q). Default is \code{NULL}.
@@ -65,7 +65,7 @@ imr.fit <- function(
   ls_initial = TRUE
 ) {
   # Input checks & setup ----------------------------------------------------
-  stopifnot(is.Incomplete(Y))
+  stopifnot(is_incomplete(Y))
   dims <- dim(Y)
   nr <- dims[1]
   nc <- dims[2]
@@ -387,7 +387,7 @@ imr.fit_no_low_rank <- function(
   trace = FALSE
 ) {
   # Input checks & setup ----------------------------------------------------
-  stopifnot(is.Incomplete(Y))
+  stopifnot(is_incomplete(Y))
 
   dims <- dim(Y)
   nr <- dims[1]

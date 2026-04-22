@@ -68,7 +68,7 @@ run_partial_crossprod_test <- function(n=50,r=10,m=60,prob=0.3){
   mask <- matrix(rbinom(n*m,1,prob),n,m)
   A <- matrix(rnorm(n*r), n, r)
   B <- matrix(rnorm(m*r), r, m)
-  mask <- as.Incomplete(mask)
+  mask <- as_incomplete(mask)
   out1 <- partial_crossprod(A, B, mask@i, mask@p)
   out2 <- partial_crossprod(A, t(B), mask@i, mask@p, vtranspose = T)
   true <- (A %*% B)[as.matrix(mask)==1]

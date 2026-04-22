@@ -20,7 +20,7 @@ source("article/movielens/Ma25_fit.R")
 # prepare test set and X-QR
 test.idx   <- cbind(query[, 1], query[, 2])
 test.truths <- query[, 3]
-Y <- IMR::as.Incomplete(Y)
+Y <- IMR::as_incomplete(Y)
 obs_mask <- as.matrix((Y!=0) * 1)
 mean(obs_mask==1)
 mean(obs_mask==0)
@@ -177,7 +177,7 @@ prepare_output_movielens(
   beta.estim  = out[[i]]$beta,
   gamma.estim = out[[i]]$gamma,
   estim.test = out[[i]]$estimates[test.idx],
-  estim.train = as.Incomplete(out[[i]]$estimates * dat$obs_mask)@x,
+  estim.train = as_incomplete(out[[i]]$estimates * dat$obs_mask)@x,
   obs.test = test.truths,
   obs.train = dat$Y[dat$Y!=0],
   M.estim = out[[i]]$M,test_error = IMR:::error_metric$rmse,
@@ -294,7 +294,7 @@ for(i in 1:5){
     beta.estim  = out[[i]]$beta,
     gamma.estim = out[[i]]$gamma,
     estim.test = out[[i]]$estimates[test.idx],
-    estim.train = as.Incomplete(out[[i]]$estimates * obs_mask)@x,
+    estim.train = as_incomplete(out[[i]]$estimates * obs_mask)@x,
     obs.test = test.truths,
     obs.train = dat$Y[dat$Y!=0],
     M.estim = out[[i]]$M,test_error = IMR:::error_metric$rmse,

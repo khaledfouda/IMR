@@ -7,7 +7,7 @@ testthat::test_that("imr_fit function", {
   # fit model
   fit <- imr_fit(data, 2)
   # reconstruct response matrix
-  rec <- reconstruct(fit, data)
+  rec <- reconstruct(fit, data, trace = FALSE)
   # get spearman correlation between estimates and original matrix. should be 1.
   estimated =
     testthat::expect_equal(round(evaluate(rec$estimates, dat$theta, "spearman")),

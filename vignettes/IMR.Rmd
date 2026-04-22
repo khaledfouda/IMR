@@ -166,12 +166,12 @@ print(data)
 
 ```
 
-The response argument `Y` in the function above accepts any standard matrix class from base R or the `Matrix` package. The framework coerces this input into a `dgCMatrix` object using the function `as.Incomplete()`. Run `class?CsparseMatrix` [^2] for more information about the matrix arguments.
+The response argument `Y` in the function above accepts any standard matrix class from base R or the `Matrix` package. The framework coerces this input into a `dgCMatrix` object using the function `as_incomplete()`. Run `class?CsparseMatrix` [^2] for more information about the matrix arguments.
 
 [^2]: <https://www.rdocumentation.org/packages/Matrix/versions/1.2-14/topics/CsparseMatrix-class>
 
 ```{r}
-bixi$test <- as.Incomplete(bixi$test)
+bixi$test <- as_incomplete(bixi$test)
 bixi$test[3:5,3:4]
 ```
 

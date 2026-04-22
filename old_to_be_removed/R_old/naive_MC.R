@@ -3,7 +3,7 @@ naive_MC <- function(mat) {
   # Input assumes that empty cells are filled with NA so they don't affect the average
   #mat[mat == 0] <- NA
   # Calculate row and column means, excluding NAs
-  if(! IMR::is.Incomplete(mat)) mat <- IMR::as.Incomplete(mat)
+  if(! IMR::is_incomplete(mat)) mat <- IMR::as_incomplete(mat)
   # have this instead and accept sparse matrix.
   row_means <- IMR:::row_means_cpp(mat, ncol(mat))
   col_means <- IMR:::col_means_cpp(mat, nrow(mat))

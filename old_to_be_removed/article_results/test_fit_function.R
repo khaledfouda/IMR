@@ -57,7 +57,7 @@ fit <- structure(list(coefficients=fit), class = "imr_fit")
 
 coefs <- coef(fit)
 rec <- IMR::reconstruct(fit, data)
-dat$test <- (dat$theta * (1 - dat$mask)) %>% IMR::as.Incomplete()
+dat$test <- (dat$theta * (1 - dat$mask)) %>% IMR::as_incomplete()
 recp <- IMR::reconstruct_partial(fit, data, dat$test, TRUE)
 IMR::evaluate(recp@x, dat$test@x, "all") %>% as_tibble()
 

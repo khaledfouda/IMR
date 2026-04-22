@@ -5,16 +5,16 @@ prepare_data <- function(Y, X = NULL, Z = NULL,
                          val_prop = 0.2, seed = 2025) {
   out <- list()
   if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
-  out$Y <- IMR::as.Incomplete(Y)
+  out$Y <- IMR::as_incomplete(Y)
   message("Performing train/valid split")
   obs_mask <- as.matrix(Y != 0)
   out$valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
-  train_mask <- IMR::as.Incomplete(obs_mask * (1 - out$valid_mask))
-  out$valid_mask <- IMR::as.Incomplete(out$valid_mask)
-  out$obs_mask <- IMR::as.Incomplete(obs_mask * 1)
+  train_mask <- IMR::as_incomplete(obs_mask * (1 - out$valid_mask))
+  out$valid_mask <- IMR::as_incomplete(out$valid_mask)
+  out$obs_mask <- IMR::as_incomplete(obs_mask * 1)
 
-  out$y_train <- IMR::as.Incomplete(Y * train_mask)
-  out$y_valid <- IMR::as.Incomplete(Y * out$valid_mask)
+  out$y_train <- IMR::as_incomplete(Y * train_mask)
+  out$y_valid <- IMR::as_incomplete(Y * out$valid_mask)
 
 
   if (!is.null(similarity_rows)) {
@@ -124,7 +124,7 @@ reconstruct <- function(fit, data, trace = TRUE, shared_information=FALSE) {
 #-----------------------------
 #' @export
 reconstruct_partial <- function(fit, data, target, shared_information = FALSE, trace = FALSE) {
-  stopifnot(is.Incomplete(target))
+  stopifnot(is_incomplete(target))
   if (trace) message("Constructing M ...")
   target@x <- IMR:::partial_crossprod(fit$u, fit$d * t(fit$v), target@i, target@p)
 

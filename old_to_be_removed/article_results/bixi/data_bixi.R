@@ -357,7 +357,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
   ) %>%
     dplyr::select(-row) %>%
     as.matrix() %>%
-    IMR::as.Incomplete()
+    IMR::as_incomplete()
 
   #
   #
@@ -377,7 +377,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
   #   ) %>%
   #   dplyr::select(-row) %>%
   #   as.matrix() %>%
-  #   IMR::as.Incomplete()
+  #   IMR::as_incomplete()
 
   message(glue("Test      : {round(100*sum(test_set!=0)/length(test_set),1)}%"))
 
@@ -434,7 +434,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
                                   similarity_cols = kernels$spatial,
                                   seed = seed,val_prop = val_prop)
 
-  output$test_mask = IMR::as.Incomplete((test_set != 0)*1)
+  output$test_mask = IMR::as_incomplete((test_set != 0)*1)
   output$test = test_set
   output$X = X
   output$Z = Z
@@ -462,11 +462,11 @@ prepare_bixi_data <- function(miss_p = 0.5,
   # model_dat$Xr <- qr.R(Xqr)
   # model_dat$Zq <- qr.Q(Zqr)
   # model_dat$Zr <- qr.R(Zqr)
-  # model_dat$Y.inc <- IMR::as.Incomplete(model_dat$Y)
+  # model_dat$Y.inc <- IMR::as_incomplete(model_dat$Y)
   #
   # model_dat$splits <- list(
-  #   train = IMR::as.Incomplete(model_dat$Y * valid_mask),
-  #   valid = IMR::as.Incomplete(model_dat$Y * (1 - valid_mask)),
+  #   train = IMR::as_incomplete(model_dat$Y * valid_mask),
+  #   valid = IMR::as_incomplete(model_dat$Y * (1 - valid_mask)),
   #   test  = test_mat
   # )
 

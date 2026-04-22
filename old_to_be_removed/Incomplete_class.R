@@ -3,7 +3,7 @@
 setClass("imr_incomplete", "dgCMatrix")
 
 #' @export
-as.Incomplete <- function(x) {
+as_incomplete <- function(x) {
   stopifnot(inherits(x, c("matrix", "Matrix")))
   x <- as(x, "dgCMatrix")
   na <- is.na(x@x)
@@ -15,20 +15,20 @@ as.Incomplete <- function(x) {
 }
 
 #' @export
-is.Incomplete <- function(x) inherits(x, "imr_incomplete")
+is_incomplete <- function(x) inherits(x, "imr_incomplete")
 
 #' @export
-setAs("matrix", "imr_incomplete", function(from) as.Incomplete(from))
+setAs("matrix", "imr_incomplete", function(from) as_incomplete(from))
 
 #' @export
-setAs("Matrix", "imr_incomplete", function(from) as.Incomplete(from))
+setAs("Matrix", "imr_incomplete", function(from) as_incomplete(from))
 
 
 
 #' @export
 #' @importMethodsFrom Matrix t
 t.Incomplete <- function(x) {
-  as.Incomplete(t(as(x, "dgCMatrix")))
+  as_incomplete(t(as(x, "dgCMatrix")))
 }
 
 

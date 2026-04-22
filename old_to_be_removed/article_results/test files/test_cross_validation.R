@@ -375,7 +375,7 @@ rbind(
 # data <- inp.dat$model
 
 #
-# Y2 <- IMR::as.Incomplete(dat$Y)
+# Y2 <- IMR::as_incomplete(dat$Y)
 # Y2@x <- Y2@x - IMR:::partial_crossprod(dat$X, res1$best_fit$beta, Y2@i, Y2@p)
 #
 # data2 <- IMR::prepare_data(as.matrix(Y2), dat$X, dat$Z, dat$similarity_rows, dat$similarity_cols)

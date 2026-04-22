@@ -20,9 +20,9 @@ imr.cv_M <- function(
 ){
   # set seed and check input matrix type
   if( (!is.null(seed)) & is.numeric(seed)) set.seed(seed)
-  stopifnot(is.Incomplete(y_train))
-  stopifnot(is.Incomplete(y_valid))
-  if(!is.null(Y_full)) stopifnot(is.Incomplete(Y_full))
+  stopifnot(is_incomplete(y_train))
+  stopifnot(is_incomplete(y_valid))
+  if(!is.null(Y_full)) stopifnot(is_incomplete(Y_full))
 
   # lambda lambda_m sequence
   if(is.null(hpar$M$lambda_max)){
@@ -199,7 +199,7 @@ imr.cv <- function(
   if(is.null(Y) & (is.null(y_train)|is.null(y_valid)))
     stop("You must either provide Y or (y_train,y_valid), or both")
   if(is.null(y_train)| is.null(y_valid)){
-    stopifnot(is.Incomplete(Y))
+    stopifnot(is_incomplete(Y))
     message("Performing train/valid split")
     obs_mask <- as.matrix(Y != 0)
     valid_mask <- IMR:::mask_train_test_split(obs_mask, val_prop, seed)
@@ -208,8 +208,8 @@ imr.cv <- function(
     rm(obs_mask)
     rm(valid_mask)
   }else{
-    stopifnot(is.Incomplete(y_train))
-    stopifnot(is.Incomplete(y_valid))
+    stopifnot(is_incomplete(y_train))
+    stopifnot(is_incomplete(y_valid))
   }
   if((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------

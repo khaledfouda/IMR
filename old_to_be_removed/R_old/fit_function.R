@@ -19,7 +19,7 @@ imr.fit <- function(
     warm_start = NULL,
     ls_initial = TRUE) {
   # Input checks & setup ----------------------------------------------------
-  stopifnot(is.Incomplete(Y))
+  stopifnot(is_incomplete(Y))
 
   dims <- dim(Y)
   nr <- dims[1]
@@ -252,7 +252,7 @@ imr.fit_no_low_rank <- function(
     thresh = 1e-5,
     trace = FALSE) {
   # Input checks & setup ----------------------------------------------------
-  stopifnot(is.Incomplete(Y))
+  stopifnot(is_incomplete(Y))
 
   dims <- dim(Y)
   nr <- dims[1]

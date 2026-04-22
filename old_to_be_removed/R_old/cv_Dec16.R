@@ -17,9 +17,9 @@ imr.cv_laplace <- function(
   final_fit = TRUE,
   seed = NULL
 ) {
-  stopifnot(is.Incomplete(data$Y))
-  stopifnot(is.Incomplete(data$y_train))
-  stopifnot(is.Incomplete(data$y_valid))
+  stopifnot(is_incomplete(data$Y))
+  stopifnot(is_incomplete(data$y_train))
+  stopifnot(is_incomplete(data$y_valid))
   if ((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
   if( is.numeric(num_cores) && num_cores > 0) IMR::initialize_parallel_workers(num_cores)
   #---------------------------------------------------
@@ -264,9 +264,9 @@ imr.cv <- function(
   # }
 
   #-------------------
-  stopifnot(is.Incomplete(data$Y))
-  stopifnot(is.Incomplete(data$y_train))
-  stopifnot(is.Incomplete(data$y_valid))
+  stopifnot(is_incomplete(data$Y))
+  stopifnot(is_incomplete(data$y_train))
+  stopifnot(is_incomplete(data$y_valid))
   if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags

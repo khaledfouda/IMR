@@ -360,7 +360,7 @@ increase_sparsity <- function(dat, step=0.05){
 
   to_zero_ind <- sample(1:current_length, extra_nonzero_frac*current_length,replace = F)
   dat$fit_data$Y_full@x[to_zero_ind] <- NA
-  dat$fit_data$Y_full %<>% IMR::as.Incomplete()
+  dat$fit_data$Y_full %<>% IMR::as_incomplete()
   #-- we now recreate the train/test splits
   dat$mask <- as.matrix(dat$fit_data$Y_full != 0)
   valid_mask <- MC_train_test_split(dat$mask, 0.2)

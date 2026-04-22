@@ -20,9 +20,9 @@ imr.cv_M <- function(
 ) {
   # set seed and check input matrix type
   if ((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
-  stopifnot(is.Incomplete(y_train))
-  stopifnot(is.Incomplete(y_valid))
-  if (!is.null(Y_full)) stopifnot(is.Incomplete(Y_full))
+  stopifnot(is_incomplete(y_train))
+  stopifnot(is_incomplete(y_valid))
+  if (!is.null(Y_full)) stopifnot(is_incomplete(Y_full))
 
   # lambda lambda_m sequence
   if (is.null(hpar$M$lambda_max)) {
@@ -197,9 +197,9 @@ imr.cv_laplace <- function(
   num_cores = 4,
   seed = NULL
 ) {
-  stopifnot(is.Incomplete(data$Y))
-  stopifnot(is.Incomplete(data$y_train))
-  stopifnot(is.Incomplete(data$y_valid))
+  stopifnot(is_incomplete(data$Y))
+  stopifnot(is_incomplete(data$y_train))
+  stopifnot(is_incomplete(data$y_valid))
   if ((!is.null(seed)) && is.numeric(seed)) set.seed(seed)
   if(initialize_workers) IMR::initialize_parallel_workers(num_cores)
   #---------------------------------------------------
@@ -445,9 +445,9 @@ imr.cv <- function(
   # X <- inp.dat$Xq
   # Z <- inp.dat$Zq
   # rm(inp.dat)
-  stopifnot(is.Incomplete(inp.dat$Y))
-  stopifnot(is.Incomplete(inp.dat$y_train))
-  stopifnot(is.Incomplete(inp.dat$y_valid))
+  stopifnot(is_incomplete(inp.dat$Y))
+  stopifnot(is_incomplete(inp.dat$y_train))
+  stopifnot(is_incomplete(inp.dat$y_valid))
 
   if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------

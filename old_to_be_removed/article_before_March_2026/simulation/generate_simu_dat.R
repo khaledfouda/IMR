@@ -227,9 +227,9 @@ generate_simulated_data <- function(
     Y_valid <- Y * (1 - W_valid)
 
     fit_data <- list(
-      train   = IMR::as.Incomplete(Y_train),
-      valid   = IMR::as.Incomplete(Y_valid),
-      Y_full  = IMR::as.Incomplete(Y)
+      train   = IMR::as_incomplete(Y_train),
+      valid   = IMR::as_incomplete(Y_valid),
+      Y_full  = IMR::as_incomplete(Y)
       # X       = list(Q = qr.Q(Xq), R = qr.R(Xq)),
       # Rbeta   = qr.R(Xq) %*% beta
     )

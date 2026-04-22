@@ -24,7 +24,7 @@ load_movielens1m <- function() {
   # prepare test set and X-QR
   data$test.idx <- cbind(data$query[, 1], data$query[, 2])
   data$test.truths <- data$query[, 3]
-  data$Y <- IMR::as.Incomplete(data$Y)
+  data$Y <- IMR::as_incomplete(data$Y)
   data$obs_mask <- as.matrix((data$Y != 0) * 1)
   mean(data$obs_mask == 1)
   mean(data$obs_mask == 0)
@@ -122,7 +122,7 @@ start <- Sys.time()
     beta.estim = datrec$beta,
     gamma.estim = datrec$gamma,
     estim.test = datrec$estimates[data$test.idx],
-    estim.train = as.Incomplete(datrec$estimates * data$obs_mask)@x,
+    estim.train = as_incomplete(datrec$estimates * data$obs_mask)@x,
     obs.test = data$test.truths,
     test_error = IMR:::error_metric$rmse,
     obs.train = data$Y[data$Y != 0],
@@ -132,7 +132,7 @@ start <- Sys.time()
 }
 
 IMR:::error_metric$rmse(datrec$estimates[data$test.idx], data$test.truths)
-IMR:::error_metric$rmse(as.Incomplete(datrec$estimates * data$obs_mask)@x, data$Y[data$Y != 0])
+IMR:::error_metric$rmse(as_incomplete(datrec$estimates * data$obs_mask)@x, data$Y[data$Y != 0])
 # ========================================
 
 fit.imr1 <- readRDS("article/movielens/data/february_fitimr1.rds")
@@ -198,7 +198,7 @@ for (i in 1:5) {
     beta.estim = out[[i]]$beta,
     gamma.estim = out[[i]]$gamma,
     estim.test = out[[i]]$estimates[data$test.idx],
-    estim.train = as.Incomplete(out[[i]]$estimates * data$obs_mask)@x,
+    estim.train = as_incomplete(out[[i]]$estimates * data$obs_mask)@x,
     obs.test = data$test.truths,
     test_error = IMR:::error_metric$rmse,
     obs.train = data$Y[data$Y != 0],

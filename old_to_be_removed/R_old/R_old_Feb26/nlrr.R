@@ -15,9 +15,9 @@ nlrr.cv <- function(
   ls_initial = FALSE
 ) {
   #-------------------
-  stopifnot(is.Incomplete(inp.dat$Y))
-  stopifnot(is.Incomplete(inp.dat$y_train))
-  stopifnot(is.Incomplete(inp.dat$y_valid))
+  stopifnot(is_incomplete(inp.dat$Y))
+  stopifnot(is_incomplete(inp.dat$y_train))
+  stopifnot(is_incomplete(inp.dat$y_valid))
   if ((!is.null(seed)) & is.numeric(seed)) set.seed(seed)
   #-------------------------------
   # set flags
@@ -198,8 +198,8 @@ nlrr.cv <- function(
     trace = FALSE
   )
 
-  inp.dat$y_train <- IMR::as.Incomplete(nfit$resid * inp.dat$train_mask)
-  inp.dat$y_valid <- IMR::as.Incomplete(nfit$resid * inp.dat$valid_mask)
+  inp.dat$y_train <- IMR::as_incomplete(nfit$resid * inp.dat$train_mask)
+  inp.dat$y_valid <- IMR::as_incomplete(nfit$resid * inp.dat$valid_mask)
   # inp.dat$y_train <- as(nfit$resid * (1 - inp.dat$valid_mask), "imr_incomplete")
   # inp.dat$y_valid <- as(nfit$resid * (inp.dat$valid_mask), "imr_incomplete")
   mfit <- IMR::imr.cv_M(inp.dat$y_train, inp.dat$y_valid,

@@ -3,6 +3,7 @@
 #' @export
 #' @importClassesFrom Matrix dgCMatrix
 #' @importFrom Matrix drop0
+#' @importMethodsFrom Matrix t
 #' @examples
 #' # create sample data
 #' Y <- matrix(

@@ -427,7 +427,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
   ) %>%
     dplyr::select(-row) %>%
     as.matrix() %>%
-    IMR::as.Incomplete()
+    IMR::as_incomplete()
 
 
   message(glue("Test      : {round(100*sum(test_set!=0)/length(test_set),1)}%"))
@@ -444,7 +444,7 @@ prepare_bixi_data <- function(miss_p = 0.5,
     seed = seed, val_prop = val_prop
   )
 
-  output$test_mask <- IMR::as.Incomplete((test_set != 0) * 1)
+  output$test_mask <- IMR::as_incomplete((test_set != 0) * 1)
   output$test <- test_set
   output$X <- X
   output$Z <- Z

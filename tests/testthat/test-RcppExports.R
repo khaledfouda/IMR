@@ -13,7 +13,7 @@ testthat::test_that("C++/Fortran functions", {
   # -------------------------------------------------------------------
   # Test 1: Row Addition
   # -------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   add_per_row <- rnorm(nrow(mat))
   x_row_test <- mat@x + 0
 
@@ -23,14 +23,14 @@ testthat::test_that("C++/Fortran functions", {
     mat[,i] <- mat[,i] + add_per_row
   }
   mat[dat$Y == 0] = NA
-  mat <- as.Incomplete(mat)
+  mat <- as_incomplete(mat)
   testthat::expect_equal(x_row_test, mat@x,
                          info = "Row additions failed to update correct indices.")
 
   # -------------------------------------------------------------------
   # Test 2: Column Addition
   # -------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   add_per_col <- rnorm(ncol(mat))
   x_row_test <- mat@x + 0 # this is very important
 
@@ -40,13 +40,13 @@ testthat::test_that("C++/Fortran functions", {
     mat[i,] <- mat[i,] + add_per_col
   }
   mat[dat$Y == 0] = NA
-  mat <- as.Incomplete(mat)
+  mat <- as_incomplete(mat)
   testthat::expect_equal(x_row_test,  mat@x,
                          info = "Column additions failed to update correct indices.")
   #-----------------------------------------------------------------------
   # Test 3,4: row and column means
   #-----------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   nr <- nrow(mat)
   nc <- ncol(mat)
 
@@ -92,7 +92,7 @@ testthat::test_that("C++/Fortran functions", {
   #-----------------------------------------------------------------------
   # Test 8: Updating A without similarity
   #-----------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   lambda <- 1.2
   expected <-(mat %*% V1 + U1 %*% diag(d1,100,100)) %*%
     diag(1 / (1 + lambda / d1),100,100) %>%
@@ -103,7 +103,7 @@ testthat::test_that("C++/Fortran functions", {
   #-----------------------------------------------------------------------
   # Test 9: Updating B without similarity
   #-----------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   lambda <- 1.2
   expected <-( t(mat) %*% U1 + V1 %*% diag(d1,100,100)) %*%
     diag(1 / (1 + lambda / d1),100,100) %>%
@@ -114,7 +114,7 @@ testthat::test_that("C++/Fortran functions", {
   #-----------------------------------------------------------------------
   # Test 10: Updating A with similarity
   #-----------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   W = mat %*% V1 %*% diag(d1) + U1 %*% diag(d1^2)
   expected = matrix(NA, nrow(U1), ncol(U1))
   for(j in 1:ncol(expected))
@@ -128,7 +128,7 @@ testthat::test_that("C++/Fortran functions", {
   #-----------------------------------------------------------------------
   # Test 11: Updating B with similarity
   #-----------------------------------------------------------------------
-  mat <- as.Incomplete(dat$Y)
+  mat <- as_incomplete(dat$Y)
   W = t(diag(d1) %*% t(U1) %*% mat + diag(d1^2) %*% t(V1))
   expected = matrix(NA, nrow(V1), ncol(V1))
   for(j in 1:ncol(expected))

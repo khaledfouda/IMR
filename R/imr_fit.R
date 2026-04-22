@@ -269,7 +269,7 @@ imr_solver <- function(
   warm_start
 ) {
   # Input checks & setup ----------------------------------------------------
-  stopifnot(is.Incomplete(Y))
+  stopifnot(is_incomplete(Y))
   dims <- dim(Y)
   nr <- dims[1]
   nc <- dims[2]
@@ -913,7 +913,7 @@ coef.imr_fit <- function(object, ...) {
 #' mc_with_means(mat)
 mc_with_means <- function(mat) {
   # Calculate row and column means, excluding NAs
-  if (!is.Incomplete(mat)) mat <- as.Incomplete(mat)
+  if (!is_incomplete(mat)) mat <- as_incomplete(mat)
   row_means <- row_means_cpp(mat@x, mat@i, nrow(mat), ncol(mat))
   col_means <- col_means_cpp(mat@x, mat@p, nrow(mat), ncol(mat))
   ij <- Matrix::which(mat == 0, arr.ind = TRUE)

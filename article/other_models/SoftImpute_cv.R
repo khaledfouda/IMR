@@ -23,7 +23,7 @@ simpute.cv <- function(y_full,
   # valid_ind <- mask_valid == 0
   #y_full[y_full == 0] = NA
   #y_train[y_train == 0] = NA
-  stopifnot(IMR::is.Incomplete(y_full))
+  stopifnot(IMR::is_incomplete(y_full))
   if(is.null(y_train)| is.null(y_valid)){
     message("Performing train/valid split")
     obs_mask <- as.matrix(Y != 0)
@@ -33,8 +33,8 @@ simpute.cv <- function(y_full,
     rm(obs_mask)
     rm(valid_mask)
   }else{
-    stopifnot(is.Incomplete(y_train))
-    stopifnot(is.Incomplete(y_valid))
+    stopifnot(is_incomplete(y_train))
+    stopifnot(is_incomplete(y_valid))
   }
 
   lam0 <- if(is.null(lambda_max)) lambda0_fun(y_full) else lambda_max

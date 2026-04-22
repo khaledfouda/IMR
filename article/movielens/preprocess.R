@@ -173,7 +173,7 @@ load_movielens1m <- function() {
   # prepare test set and X-QR
   data$test.idx <- cbind(data$query[, 1], data$query[, 2])
   data$test.truths <- data$query[, 3]
-  data$Y <- IMR::as.Incomplete(data$Y)
+  data$Y <- IMR::as_incomplete(data$Y)
   data$obs_mask <- as.matrix((data$Y != 0) * 1)
   mean(data$obs_mask == 1)
   mean(data$obs_mask == 0)
