@@ -489,7 +489,7 @@ imr_solver <- function(
     if (beta_flag) {
       if (shared_beta) {
         beta <- soft_threshold_cpp(
-          crossprod(X, row_means_cpp(Y@x, Y@i, nr, nc)) + beta,
+          crossprod(X, row_means_cpp(Y@x, Y@i, nr)) + beta,
           lambda_beta
         )
         old_val <- xbeta
@@ -512,7 +512,7 @@ imr_solver <- function(
     if (gamma_flag) {
       if (shared_gamma) {
         gamma <- soft_threshold_cpp(
-          col_means_cpp(Y@x, Y@p, nr, nc) %*% Z + gamma,
+          col_means_cpp(Y@x, Y@p, nc) %*% Z + gamma,
           lambda_gamma
         )
         old_val <- gammaz
@@ -535,7 +535,7 @@ imr_solver <- function(
     # Row-level intercepts (beta0), then apply delta to residuals.
     if (row_intercept) {
       old_val <- beta0
-      beta0 <- row_means_cpp(Y@x, Y@i, nr, nc) + beta0
+      beta0 <- row_means_cpp(Y@x, Y@i, nr) + beta0
       change <- old_val - beta0
       add_to_rows_inplace_cpp(Y@x, irow, change)
     }
@@ -543,7 +543,7 @@ imr_solver <- function(
     # Column-level intercepts (gamma0), then apply delta to residuals.
     if (col_intercept) {
       old_val <- gamma0
-      gamma0 <- col_means_cpp(Y@x, Y@p, nr, nc) + gamma0
+      gamma0 <- col_means_cpp(Y@x, Y@p, nc) + gamma0
       change <- old_val - gamma0
       add_to_cols_inplace_cpp(Y@x, pcol, change)
     }
@@ -924,8 +924,8 @@ coef.imr_fit <- function(object, ...) {
 mc_with_means <- function(mat) {
   # Calculate row and column means, excluding NAs
   if (!is_incomplete(mat)) mat <- as_incomplete(mat)
-  row_means <- row_means_cpp(mat@x, mat@i, nrow(mat), ncol(mat))
-  col_means <- col_means_cpp(mat@x, mat@p, nrow(mat), ncol(mat))
+  row_means <- row_means_cpp(mat@x, mat@i, nrow(mat))
+  col_means <- col_means_cpp(mat@x, mat@p, ncol(mat))
   ij <- Matrix::which(mat == 0, arr.ind = TRUE)
   mat[ij] <- (row_means[ij[, 1]] + col_means[ij[, 2]]) / 2
   mat <- Matrix::drop0(mat)

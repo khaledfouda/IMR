@@ -14,8 +14,9 @@ generate_simulated_data <- function(
     p = 6,
     q = 6,
     sparsity = 0.8,
-    sparsity_beta = 1,
-    sparsity_gamma = 1,
+    sparsity_beta = 0,
+    sparsity_gamma = 0,
+    shared = FALSE,
     snr = 1.5, # Reduced from 0.6 / 0.4
     seed = NULL) {
 
@@ -34,23 +35,32 @@ generate_simulated_data <- function(
   beta_mat <- NULL
   if (p > 0) {
     beta_means <- runif(p, 0.1, 1) * sample(c(-1, 1), p, replace = TRUE)
-    beta_vars <- runif(p, 0.5, 1)^2
-    beta_mat <- t(MASS::mvrnorm(
-      n = m,
-      mu = beta_means,
-      Sigma = diag(beta_vars, nrow = p)
+    if(shared){
+      beta_mat <- matrix(beta_means, p, 1)
+    }else{
+      beta_vars <- runif(p, 0.5, 1)^2
+      beta_mat <- t(MASS::mvrnorm(
+        n = m,
+        mu = beta_means,
+        Sigma = diag(beta_vars, nrow = p)
     ))
+    }
   }
 
   gamma_mat <- NULL
   if (q > 0) {
     gamma_means <- runif(q, 0.1, 1) * sample(c(-1, 1), q, replace = TRUE)
-    gamma_vars <- runif(q, 0.5, 1)^2
-    gamma_mat <- MASS::mvrnorm(
-      n = n,
-      mu = gamma_means,
-      Sigma = diag(gamma_vars, nrow = q)
-    )
+    if(shared){
+      gamma_mat <- matrix(gamma_means, q, 1)
+    }else{
+
+      gamma_vars <- runif(q, 0.5, 1)^2
+      gamma_mat <- MASS::mvrnorm(
+        n = n,
+        mu = gamma_means,
+        Sigma = diag(gamma_vars, nrow = q)
+      )
+    }
   }
 
   # Low-rank structure M  ------------------------
@@ -74,13 +84,17 @@ generate_simulated_data <- function(
 
   # Combine components and generate noise ---------------------------------------
   theta <- m_mat
-  if (p > 0) theta <- theta + (x_mat %*% beta_mat)
-  if (q > 0) theta <- theta + (gamma_mat %*% t(z_mat))
+  if (p > 0 && !shared) theta <- theta + (x_mat %*% beta_mat)
+  if (q > 0 && !shared) theta <- theta + (gamma_mat %*% t(z_mat))
+  if (p > 0 && shared) theta <- sweep(theta, 1, as.vector(x_mat %*% beta_mat), "+")
+  if (q > 0 && shared) theta <- sweep(theta, 2, as.vector(gamma_mat %*% t(z_mat)), "+")
 
-  noise_sd <- sqrt((sum((theta - mean(theta))^2) / (n * m - 1)) / (snr^2))
-  e_mat <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
-
-  y_mat <- (theta + e_mat) * mask
+  if(snr > 0){
+    noise_sd <- sqrt((sum((theta - mean(theta))^2) / (n * m - 1)) / (snr^2))
+    e_mat <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
+    y_mat <- (theta + e_mat) * mask
+  }else
+    y_mat <- theta * mask
   if(100 < max(n/2, m/2)){
     rank_theta <- sum(irlba::irlba(theta, nv = 100)$d)
   }else

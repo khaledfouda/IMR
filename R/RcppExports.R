@@ -5,12 +5,12 @@ soft_threshold_cpp <- function(B, lambda) {
     .Call(`_IMR_soft_threshold_cpp`, B, lambda)
 }
 
-row_means_cpp <- function(x, i, n_rows, n_cols) {
-    .Call(`_IMR_row_means_cpp`, x, i, n_rows, n_cols)
+row_means_cpp <- function(x, i, n_rows) {
+    .Call(`_IMR_row_means_cpp`, x, i, n_rows)
 }
 
-col_means_cpp <- function(x, p, n_rows, n_cols) {
-    .Call(`_IMR_col_means_cpp`, x, p, n_rows, n_cols)
+col_means_cpp <- function(x, p, n_cols) {
+    .Call(`_IMR_col_means_cpp`, x, p, n_cols)
 }
 
 add_to_rows_inplace_cpp <- function(yx, i, add_per_row) {

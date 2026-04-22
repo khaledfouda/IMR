@@ -39,14 +39,15 @@ NumericMatrix soft_threshold_cpp(const NumericMatrix B, const double lambda) {
 // [[Rcpp::export]]
 NumericVector row_means_cpp(const NumericVector x,
                                  const IntegerVector i,
-                                 const int n_rows,
-                                 const int n_cols) {
+                                 const int n_rows) {
 
   // 1. Initialize output (automatically filled with 0.0)
   NumericVector means(n_rows);
+  IntegerVector counts(n_rows);
 
   // 2. Extract raw C pointers for zero-overhead access
   double* p_means = REAL(means);
+  int* p_counts = INTEGER(counts);
   const double* p_x = REAL(x);
   const int* p_i = INTEGER(i);
 
@@ -54,13 +55,22 @@ NumericVector row_means_cpp(const NumericVector x,
 
   // 3. Flat loop: Add each value to its corresponding row sum
   for (R_xlen_t k = 0; k < nnz; ++k) {
-    p_means[ p_i[k] ] += p_x[k];
+    int row_idx = p_i[k];
+    p_means[ row_idx ] += p_x[k];
+    p_counts[row_idx] += 1;
   }
 
   // 4. Divide by total columns to get the mean
-  const double denom = static_cast<double>(n_cols);
+  // const double denom = static_cast<double>(n_cols);
+  // for (int r = 0; r < n_rows; ++r) {
+  //   p_means[r] /= denom;
+  // }
   for (int r = 0; r < n_rows; ++r) {
-    p_means[r] /= denom;
+    if (p_counts[r] > 0) {
+      p_means[r] /= p_counts[r];
+    } else {
+      p_means[r] = NA_REAL; // Or 0.0, depending on how you want to handle entirely empty rows
+    }
   }
 
   return means;
@@ -69,7 +79,6 @@ NumericVector row_means_cpp(const NumericVector x,
 // [[Rcpp::export]]
 NumericVector col_means_cpp(const NumericVector x,
                                  const IntegerVector p,
-                                 const int n_rows,
                                  const int n_cols) {
 
   // 1. Initialize output
@@ -80,7 +89,7 @@ NumericVector col_means_cpp(const NumericVector x,
   const double* p_x = REAL(x);
   const int* p_p = INTEGER(p);
 
-  const double denom = static_cast<double>(n_rows);
+  //const double denom = static_cast<double>(n_rows);
 
   // 3. Column-centric loop
   for (int j = 0; j < n_cols; ++j) {
@@ -89,11 +98,25 @@ NumericVector col_means_cpp(const NumericVector x,
     int end = p_p[j + 1];
 
     // Sum all non-zero elements in column j
-    for (int k = start; k < end; ++k) {
-      s += p_x[k];
-    }
+    // for (int k = start; k < end; ++k) {
+    //   s += p_x[k];
+    // }
+    //
+    // p_means[j] = s / denom;
+    // The exact number of observed values in this column!
+    int count = end - start;
 
-    p_means[j] = s / denom;
+    if (count > 0) {
+      // Sum all non-zero elements in column j
+      for (int k = start; k < end; ++k) {
+        s += p_x[k];
+      }
+      // Divide by the actual count of observed values
+      p_means[j] = s / static_cast<double>(count);
+    } else {
+      // Handle the edge case where a column is completely empty
+      p_means[j] = NA_REAL;
+    }
   }
 
   return means;

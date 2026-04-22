@@ -50,11 +50,11 @@ testthat::test_that("C++/Fortran functions", {
   nr <- nrow(mat)
   nc <- ncol(mat)
 
-  expected_row_means <- rowMeans(dat$Y)
-  expected_col_means <- colMeans(dat$Y)
+  expected_row_means <- rowSums(dat$Y) /  rowSums(dat$Y != 0)
+  expected_col_means <- colSums(dat$Y) /  colSums(dat$Y != 0)
 
-  actual_row_means <- row_means_cpp(mat@x, mat@i, nr, nc)
-  actual_col_means <- col_means_cpp(mat@x, mat@p, nr, nc)
+  actual_row_means <- row_means_cpp(mat@x, mat@i, nr)
+  actual_col_means <- col_means_cpp(mat@x, mat@p, nc)
 
   testthat::expect_equal(actual_row_means, expected_row_means,
                          info = "row means do not match base R.")
