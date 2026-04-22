@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(IMR)
+set.seed(2026)
 ```
 
 ```{r echo=FALSE, eval=FALSE}
@@ -39,11 +40,11 @@ grid <- imr_set_grid_limits(data, grid,
 cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, convergence = convergence,
                    n_cores=  7, seed = 2026, verbose=1)
 similarity_cols <- imr_similarity(x = "matern", d = bixi$spatial_distance, 
-                                  invert=TRUE, jitter = 1,
+                                  invert=TRUE, jitter = 0.1,
                                   matern_smoothness = 5/2, matern_range = .018);
 
 similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
-                                  invert=TRUE, jitter = 1,
+                                  invert=TRUE, jitter = 0.1,
                                   rbf_ell = 6); 
 data <- imr_data(bixi$Y, bixi$X, bixi$Z, 
                       similarity_rows = similarity_rows,
@@ -52,21 +53,21 @@ data <- imr_data(bixi$Y, bixi$X, bixi$Z,
 
 data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
 grid2 <- imr_tune_grid(
-  #beta = c(0, NA, 40), # (min, max, length)
-  # gamma = c(0, NA, 40),
   beta = cv_out$params$lambda_beta,
   gamma = cv_out$params$lambda_gamma,
   nuclear = c(0, NA, 40, 2),
-  rank = c(2, 10, 1) 
+  rank = cv_out$params$rank_in
 )
 
 grid2 <- imr_set_grid_limits(data, grid2,
-                             default_rank = 7,
-                              bisection_iter = 0,
+                             default_rank = cv_out$params$rank_in,
+                             default_lambda_beta = cv_out$params$lambda_beta,
+                             default_lambda_gamma = cv_out$params$lambda_gamma,
+                              bisection_iter = 10,
                              verbose = 2)
 
 cv_out2 <- imr_tune(data, grid2,fast_nuclear = TRUE,
-                    nuclear_log_scale = FALSE,
+                    nuclear_log_scale = TRUE,
                    n_cores= 7 , seed = 2026, verbose=1)
 
 summary(cv_out2$fit)
@@ -99,7 +100,7 @@ $$
 \boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z^{'}_j} + \boldsymbol{\hat M_{ij}}
 $$
 
-where $\boldsymbol{X}\in \Re^{n\times p} and  \boldsymbol{Z}\in \Re^{m\times q}$ are row and column covariate matrices, respectively. The vectors$\boldsymbol{\hat\beta_{o}}\in \Re^{n}$ and $\boldsymbol{\hat\Gamma_{o}}\in \Re^{m}$ represent the row-level and column-level intercepts. The term $\boldsymbol{\hat\beta}$ denotes the row covariate coefficients, which may be structured as either an $p\times m$ matrix, allowing coefficients to vary across columns, or a $p$-dimensional vector, forcing coefficients to be equal across all columns for each covariate. Similarly, the column covariate coefficients, denoted by $\boldsymbol{\hat\Gamma}$, can be either an $n \times q$ matrix or a $q$-dimensional vector where all rows share the same coefficient for each covariate. Finally, $\boldsymbol{M}$ is a rank-r (r is a hyperparameter) low-rank matrix subject to a nuclear norm penalty. Lasso (\$L_1\$) penalties are imposed on the row and column covariates as well, yielding the following penalty structure:
+where $\boldsymbol{X}\in \Re^{n\times p} and  \boldsymbol{Z}\in \Re^{m\times q}$ are row and column covariate matrices, respectively. The vectors $\boldsymbol{\hat\beta_{o}}\in \Re^{n}$ and $\boldsymbol{\hat\Gamma_{o}}\in \Re^{m}$ represent the row-level and column-level intercepts. The term $\boldsymbol{\hat\beta}$ denotes the row covariate coefficients, which may be structured as either an $p\times m$ matrix, allowing coefficients to vary across columns, or a $p$-dimensional vector, forcing coefficients to be equal across all columns for each covariate. Similarly, the column covariate coefficients, denoted by $\boldsymbol{\hat\Gamma}$, can be either an $n \times q$ matrix or a $q$-dimensional vector where all rows share the same coefficient for each covariate. Finally, $\boldsymbol{M}$ is a rank-r (r is a hyperparameter) low-rank matrix subject to a nuclear norm penalty. Lasso ($L_1$) penalties are imposed on the row and column covariates as well, yielding the following penalty structure:
 
 $$
 \mathrm{Penalty} = \lambda_\beta {\|\boldsymbol{\beta}\|}_{1} + \lambda_\Gamma {\|\boldsymbol{\Gamma}\|}_{1} + \lambda_m {\|\boldsymbol{S_r^{1/2}MS_c^{1/2}}\|}_{*},
@@ -140,8 +141,7 @@ This vignette is structured as follows: we first discuss the data structure and 
 
 ## Data
 
-As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 193 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). We also consider a sample of
-100 stations and 100 consecutive days. Below is a summary of the data (Note that the dataset also contains similarity matrices which we we discuss them in the final section).
+As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 196 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). We also consider a sample of 150 stations and 100 days, taken at random. Below is a summary of the data (Note that the dataset also contains similarity matrices which we we discuss them in the final section).
 
 [^1]: website: <https://bixi.com/>
 
@@ -166,7 +166,9 @@ print(data)
 
 ```
 
-The response argument `Y` in the function above accepts any standard matrix class from base R or the `Matrix` package. The framework coerces this input into `Incomplete` class, a subclass of `dgCMatrix`, motivated by the analogous class in the `SoftImpute` package. Any matrix can be cast to this class as follows:
+The response argument `Y` in the function above accepts any standard matrix class from base R or the `Matrix` package. The framework coerces this input into a `dgCMatrix` object using the function `as.Incomplete()`. Run `class?CsparseMatrix` [^2] for more information about the matrix arguments.
+
+[^2]: <https://www.rdocumentation.org/packages/Matrix/versions/1.2-14/topics/CsparseMatrix-class>
 
 ```{r}
 bixi$test <- as.Incomplete(bixi$test)
@@ -177,7 +179,7 @@ Furthermore, the function performs a QR decomposition on both covariate matrices
 
 ## Model Structure
 
-The latter portion of the preceding data summary shows the model configuration. The first column contains the supplied auxiliary information, indicating, for instance, the presence of two row convariates and one column covariate. The second column specifies the active components in the estimator. By default, the low-rank matrix and any provided side information are included in the active model specification. The designation `(Unshared)` indicates that the covariate coefficients are permitted to vary across rows or columns; that is, the coefficients take the form of matrices rather than vectors. This default specification can be modified via the `update()` function. To illustrate, we introduce row intercepts and constrain the row covariate coefficients to be shared across all columns, therby enforcing a fixed effect of temperature and precipitation across all stations.
+The latter portion of the preceding data summary shows the model configuration. The first column contains the supplied auxiliary information, indicating, for instance, the presence of two row covariates and one column covariate. The second column specifies the active components in the estimator. By default, the low-rank matrix and any provided side information are included in the active model specification. The designation `(Unshared)` indicates that the covariate coefficients are permitted to vary across rows or columns; that is, the coefficients take the form of matrices rather than vectors. This default specification can be modified via the `update()` function. To illustrate, we introduce row intercepts and constrain the row covariate coefficients to be shared across all columns, thereby enforcing a fixed effect of temperature and precipitation across all stations.
 
 ```{r}
 data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
@@ -189,10 +191,6 @@ The `update` function modifies the model architecture through logical arguments 
 ## Fit function
 
 The fit function requires fixed values for the regularization parameters: the three penalty terms and the rank of the low-rank component. For now, let's set artibrary values for these parameters. Tuning procedure is detailed ina subsequent section.
-
-
-
-
 
 ```{r echo=TRUE, eval=FALSE}
 fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
@@ -302,7 +300,6 @@ convergence <- imr_convergence(maxit = 1000, thresh = 1e-5)
 grid <- prepared$grid1
 ```
 
-
 ```{r}
 print(grid)
 ```
@@ -319,7 +316,6 @@ With the grid fully specified, we proceed to find the optimal hyperparameters. T
 3.  Alternating Optimization: If both $\lambda_\beta$ and $\lambda_\Gamma$ require tuning, an alternating minimization procedure is employed. The algorithm fixes $\lambda_\Gamma$ and tunes $\lambda_\beta$ (along with $\lambda_m$ and $r$) using scheme 2 above; it then fixes $\lambda_\beta$ and tunes $\lambda_\Gamma$, again using scheme 2. It iterates until the difference in estimated coefficients is smaller than some threshold.
 
 Given that all parameters in our example require tuning, the algorithm uses the third scheme. We use the fast mode, which generally yields good performance. For an exhaustive final tuning, however, the slow model is recommended, as it evaluates the complete the parameter space of $\lambda_m$ and $r$.
-
 
 ```{r eval=FALSE, echo=TRUE}
 cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, convergence = convergence,
@@ -360,7 +356,7 @@ similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
 
 Key notes regarding the `imr_similarity` function:
 
-1- The primary argument, `x`, accepts either a character string ("Matern" or "rbf") or a precomputed covariance or information matrix. If a string is provided, a corresponding distance matrix `d` must be supplied. If a precomputed matrix is supplied, then `d` is omitted.
+1- The primary argument, `x`, accepts either a character string ("Matern" or "RBF") or a pre-computed covariance or information matrix. If a string is provided, a corresponding distance matrix `d` must be supplied. If a pre-computed matrix is supplied, then `d` is omitted.
 
 2- The framework uses an information (precision) matrix. Consequently, if a covariance kernel is specified or provided, the argument `invert=TRUE` must be declared to compute the inverse.
 
@@ -380,24 +376,29 @@ data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
 print(data)
 ```
 
-We rerun the hyperparamter tuning. However, this time, we only tune $\lambda_m$ and $r$ as the values for $\lambda_\beta$ and $\lambda_\Gamma$ remain fixed to their previously determined optimal values.
+We rerun the hyperparamter tuning. However, this time, we only tune $\lambda_m$ and we fix the values of $r$, $\lambda_\beta$, and $\lambda_\Gamma$ to their previously determined optimal values.
 
 ```{r}
 grid <- imr_tune_grid(
   beta = cv_out$params$lambda_beta,
   gamma = cv_out$params$lambda_gamma,
   nuclear = c(0, NA, 40, 2),
-  rank = c(2, 15, 2) 
+  rank = cv_out$params$rank_in 
 )
 print(grid)
 
 ```
 
-
 ```{r eval=FALSE, echo=TRUE}
-grid <- imr_set_grid_limits(data, grid, verbose = TRUE)
+grid <- imr_set_grid_limits(data, grid, verbose = TRUE,
+                            default_rank = cv_out$params$rank_in,
+                            default_lambda_beta = cv_out$params$lambda_beta,
+                            default_lambda_gamma = cv_out$params$lambda_gamma,
+                            convergence = convergence)
 cv_out <- imr_tune(data, grid,
-                   n_cores= 4, seed = 2026, verbose=1)
+                   n_cores= 4, seed = 2026, verbose=1,
+                   nuclear_log_scale = TRUE,
+                   convergence = convergence)
 ```
 
 ```{r echo=FALSE, eval=TRUE}

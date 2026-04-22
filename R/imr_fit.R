@@ -704,6 +704,7 @@ print.imr_fit <- function(x, ...) {
 #' @param ... Additional arguments to comply with generic function
 #' @seealso [imr_fit()], [print.imr_fit()]
 #' @inherit imr_fit examples
+#' @export
 #' @method summary imr_fit
 summary.imr_fit <- function(object, ...) {
   cat("\n=====================================================")
