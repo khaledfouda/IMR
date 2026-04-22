@@ -31,9 +31,7 @@ low-rank component. Expected format: \code{c(min, max, step, streaks)}, where
 Defaults to \code{c(2, 30, 2, 2)}.}
 }
 \value{
-An object of class \code{"imr_tune_grid"}, structured as a list containing
-parsed grid boundaries, step sizes, and early stopping
-criteria for each hyperparameter.
+An object of class \code{"imr_tune_grid"}, a list of the parameters and their values.
 }
 \description{
 Constructs a configuration object specifying the search space for hyperparameter
@@ -66,4 +64,10 @@ custom_grid <- imr_tune_grid(
   nuclear = c(0, NA, 15, 3), # 15 points, patience threshold of 3
   rank = c(2, 10, 2, 2)
 )
+
+# print the grid's information
+print(custom_grid)
+}
+\seealso{
+\code{\link[=print.imr_tune_grid]{print.imr_tune_grid()}}, \code{\link[=imr_set_grid_limits]{imr_set_grid_limits()}}
 }

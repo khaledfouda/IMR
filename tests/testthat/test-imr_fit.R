@@ -16,3 +16,25 @@ testthat::test_that("imr_fit function", {
 
 
 })
+
+testthat::test_that("mc_with_means", {
+  Y_input <- matrix(c(
+    1, NA,  3,
+    4,  5, NA,
+    NA,  8,  9
+  ), nrow = 3, byrow = TRUE)
+
+  Y_expected <- matrix(c(
+    1.0, 4.25, 3.00,
+    4.0, 5.00, 5.25,
+    5.5, 8.00, 9.00
+  ), nrow = 3, byrow = TRUE)
+
+  Y_out <- mc_with_means(Y_input)
+
+  expect_equal(Y_out, Y_expected)
+
+  # 5. Verify no NAs remain (good sanity check)
+  expect_false(any(is.na(Y_out)))
+})
+

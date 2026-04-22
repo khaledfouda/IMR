@@ -6,6 +6,9 @@
 \usage{
 is_incomplete(x)
 }
+\arguments{
+\item{x}{Any object}
+}
 \value{
 Boolean
 }

@@ -376,15 +376,7 @@ print.imr_data <- function(x, ...) {
 #'
 #' @seealso [reconstruct_partial()]
 #'
-#' @examples
-#' \dontrun{
-#' # construct the data object
-#' data <- imr_data(Y = Y, X = X)
-#' # fit the model
-#' fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
-#' # estimate the target matrix
-#' target <- reconstruct(fit, data)$estimates
-#' }
+#' @inherit imr_fit examples
 #'
 #' @export
 reconstruct <- function(fit, data, trace = TRUE) {
@@ -491,18 +483,8 @@ reconstruct <- function(fit, data, trace = TRUE) {
 #' @return Either a `CsparseMatrix` object or a numeric vector (see above).
 #'
 #' @seealso [reconstruct()]
-#'
-#' @examples
-#' \dontrun{
-#' # construct the data object
-#' data <- imr_data(Y = Y, X = X)
-#' # fit the model
-#' fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
-#' # compute estimates of the training data
-#' estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = FALSE)
-#' # compute the training Root Mean Squared Error
-#' evaluate(estimates, data$Y@x, metric = "RMSE")
-#' }
+#' @importFrom methods new
+#' @inherit imr_fit examples
 #' @export
 reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_matrix = FALSE) {
   stopifnot(inherits(fit, "imr_fit"))
@@ -705,6 +687,7 @@ imr_similarity <- function(x,
 #' @param ... Additional arguments to comply with generic function
 #' @seealso [imr_similarity()]
 #' @inherit imr_similarity examples
+#' @importFrom utils head
 #' @export
 #' @method print imr_similarity
 print.imr_similarity <- function(x, ...) {

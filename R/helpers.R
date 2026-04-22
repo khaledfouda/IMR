@@ -145,6 +145,7 @@ verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
 #' @param metric one of ("rmse", "rrmse", "mae", "mape", "spearman")
 #' @return A function that takes two arguments (vectors or matrices)
 #' @seealso [evaluate()]
+#' @importFrom stats complete.cases cor
 #' @examples
 #' rmse_function <- get_metric("rmse")
 #' true <- c(1,2,3)
@@ -334,7 +335,7 @@ svd_opt <- function(mat,
     #  large matrices with k != NULL
     # irlba is faster for very small k or sparse matrices.
     # RSpectra is faster for larger k or dense matrices.
-    if (inherits(mat, "sparseMatrix") || k <= 5) {
+    if ((inherits(mat, "sparseMatrix") || k <= 5) && max(nr, nc) > 50) {
       dec <- irlba::irlba(mat, nv = k)
     } else {
       dec <- RSpectra::svds(mat, k)

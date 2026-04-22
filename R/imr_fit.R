@@ -117,16 +117,25 @@ imr_convergence <- function(maxit = 600,
 #' # extract the coefficients
 #' coefs <- coef(fit)
 #'
+#' # estimate the target matrix
+#' target <- reconstruct(fit, data)$estimates
+#'
+#' # compute estimates of the training data
+#' estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = FALSE)
+#'
+#' # compute the training Root Mean Squared Error
+#' evaluate(estimates, data$Y@x, metric = "RMSE")
+#'
 #' @export
 imr_fit <- function(
-  data,
-  rank = 2,
-  lambda_m = 0,
-  lambda_beta = 0,
-  lambda_gamma = 0,
-  convergence = imr_convergence(),
-  warm_start = NULL,
-  training = FALSE # if training use y_train instead of Y.
+    data,
+    rank = 2,
+    lambda_m = 0,
+    lambda_beta = 0,
+    lambda_gamma = 0,
+    convergence = imr_convergence(),
+    warm_start = NULL,
+    training = FALSE # if training use y_train instead of Y.
 ) {
   # validation
   stopifnot(inherits(data, "imr_data"))
@@ -260,13 +269,13 @@ imr_fit <- function(
 #' Not exported
 #' @noRd
 imr_solver <- function(
-  Y, X, Z,
-  row_intercept, col_intercept,
-  shared_beta, shared_gamma,
-  r, lambda_m, lambda_beta, lambda_gamma,
-  Ur, dr, Uc, dc,
-  convergence,
-  warm_start
+    Y, X, Z,
+    row_intercept, col_intercept,
+    shared_beta, shared_gamma,
+    r, lambda_m, lambda_beta, lambda_gamma,
+    Ur, dr, Uc, dc,
+    convergence,
+    warm_start
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
@@ -558,9 +567,9 @@ imr_solver <- function(
     }
     if (trace) {
       obj <- (0.5 * sum(Y@x^2) +
-        ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
-        ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
-        ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
+                ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
+                ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
+                ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
       cat(iter, " obj=", round(obj, 5), " ratio=", ratio, "\n")
     }
@@ -704,6 +713,7 @@ print.imr_fit <- function(x, ...) {
 #' @param ... Additional arguments to comply with generic function
 #' @seealso [imr_fit()], [print.imr_fit()]
 #' @inherit imr_fit examples
+#' @importFrom stats sd
 #' @export
 #' @method summary imr_fit
 summary.imr_fit <- function(object, ...) {
@@ -770,10 +780,10 @@ summary.imr_fit <- function(object, ...) {
       "\n-- %s Covariates --\nMode: %s (%s)\n",
       ifelse(rows, "Row", "Column"),
       ifelse(shared, paste0("Shared across ", ifelse(rows, "columns", "rows")),
-        paste0(ifelse(rows, "Column", "Row"), "-specific")
+             paste0(ifelse(rows, "Column", "Row"), "-specific")
       ),
       ifelse(shared, sprintf("%s = %d", ifelse(rows, "p", "q"), ncol(coefs)),
-        sprintf("%d x %d matrix", nrow(coefs), ncol(coefs))
+             sprintf("%d x %d matrix", nrow(coefs), ncol(coefs))
       )
     ))
     if (shared) {

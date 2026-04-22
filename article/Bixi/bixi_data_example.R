@@ -30,3 +30,6 @@ bixi_sample <- list( Y = IMR::bixi_example$Y[rind,cind],
 
 
 usethis::use_data(bixi_sample, overwrite = TRUE, compress = "xz")
+
+
+saveRDS(IMR::bixi_example, "article/bixi_example.rds")

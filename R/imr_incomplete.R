@@ -1,8 +1,10 @@
 #' @title Clean and convert any matrix to a sparse object
 #' @return A standard `dgCMatrix` with both NAs and 0s are treated as missing values.
 #' @export
+#' @param x numeric, A matrix with class `matrix` or `Matrix`
 #' @importClassesFrom Matrix dgCMatrix
 #' @importFrom Matrix drop0
+#' @importFrom methods as
 #' @importMethodsFrom Matrix t
 #' @examples
 #' # create sample data
@@ -31,6 +33,7 @@ as_incomplete <- function(x) {
 
 #' @title Has the matrix be processed by `as_incomplete()`?
 #' @return Boolean
+#' @param x Any object
 #' @export
 #' @seealso [as_incomplete()]
 #' @inherit as_incomplete examples

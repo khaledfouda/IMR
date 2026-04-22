@@ -1,4 +1,4 @@
-#' Define Hyperparameter Tuning Grid for IMR
+#' @title Define Hyperparameter Tuning Grid for IMR
 #'
 #' @description
 #' Constructs a configuration object specifying the search space for hyperparameter
@@ -33,12 +33,10 @@
 #'     interpreted as the minimum and maximum bounds, respectively, with remaining
 #'     grid attributes reverting to their default values.
 #'
-#' @return An object of class `"imr_tune_grid"`, structured as a list containing
-#'   parsed grid boundaries, step sizes, and early stopping
-#'   criteria for each hyperparameter.
+#' @return An object of class `"imr_tune_grid"`, a list of the parameters and their values.
 #'
 #' @export
-#'
+#' @seealso [print.imr_tune_grid()], [imr_set_grid_limits()]
 #' @examples
 #' # Initialize default grid with automated limit calculation
 #' default_grid <- imr_tune_grid()
@@ -50,6 +48,9 @@
 #'   nuclear = c(0, NA, 15, 3), # 15 points, patience threshold of 3
 #'   rank = c(2, 10, 2, 2)
 #' )
+#'
+#' # print the grid's information
+#' print(custom_grid)
 imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
                           gamma = c(0, NA, 20),
                           nuclear = c(0, NA, 20, 2), # min, max, length, streak
@@ -90,6 +91,11 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
   )
 }
 
+#' @title Summary of the hyperparameter grid
+#' @param x An `imr_tune_grid` object
+#' @param ... Additional arguments to comply with generic function
+#' @seealso [imr_tune_grid()]
+#' @inherit imr_tune_grid examples
 #' @export
 print.imr_tune_grid <- function(x, ...) {
   cat("\n== IMR Hyperparameter Configuration ==\n")
@@ -127,10 +133,10 @@ print.imr_tune_grid <- function(x, ...) {
 }
 
 #-----------------------------------------------------
-#' Automatically Determine Hyperparameter Grid Maximum Values
+#' @title Automatically Determine Hyperparameter Grid Maximum Values
 #'
 #' @description
-#' Computes the optimal upper bounds ({max}) for the hyperparameter tuning
+#' Computes the optimal upper bounds for the hyperparameter tuning
 #' grid when specifications are set to `"auto"`. The function identifies the
 #' minimal regularization parameter required to shrink all corresponding
 #' coefficients to zero.
@@ -176,6 +182,9 @@ print.imr_tune_grid <- function(x, ...) {
 #' @return A modified `"imr_tune_grid"` object where all `"auto"` placeholders
 #'   are replaced by the numerically determined maximum values.
 #'
+#' @seealso [imr_tune_grid()], [imr_tune()], [imr_data]
+#' @inherit imr_tune examples
+#'
 #' @export
 imr_set_grid_limits <- function(data,
                                 grid,
@@ -218,6 +227,7 @@ imr_set_grid_limits <- function(data,
 }
 
 #------------------------------------------------------
+#' @noRd
 imr_get_lambda_m_max <-
   function(data,
            lambda_beta = 0,
@@ -310,6 +320,7 @@ imr_get_lambda_m_max <-
   }
 #------------------------------------------------
 #' Find the minimum Lasso lambda that forces all covariates to zero
+#' @noRd
 imr_get_lambda_lasso_max <- function(
   data, # Must be an 'imr_data' S3 object
   target = c("beta", "gamma"),

@@ -98,6 +98,15 @@ summary(fit)
 # extract the coefficients
 coefs <- coef(fit)
 
+# estimate the target matrix
+target <- reconstruct(fit, data)$estimates
+
+# compute estimates of the training data
+estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = FALSE)
+
+# compute the training Root Mean Squared Error
+evaluate(estimates, data$Y@x, metric = "RMSE")
+
 }
 \seealso{
 \code{\link[=imr_data]{imr_data()}}, \code{\link[=imr_convergence]{imr_convergence()}}, \code{\link[=print.imr_fit]{print.imr_fit()}}, \code{\link[=summary.imr_fit]{summary.imr_fit()}}, \code{\link[=coef.imr_fit]{coef.imr_fit()}}

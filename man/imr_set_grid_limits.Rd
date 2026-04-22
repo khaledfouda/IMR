@@ -47,7 +47,7 @@ A modified \code{"imr_tune_grid"} object where all \code{"auto"} placeholders
 are replaced by the numerically determined maximum values.
 }
 \description{
-Computes the optimal upper bounds ({max}) for the hyperparameter tuning
+Computes the optimal upper bounds for the hyperparameter tuning
 grid when specifications are set to \code{"auto"}. The function identifies the
 minimal regularization parameter required to shrink all corresponding
 coefficients to zero.
@@ -70,4 +70,27 @@ low-rank component is set to \code{default_rank} and \code{default_lambda_m}.
 Conversely, estimation of the maximum \eqn{\lambda_M} (nuclear norm penalty)
 assumes the covariate penalties are fixed at \code{default_lambda_beta} and
 \code{default_lambda_gamma}.
+}
+\examples{
+# create sample data
+Y <- matrix(
+  c(2, NA, 3, 4,
+    4, .5, NA, 4,
+    NA, NA, 5, 3), 3, byrow= TRUE
+)
+# create a data object
+data <- imr_data(Y =  Y, val_prop = 0.2)
+# create a grid of hyperparameters
+grid <- imr_tune_grid(nuclear = c(0, NA, 5, 2),
+                     rank = c(2, 5, 1, 2))
+
+# get the KKT max value for the nuclear parameter
+grid <- imr_set_grid_limits(data, grid, bisection_iter=0)
+
+# tune the parameters lambda_m and r on the model Y = M
+cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, n_cores = 1)
+
+}
+\seealso{
+\code{\link[=imr_tune_grid]{imr_tune_grid()}}, \code{\link[=imr_tune]{imr_tune()}}, \link{imr_data}
 }

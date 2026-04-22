@@ -6,7 +6,7 @@
 \alias{IMR-package}
 \title{IMR package}
 \description{
-More about what it does (maybe more than one line). Continuation lines should be indented.
+A framework for matrix completion and regression on response matrices with missing values.
 }
 \author{
 \strong{Maintainer}: Khaled Fouda \email{khaled.fouda@hec.ca}

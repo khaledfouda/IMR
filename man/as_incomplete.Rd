@@ -6,6 +6,9 @@
 \usage{
 as_incomplete(x)
 }
+\arguments{
+\item{x}{numeric, A matrix with class \code{matrix} or \code{Matrix}}
+}
 \value{
 A standard \code{dgCMatrix} with both NAs and 0s are treated as missing values.
 }

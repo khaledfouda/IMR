@@ -1,10 +1,8 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^man/.*\.Rd$
-^notes/.*$
-^other\_models/.*$
-^R\_old/.*$
 ^dev$
-^old_to_be_removed/.*$
 article
 old_to_be_removed
+^doc$
+^Meta$
+^LICENSE\.md$

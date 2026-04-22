@@ -44,16 +44,43 @@ every cell of an \eqn{n \times m} matrix, \code{reconstruct_partial} relies on o
 routines to calculate only the targeted entries.
 }
 \examples{
-\dontrun{
-# construct the data object
-data <- imr_data(Y = Y, X = X)
+# create sample data
+Y <- matrix(
+  c(2, NA, 3,
+  4, .5, NA,
+  NA, NA, 5), 3, byrow= TRUE
+)
+
+# create covariate matrix of 2 variables
+X <- matrix(rnorm(3*2), 3, 2)
+
+# create the data object
+data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
+
+# update the model to add row intercepts
+data <- update(data, row_intercept = TRUE)
+
 # fit the model
-fit <- imr_fit(data, lambda_beta = 0, rank = 3, lambda_m = 0.2)
+fit <- imr_fit(data, rank = 2)
+
+# print the model fit summary
+print(fit)
+
+# print a summary of the fitted coefficients
+summary(fit)
+
+# extract the coefficients
+coefs <- coef(fit)
+
+# estimate the target matrix
+target <- reconstruct(fit, data)$estimates
+
 # compute estimates of the training data
 estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = FALSE)
+
 # compute the training Root Mean Squared Error
 evaluate(estimates, data$Y@x, metric = "RMSE")
-}
+
 }
 \seealso{
 \code{\link[=reconstruct]{reconstruct()}}

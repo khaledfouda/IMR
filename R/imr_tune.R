@@ -1,4 +1,5 @@
 #----------------------------------------------------------
+#' @noRd
 imr_tune_nuclear_fast <- function(data,
                                   grid,
                                   lambda_beta = 0,
@@ -148,6 +149,7 @@ imr_tune_nuclear_fast <- function(data,
 }
 # ==============================================================================================
 #----------------------------------------------------------
+#' @noRd
 imr_tune_nuclear_slow <- function(data,
                                   grid,
                                   lambda_beta = 0,
@@ -332,7 +334,7 @@ imr_tune_nuclear_slow <- function(data,
   list(fit = best_fit_obj_1, params = best_params_1, history = history)
 }
 # ==============================================================================================
-
+#' @noRd
 imr_tune_lasso <- function(data,
                            grid,
                            target = c("beta", "gamma"),
@@ -467,7 +469,7 @@ imr_tune_lasso <- function(data,
   list(fit = best_fit_obj, params = best_params, history = history)
 }
 # =============================================================================================
-#' Hyperparameter Tuning for IMR Models
+#' @title Hyperparameter Tuning for IMR Models
 #'
 #' @description
 #' Executes hyperparameter optimization for Incomplete Matrix Regression (IMR)
@@ -552,6 +554,25 @@ imr_tune_lasso <- function(data,
 #'     hyperparameter combination.
 #'   \item \code{time_secs}: Total execution time in seconds.
 #' }
+#' @seealso [imr_tune_grid()], [imr_set_grid_limits()], [imr_data()]
+#' @examples
+#' # create sample data
+#' Y <- matrix(
+#'   c(2, NA, 3, 4,
+#'     4, .5, NA, 4,
+#'     NA, NA, 5, 3), 3, byrow= TRUE
+#' )
+#' # create a data object
+#' data <- imr_data(Y =  Y, val_prop = 0.2)
+#' # create a grid of hyperparameters
+#' grid <- imr_tune_grid(nuclear = c(0, NA, 5, 2),
+#'                      rank = c(2, 5, 1, 2))
+#'
+#' # get the KKT max value for the nuclear parameter
+#' grid <- imr_set_grid_limits(data, grid, bisection_iter=0)
+#'
+#' # tune the parameters lambda_m and r on the model Y = M
+#' cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, n_cores = 1)
 #'
 #' @export
 imr_tune <- function(data,

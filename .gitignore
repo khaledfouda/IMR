@@ -24,3 +24,5 @@ article_results/movielens/data/model_c_0_.ckpt.meta
 .Rproj.user
 article/Miniconda3-latest-MacOSX-x86_64.sh
 inst/doc
+/doc/
+/Meta/
