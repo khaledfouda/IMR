@@ -3,9 +3,9 @@ Package: IMR
 Title: Incomplete Matrix Regression
 Version: 0.1.0
 Authors@R: 
-    person("Khaled", "Fouda", email = "khaled.fouda@hec.ca", role = c("aut", "cre"))
-Description: A framework for matrix completion and 
-    regression on response matrices with missing values.
+    person("Khaled", "Fouda", , "khaled.fouda@hec.ca", role = c("aut", "cre"))
+Description: A framework for matrix completion and regression on response
+    matrices with missing values.
 License: GPL (>= 3)
 Depends: 
     R (>= 3.5)
@@ -14,13 +14,14 @@ Imports:
     irlba,
     MASS,
     Matrix,
-    parallel,
     methods,
+    parallel,
     Rcpp,
     RSpectra,
     stats,
     stringr,
-    tidyr
+    tidyr,
+    utils
 Suggests: 
     knitr,
     rmarkdown,

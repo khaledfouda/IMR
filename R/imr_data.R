@@ -89,7 +89,7 @@ imr_data <- function(Y,
   split_data <- is.numeric(val_prop) && val_prop > 0
 
   if (split_data) {
-    message("Performing train/valid split...")
+    # message("Performing train/valid split...")
 
     valid_mask_mat <- mask_train_test_split(obs_mask, val_prop, seed)
     train_mask_mat <- obs_mask * (1 - valid_mask_mat)

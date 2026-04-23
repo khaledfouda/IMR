@@ -120,3 +120,7 @@ generate_simulated_data <- function(
 
   out
 }
+
+silent <- function(x){
+  suppressMessages(invisible(capture.output(x)))
+}

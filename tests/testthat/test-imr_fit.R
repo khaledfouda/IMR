@@ -41,7 +41,7 @@ testthat::test_that("imr_fit function with shared covariates",{
                  col_similarity = FALSE, row_intercept = TRUE, col_intercept = TRUE)
   # fit model
   fit <- imr_fit(data, 2)
-  print(fit)
+  silent(print(fit))
   rec <- reconstruct(fit, data, trace = FALSE)
   corrcoef1 <- evaluate(rec$beta0, dat$X %*% dat$beta, "spearman")
   corrcoef2 <- evaluate(rec$gamma0, as.vector(dat$gamma %*% t(dat$Z)), "spearman")
@@ -55,7 +55,8 @@ testthat::test_that("imr_fit function with shared covariates",{
   expect_gte(min(corrcoef1, corrcoef2), 0.95)
 
   #  we check trace=TRUE, and random initializations are working
-  fit <- imr_fit(data, 2, convergence = imr_convergence(10, 1e-3, TRUE, FALSE))
+  # this should give a warning of no convergence due to small number of iteratins
+  fit <- silent(suppressWarnings(imr_fit(data, 2, convergence = imr_convergence(5, 0.001, TRUE, FALSE))))
 
 
 })
