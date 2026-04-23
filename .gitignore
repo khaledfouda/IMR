@@ -28,3 +28,5 @@ inst/doc
 /Meta/
 article
 old_to_be_removed
+.RData
+.Rproj.user/
