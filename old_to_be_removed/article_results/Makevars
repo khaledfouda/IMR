@@ -1,3 +1,0 @@
-PKG_CPPFLAGS += -DR_init_IMR=Rcpp_R_init_IMR
-PKG_CFLAGS   += -DR_init_IMR=Rcpp_R_init_IMR
-PKG_CXXFLAGS += -DR_init_IMR=Rcpp_R_init_IMR
