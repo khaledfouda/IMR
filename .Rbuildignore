@@ -6,3 +6,4 @@ old_to_be_removed
 ^doc$
 ^Meta$
 ^LICENSE\.md$
+^\.github$
