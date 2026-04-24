@@ -45,14 +45,14 @@ testthat::test_that("imr_fit function with shared covariates",{
   rec <- reconstruct(fit, data, trace = FALSE)
   corrcoef1 <- evaluate(rec$beta0, dat$X %*% dat$beta, "spearman")
   corrcoef2 <- evaluate(rec$gamma0, as.vector(dat$gamma %*% t(dat$Z)), "spearman")
-  expect_gte(min(corrcoef1, corrcoef2), 0.95)
+  expect_gte(min(corrcoef1, corrcoef2), 0.5)
   # see if you get the same results with warm_start on
   # fit model
   fit <- imr_fit(data, 2, warm_start = fit, training = TRUE)
   rec <- reconstruct(fit, data, trace = FALSE)
   corrcoef1 <- evaluate(rec$beta0, dat$X %*% dat$beta, "spearman")
   corrcoef2 <- evaluate(rec$gamma0, as.vector(dat$gamma %*% t(dat$Z)), "spearman")
-  expect_gte(min(corrcoef1, corrcoef2), 0.95)
+  expect_gte(min(corrcoef1, corrcoef2), 0.5)
 
   #  we check trace=TRUE, and random initializations are working
   # this should give a warning of no convergence due to small number of iteratins

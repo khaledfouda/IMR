@@ -11,5 +11,11 @@ A framework for matrix completion and regression on response matrices with missi
 \author{
 \strong{Maintainer}: Khaled Fouda \email{khaled.fouda@hec.ca}
 
+Authors:
+\itemize{
+  \item Aurelie Labbe
+  \item Karim Oualkacha
+}
+
 }
 \keyword{internal}
