@@ -31,3 +31,4 @@ old_to_be_removed
 .RData
 .Rproj.user/
 .DS_Store
+revdep/

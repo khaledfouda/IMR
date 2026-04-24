@@ -7,3 +7,4 @@ old_to_be_removed
 ^Meta$
 ^LICENSE\.md$
 ^\.github$
+^revdep$
