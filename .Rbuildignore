@@ -8,3 +8,5 @@ old_to_be_removed
 ^LICENSE\.md$
 ^\.github$
 ^revdep$
+^\.positai$
+^\.claude$

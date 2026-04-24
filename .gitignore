@@ -32,3 +32,4 @@ old_to_be_removed
 .Rproj.user/
 .DS_Store
 revdep/
+.positai
