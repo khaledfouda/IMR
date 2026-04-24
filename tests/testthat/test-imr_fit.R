@@ -42,6 +42,10 @@ testthat::test_that("imr_fit function with shared covariates",{
   # fit model
   fit <- imr_fit(data, 2)
   silent(print(fit))
+  silent(summary(fit))
+  silent(imr_convergence())
+  expect_length(coef(fit)$beta0, 500)
+
   rec <- reconstruct(fit, data, trace = FALSE)
   corrcoef1 <- evaluate(rec$beta0, dat$X %*% dat$beta, "spearman")
   corrcoef2 <- evaluate(rec$gamma0, as.vector(dat$gamma %*% t(dat$Z)), "spearman")

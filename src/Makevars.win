@@ -1,4 +1,1 @@
 CXX_STD = CXX17
-PKG_CXXFLAGS += -Wno-unknown-warning-option
-PKG_FFLAGS += -Wno-overriding-deployment-version
-PKG_FCFLAGS += -Wno-overriding-deployment-version
