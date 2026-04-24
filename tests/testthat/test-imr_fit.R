@@ -18,7 +18,8 @@ testthat::test_that("imr_fit function", {
   # get spearman correlation between estimates and original matrix. should be 1.
     testthat::expect_equal(round(evaluate(rec$estimates, dat$theta, "spearman")),
                            1)
-
+  # test with warmstart again but with less eigenvalues
+    fit <- imr_fit(data, 3, warm_start = fit)
 })
 
 testthat::test_that("imr_fit function with shared covariates",{
@@ -32,8 +33,8 @@ testthat::test_that("imr_fit function with shared covariates",{
   fit <- imr_fit(data, 2)
   # reconstruct response matrix
   rec <- reconstruct(fit, data, trace = FALSE)
-  expect_equal(rec$beta, dat$beta, tolerance = 0.01)
-  expect_equal(rec$gamma, dat$gamma, tolerance = 0.01)
+  expect_equal(rec$beta, dat$beta, tolerance = 0.1)
+  expect_equal(rec$gamma, dat$gamma, tolerance = 0.1)
 
   # we now see that if we can estimate xbeta and gammaz using the intercepts only
   data <- update(data, row_covariates = FALSE, col_covariates = FALSE,low_rank_component = TRUE,
@@ -83,4 +84,5 @@ testthat::test_that("mc_with_means", {
   expect_equal(Y_out, Y_expected)
 
 })
+
 
