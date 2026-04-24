@@ -153,6 +153,7 @@ testthat::test_that("C++/Fortran functions", {
   #-----------------------------------------------------------------------
   expected <- svd((dat$X))
   actual <- svd_small_nc_cpp((dat$X))
+  expect_error(svd_small_nc_cpp(mat))
   testthat::expect_equal(actual$d, expected$d,
                          info = "SVD small nr eigenvalues don't match")
   testthat::expect_equal(unsvd(actual), unsvd(expected),

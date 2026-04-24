@@ -14,15 +14,15 @@ static arma::mat dense_view(SEXP mS) {
     IntegerVector dim = Rf_getAttrib(mS, R_DimSymbol);
     return arma::mat(REAL(mS), dim[0], dim[1], /*copy_aux_mem=*/false, /*strict=*/true);
   }
-  if (Rf_isS4(mS)) {
-    S4 s(mS);
-    if (s.is("dgeMatrix")) {
-      NumericVector x = s.slot("x");
-      IntegerVector Dim = s.slot("Dim");
-      return arma::mat(REAL(x), Dim[0], Dim[1], /*copy_aux_mem=*/false, /*strict=*/true);
-    }
-  }
-  stop("svd_small_nc_cpp: expected a base numeric matrix or a Matrix::dgeMatrix.");
+  // if (Rf_isS4(mS)) {
+  //   S4 s(mS);
+  //   if (s.is("dgeMatrix")) {
+  //     NumericVector x = s.slot("x");
+  //     IntegerVector Dim = s.slot("Dim");
+  //     return arma::mat(REAL(x), Dim[0], Dim[1], /*copy_aux_mem=*/false, /*strict=*/true);
+  //   }
+  // }
+  stop("svd_small_nc_cpp: expected a base numeric matrix");
 }
 
 // [[Rcpp::export]]
