@@ -2,6 +2,7 @@
 # IMR
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/khaledfouda/IMR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/khaledfouda/IMR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 The goal of IMR is to ...
