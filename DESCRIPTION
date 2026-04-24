@@ -4,8 +4,9 @@ Title: Incomplete Matrix Regression
 Version: 0.1.0
 Authors@R: c(
     person("Khaled", "Fouda", , "khaled.fouda@hec.ca", role = c("aut", "cre")),
-    person("Aurelie", "Labbe", role = c("aut")),
-    person("Karim", "Oualkacha", role = c("aut")))
+    person("Aurelie", "Labbe", role = "aut"),
+    person("Karim", "Oualkacha", role = "aut")
+  )
 Description: A framework for matrix completion and regression on response
     matrices with missing values.
 License: GPL (>= 3)
@@ -27,7 +28,6 @@ Imports:
 Suggests: 
     knitr,
     rmarkdown,
-    spelling,
     testthat (>= 3.0.0)
 LinkingTo: 
     Rcpp,
