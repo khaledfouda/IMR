@@ -2,7 +2,7 @@
 % Please edit documentation in R/imr_fit.R
 \name{print.imr_convergence}
 \alias{print.imr_convergence}
-\title{Summary of the model's convergence paramters}
+\title{Summary of the model's convergence parameters}
 \usage{
 \method{print}{imr_convergence}(x, ...)
 }
@@ -12,7 +12,7 @@
 \item{...}{Additional arguments to comply with generic function}
 }
 \description{
-Summary of the model's convergence paramters
+Summary of the model's convergence parameters
 }
 \examples{
 # Use the default convergence parameters

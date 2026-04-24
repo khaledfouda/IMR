@@ -59,7 +59,7 @@ point through a two-stage estimation process:
 \item An initial theoretical upper bound is
 derived based on the Karush-Kuhn-Tucker (KKT)  conditions.
 \item The function executes a bisection search over
-\code{bisection_iter} iterations using KKT estimates as initial values. This identifies the infimum
+\code{bisection_iter} iterations using KKT estimates as initial values. This identifies the minimum
 of the penalty values that result in a zero-solution for the
 targeted parameters.
 }

@@ -857,7 +857,7 @@ summary.imr_fit <- function(object, ...) {
 }
 
 
-#' @title Summary of the model's convergence paramters
+#' @title Summary of the model's convergence parameters
 #' @param x An `imr_convergence` object
 #' @param ... Additional arguments to comply with generic function
 #' @seealso [imr_convergence()] [imr_fit()]
@@ -907,7 +907,7 @@ coef.imr_fit <- function(object, ...) {
 #' @details
 #' The function efficiently computes row and column means using an internal C++
 #' functions, excluding missing entries. It replaces
-#' each missing value at index \eqn{(i, j)} with the arithmetic mean of the i-th
+#' each missing value at index \eqn{(i, j)} with the mean of the  i-th
 #' row mean and the j-th column mean.
 #'
 #' @return A dense matrix of class `Incomplete`.

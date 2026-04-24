@@ -112,7 +112,7 @@ or \code{tune_maxit} is reached.
 \itemize{
 \item \strong{Fast Mode (\code{TRUE}):} Commences at the maximum \eqn{\lambda_M}
 and minimum rank. The algorithm simultaneously decrements \eqn{\lambda_M}
-while incrementing the rank, terminating when validation performance
+while increasing the rank, terminating when validation performance
 stagnates according to the grid's patience parameter.
 \item \strong{Slow Mode (\code{FALSE}):} Constructs a nested grid.
 For each \eqn{\lambda_M} value, the function iteratively evaluates ranks

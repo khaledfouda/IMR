@@ -350,7 +350,7 @@ print.imr_data <- function(x, ...) {
 #'   each reconstruction step.
 #'
 #' @details
-#' During the model fitting process, covariates are orthogonally transformed using
+#' During the model fitting process, covariates are made orthogonal using
 #' QR decomposition. The `reconstruct`
 #' function reverses this process, using the `R` matrices (`Xr` and `Zr`) to
 #' back-transform the estimated coefficients (`beta` and `gamma`) to the original
@@ -359,8 +359,7 @@ print.imr_data <- function(x, ...) {
 #' The final `estimates` matrix is computed by summing the active components
 #' based on the model structure: the low-rank matrix (\eqn{M = U D V^T}), row covariate
 #' effects (\eqn{X \beta}), column covariate effects (\eqn{\Gamma Z}), and any intercepts.
-#' The function automatically handles matrix dimension sweeping for shared vs.
-#' unshared effects.
+#' The function automatically handles matrix dimension sweeping for shared effects
 #'
 #' @return A list containing the reconstructed components and final estimates:
 #' \itemize{
@@ -558,7 +557,7 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 #' Creates an `"imr_similarity"` object containing the Eigenvalue-decomposition of a
 #' similarity or information matrix. This object is required for incorporating
 #' row or column similarities in an IMR model. The function can accept a
-#' pre-computed matrix or generate a covariance matrix from distance data using
+#' matrix or generate a covariance matrix from distance data using
 #' specified kernels.
 #'
 #' @param x Either a square numeric matrix, or a character string specifying a

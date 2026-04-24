@@ -21,8 +21,8 @@ set.seed(2026)
 
 ```{r echo=FALSE, eval=FALSE}
 # to be run once and save objects
-bixi <- IMR::bixi_sample
-data <- imr_data(Y = bixi$Y, X =  bixi$X, Z =  bixi$Z, val_prop = 0.2, seed = 2026)
+Bixi <- IMR::Bixi_sample
+data <- imr_data(Y = Bixi$Y, X =  Bixi$X, Z =  Bixi$Z, val_prop = 0.2, seed = 2026)
 data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
 fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
 grid <- imr_tune_grid(
@@ -39,14 +39,14 @@ grid <- imr_set_grid_limits(data, grid,
                             verbose = TRUE,convergence = convergence )
 cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, convergence = convergence,
                    n_cores=  7, seed = 2026, verbose=1)
-similarity_cols <- imr_similarity(x = "matern", d = bixi$spatial_distance, 
+similarity_cols <- imr_similarity(x = "matern", d = Bixi$spatial_distance, 
                                   invert=TRUE, jitter = 0.1,
                                   matern_smoothness = 5/2, matern_range = .018);
 
-similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
+similarity_rows <- imr_similarity(x = "rbf", d = Bixi$temporal_distance,
                                   invert=TRUE, jitter = 0.1,
                                   rbf_ell = 6); 
-data <- imr_data(bixi$Y, bixi$X, bixi$Z, 
+data <- imr_data(Bixi$Y, Bixi$X, Bixi$Z, 
                       similarity_rows = similarity_rows,
                       similarity_cols = similarity_cols,
                       val_prop = 0.2, seed = 2026)
@@ -137,31 +137,31 @@ Y_hat <- reconstruct(fit, data)$estimates
 
 ```
 
-This vignette is structured as follows: we first discuss the data structure and pre-processing steps for the proposed model, using an illustrative example. Second, we show the specification of the model architecture and how we modify it. Third, we demonstrate the application of the fitting function under known regularization parameters, followed by a presentation of the results and performance assessment. Next, we describe our procedure for regularization parameters' tuning. We conclude with a discussion on the construction and integration of the similarity matrices, $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$.
+This vignette is structured as follows: we first discuss the data structure and processing steps for the proposed model, using an illustrative example. Second, we show the specification of the model architecture and how we modify it. Third, we demonstrate the application of the fitting function under known regularization parameters, followed by a presentation of the results and performance assessment. Next, we describe our procedure for regularization parameters' tuning. We conclude with a discussion on the construction and integration of the similarity matrices, $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$.
 
 ## Data
 
 As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 196 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). We also consider a sample of 150 stations and 100 days, taken at random. Below is a summary of the data (Note that the dataset also contains similarity matrices which we we discuss them in the final section).
 
-[^1]: website: <https://bixi.com/>
+[^1]: website: <https://Bixi.com/>
 
 ```{r}
-bixi <- IMR::bixi_sample
+Bixi <- IMR::Bixi_sample
 
-head(bixi$X,2)
-head(bixi$Z,3)
-dim(bixi$Y)
-bixi$Y[1:6,11:12]
+head(Bixi$X,2)
+head(Bixi$Z,3)
+dim(Bixi$Y)
+Bixi$Y[1:6,11:12]
 
-sprintf("Percentage of observed entries in Y: %.1f%%", 100*sum(bixi$Y != 0)/length(bixi$Y))
-sprintf("Percentage of entries in the test set: %.1f%%", 100* sum(bixi$test != 0)/length(bixi$test))
+sprintf("Percentage of observed entries in Y: %.1f%%", 100*sum(Bixi$Y != 0)/length(Bixi$Y))
+sprintf("Percentage of entries in the test set: %.1f%%", 100* sum(Bixi$test != 0)/length(Bixi$test))
 ```
 
 To facilitate data integration within the proposed framework, we introduce the `imr_data` class, which automatically structures the inputs into a model-compliant format. As in the preceding output, unobserved entries in the response matrix are denoted by $0$, though `NA` is also supported. Because we treat all zero-values entries as missing data, structural zeros cannot be accommodated as observed values.
 
 ```{r}
 
-data <- imr_data(Y = bixi$Y, X =  bixi$X, Z =  bixi$Z, val_prop = 0.2, seed = 2026)
+data <- imr_data(Y = Bixi$Y, X =  Bixi$X, Z =  Bixi$Z, val_prop = 0.2, seed = 2026)
 print(data)
 
 ```
@@ -171,8 +171,8 @@ The response argument `Y` in the function above accepts any standard matrix clas
 [^2]: <https://www.rdocumentation.org/packages/Matrix/versions/1.2-14/topics/CsparseMatrix-class>
 
 ```{r}
-bixi$test <- as_incomplete(bixi$test)
-bixi$test[3:5,3:4]
+Bixi$test <- as_incomplete(Bixi$test)
+Bixi$test[3:5,3:4]
 ```
 
 Furthermore, the function performs a QR decomposition on both covariate matrices, $\boldsymbol{X}$ and $\boldsymbol{Z}$, storing the resultant components as `XQ`, `XR`, `ZQ` and `ZR`. This transformation is necessary as the fit function works on orthonormal matrices (see the main article for more details). However, in our final coefficient estimates, the estimates are projected back onto the original covariate spaces.
@@ -190,7 +190,7 @@ The `update` function modifies the model architecture through logical arguments 
 
 ## Fit function
 
-The fit function requires fixed values for the regularization parameters: the three penalty terms and the rank of the low-rank component. For now, let's set artibrary values for these parameters. Tuning procedure is detailed ina subsequent section.
+The fit function requires fixed values for the regularization parameters: the three penalty terms and the rank of the low-rank component. For now, let's set arbitrary values for these parameters. Tuning procedure is detailed in a subsequent section.
 
 ```{r echo=TRUE, eval=FALSE}
 fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
@@ -217,7 +217,7 @@ fit2 <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma 
                 convergence = convergence)
 ```
 
-In the output above, `obj` denotes the value of the objective function at the current iteration and `ratio` represents the relative change in the parameter estimates between successive iterations, evaluated using the Frobenius norm. The optimization algorithm terminates when either the maximal iteration limit is attained or the computed ratio falls below the pre-specified tolerance threshold.
+In the output above, `obj` denotes the value of the objective function at the current iteration and `ratio` represents the relative change in the parameter estimates between successive iterations, evaluated using the Frobenius norm. The optimization algorithm terminates when either the maximal iteration limit is attained or the computed ratio falls below the specified tolerance threshold.
 
 ## Interpreting Results and Assessing Performance
 
@@ -234,8 +234,8 @@ The `reconstruct` function outputs all estimated model components alongside the 
 cat(sprintf("True value of the entry (1,1) int he data matrix is %.4f and the estimated value is %.4f",
         data$Y[1,1],
         data_out$beta0[1] + # row intercept
-        bixi$X[1,] %*% data_out$beta + # row covariates
-        data_out$gamma[1,] %*% t(bixi$Z)[,1] + # column covariates
+        Bixi$X[1,] %*% data_out$beta + # row covariates
+        data_out$gamma[1,] %*% t(Bixi$Z)[,1] + # column covariates
         data_out$M[1,1]))# low-rank matrix
 
 ```
@@ -243,15 +243,15 @@ cat(sprintf("True value of the entry (1,1) int he data matrix is %.4f and the es
 This reconstruction function can be computationally prohibitive in high-dimensional settings. Moreover, we may only be interested in imputing a subset of the response matrix. Consider the test dataset we have. Let's only impute the entries that corresponds to that set.
 
 ```{r}
-preds <- reconstruct_partial(fit, data, bixi$test@i, bixi$test@p, 
+preds <- reconstruct_partial(fit, data, Bixi$test@i, Bixi$test@p, 
                              trace=TRUE, return_matrix = TRUE)
 print(preds[1:9,1:9])
 ```
 
-The `reconstruct_partial` function takes two additional arguments, the $i$ and $p$ vectors, which denote the row and column indicies of the entries to be estimated. If the `return_matrix` argument is `TRUE`, the function returns a sparse matrix containing the estimates. If it's `FALSE`, then it returns a vector of the estimates corresponding directly to the `@x` slot of the sparse data structure. We also provide an evaluation function that compute standard error metrics between two numeric vectors.
+The `reconstruct_partial` function takes two additional arguments, the $i$ and $p$ vectors, which denote the row and column indices of the entries to be estimated. If the `return_matrix` argument is `TRUE`, the function returns a sparse matrix containing the estimates. If it's `FALSE`, then it returns a vector of the estimates corresponding directly to the `@x` slot of the sparse data structure. We also provide an evaluation function that compute standard error metrics between two numeric vectors.
 
 ```{r}
-knitr::kable(evaluate(preds@x, bixi$test@x),format = "pipe",digits = 4)
+knitr::kable(evaluate(preds@x, Bixi$test@x),format = "pipe",digits = 4)
 ```
 
 ## Hyperparameter Tuning
@@ -282,9 +282,9 @@ imr_tune_grid(
 
 Returning to the initial grid specification, we need to find upper limits for the $\lambda$ parameters. This is achieved with a two-step procedure for each unspecified maximum:
 
-1- An initial upperbound is derived using the KKT conditions. 2- Because the KKT bound can occasionally be too big, we perform a subsequent bisection search to find the minimum $\lambda$ required to shrink all corresponding coefficients exactly to zero.
+1- An initial upper bound is derived using the KKT conditions. 2- Because the KKT bound can occasionally be too big, we perform a subsequent bisection search to find the minimum $\lambda$ required to shrink all corresponding coefficients exactly to zero.
 
-When determining the maximum for either $\lambda_\beta$ or $\lambda_\Gamma$, the penalty for the alternate covariate is set to infinity, while the low-rank hyperparameters are held at default values. Conversly, when determining the upper limit for $\lambda_m$, the two covariate penalties are fixed at default values.
+When determining the maximum for either $\lambda_\beta$ or $\lambda_\Gamma$, the penalty for the alternate covariate is set to infinity, while the low-rank hyperparameters are held at default values. Conversely, when determining the upper limit for $\lambda_m$, the two covariate penalties are fixed at default values.
 
 ```{r eval=FALSE, echo=TRUE}
 convergence <- imr_convergence(maxit = 1000, thresh = 1e-5)
@@ -332,22 +332,22 @@ print(cv_out$fit)
 ```
 
 ```{r}
-preds <- reconstruct_partial(cv_out$fit, data, bixi$test@i, bixi$test@p, return_matrix = FALSE)
-knitr::kable(evaluate(preds, bixi$test@x),format = "simple",digits = 4)
+preds <- reconstruct_partial(cv_out$fit, data, Bixi$test@i, Bixi$test@p, return_matrix = FALSE)
+knitr::kable(evaluate(preds, Bixi$test@x),format = "simple",digits = 4)
 ```
 
 ## Similarity Matrices and within-Row and Within-Column Autocorrelation
 
 We now turn to the final component of the proposed methodology: the incorporation of similarity matrices. In many applications, the response matrix exhibits correlation structures across its rows, its columns, or both. These structures can be explicitly described with similarity or covariance matrices. The framework adjusts the estimates of the low-rank component for these correlation structures.
 
-Returning to the BIXI dataset, the data are supplemented by two auxiliary distance matrices: a spatial distance matrix derived from the geographic coordinates of the stations (columns) and a temporal distance matrix representing the elapsed days (rows). For the prpose of this illustration, we impose a Matern 5/2 covariance structure on the columns and a Gaussian (radial basis function) kernel with a length-scale of 6 on the rows. These kernels are defined using the `imr_similarity` function.
+Returning to the Bixi dataset, the data are supplemented by two auxiliary distance matrices: a spatial distance matrix derived from the geographic coordinates of the stations (columns) and a temporal distance matrix representing the elapsed days (rows). For the purpose of this illustration, we impose a Matern 5/2 covariance structure on the columns and a Gaussian (radial basis function) kernel with a length-scale of 6 on the rows. These kernels are defined using the `imr_similarity` function.
 
 ```{r}
-similarity_cols <- imr_similarity(x = "matern", d = bixi$spatial_distance, 
+similarity_cols <- imr_similarity(x = "matern", d = Bixi$spatial_distance, 
                                   invert=TRUE, jitter = .1,
                                   matern_smoothness = 5/2, matern_range = .018); print(similarity_cols)
 
-similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
+similarity_rows <- imr_similarity(x = "rbf", d = Bixi$temporal_distance,
                                   invert=TRUE, jitter = .1,
                                   rbf_ell = 6); print(similarity_rows)
 
@@ -356,7 +356,7 @@ similarity_rows <- imr_similarity(x = "rbf", d = bixi$temporal_distance,
 
 Key notes regarding the `imr_similarity` function:
 
-1- The primary argument, `x`, accepts either a character string ("Matern" or "RBF") or a pre-computed covariance or information matrix. If a string is provided, a corresponding distance matrix `d` must be supplied. If a pre-computed matrix is supplied, then `d` is omitted.
+1- The primary argument, `x`, accepts either a character string ("Matern" or "RBF") or a pre-computed covariance or information matrix. If a string is provided, a corresponding distance matrix `d` must be supplied. If a matrix is supplied, then `d` is omitted.
 
 2- The framework uses an information (precision) matrix. Consequently, if a covariance kernel is specified or provided, the argument `invert=TRUE` must be declared to compute the inverse.
 
@@ -367,7 +367,7 @@ Key notes regarding the `imr_similarity` function:
 We proceed to integrate these matrices into the data object and update the model specification
 
 ```{r}
-data <- imr_data(bixi$Y, bixi$X, bixi$Z, 
+data <- imr_data(Bixi$Y, Bixi$X, Bixi$Z, 
                       similarity_rows = similarity_rows,
                       similarity_cols = similarity_cols,
                       val_prop = 0.2, seed = 2026)
@@ -412,7 +412,7 @@ print(cv_out$fit)
 ```
 
 ```{r}
-preds <- reconstruct_partial(cv_out$fit, data, bixi$test@i, bixi$test@p)
-knitr::kable(evaluate(preds, bixi$test@x),format = "pipe",digits = 4)
+preds <- reconstruct_partial(cv_out$fit, data, Bixi$test@i, Bixi$test@p)
+knitr::kable(evaluate(preds, Bixi$test@x),format = "pipe",digits = 4)
 
 ```

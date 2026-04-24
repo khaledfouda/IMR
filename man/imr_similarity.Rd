@@ -50,7 +50,7 @@ An object of class \code{"imr_similarity"}. This is a list containing:
 Creates an \code{"imr_similarity"} object containing the Eigenvalue-decomposition of a
 similarity or information matrix. This object is required for incorporating
 row or column similarities in an IMR model. The function can accept a
-pre-computed matrix or generate a covariance matrix from distance data using
+matrix or generate a covariance matrix from distance data using
 specified kernels.
 }
 \examples{

@@ -167,7 +167,7 @@ print.imr_tune_grid <- function(x, ...) {
 #'   \item An initial theoretical upper bound is
 #'     derived based on the Karush-Kuhn-Tucker (KKT)  conditions.
 #'   \item The function executes a bisection search over
-#'     `bisection_iter` iterations using KKT estimates as initial values. This identifies the infimum
+#'     `bisection_iter` iterations using KKT estimates as initial values. This identifies the minimum
 #'     of the penalty values that result in a zero-solution for the
 #'     targeted parameters.
 #' }
@@ -270,7 +270,7 @@ imr_get_lambda_m_max <-
     baseline_fit <- NULL
     baseline_fit <- fit_test(0)
 
-    # we begin by adjusting the upperbound (in case the KKT bound isn't enough)
+    # we begin by adjusting the upper bound (in case the KKT bound isn't enough)
     for (i in seq_len(bisection_iter)) {
       coefs <- fit_test(upper)$coefficients$d
       zero_ratio <- mean(abs(coefs) < 1e-6)
@@ -394,7 +394,7 @@ imr_get_lambda_lasso_max <- function(
   }
   baseline_fit <- NULL
   baseline_fit <- fit_test(0)
-  # we begin by adjusting the upperbound (in case the KKT bound isn't enough)
+  # we begin by adjusting the upper bound (in case the KKT bound isn't enough)
   for (i in seq_len(bisection_iter)) {
     test_model <- fit_test(upper)
     # Check if all coefficients are effectively zero

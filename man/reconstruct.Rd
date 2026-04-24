@@ -33,7 +33,7 @@ to the final predicted values, it computes and returns the individual structural
 components of the model, such as the low-rank matrix, covariate effects, and intercepts.
 }
 \details{
-During the model fitting process, covariates are orthogonally transformed using
+During the model fitting process, covariates are made orthogonal using
 QR decomposition. The \code{reconstruct}
 function reverses this process, using the \code{R} matrices (\code{Xr} and \code{Zr}) to
 back-transform the estimated coefficients (\code{beta} and \code{gamma}) to the original
@@ -42,8 +42,7 @@ scale of the input data.
 The final \code{estimates} matrix is computed by summing the active components
 based on the model structure: the low-rank matrix (\eqn{M = U D V^T}), row covariate
 effects (\eqn{X \beta}), column covariate effects (\eqn{\Gamma Z}), and any intercepts.
-The function automatically handles matrix dimension sweeping for shared vs.
-unshared effects.
+The function automatically handles matrix dimension sweeping for shared effects
 }
 \examples{
 # create sample data

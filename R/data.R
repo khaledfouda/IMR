@@ -1,5 +1,5 @@
 #' Bixi sample data
-#' A subset of data from Bixi (https://bixi.com), a docked bike-sharing service
+#' A subset of data from Bixi (https://Bixi.com/fr/), a docked bike-sharing service
 #' in Montreal, Canada.
 #' We use the data compiled by Lei et al., 2025, which contains normalized daily
 #' departure counts for each of 579 stations over 196 days (April 15 to
@@ -10,7 +10,7 @@
 #' a spatial distance matrix derived from the geographic coordinates of the stations
 #'  (columns) and a temporal distance matrix representing the elapsed days (rows)
 #'
-#' @format ## `bixi_sample`
+#' @format ## `Bixi_sample`
 #' A list of four matrices:
 #' \describe{
 #'    \item{Y}{a 100 x 150 matrix of normalized departure counts. Missing values
@@ -26,6 +26,6 @@
 #'
 #' @references
 #' Lei, M., Labbe, A., & Sun, L. (2025). Scalable Spatiotemporally Varying
-#' Coefficient Modelling with Bayesian Kernelized Tensor Regression.
+#' Coefficient Modeling with Bayesian Kernelized Tensor Regression.
 #' \emph{Bayesian Analysis}, 20(3). \doi{10.1214/24-BA1428}.
-"bixi_sample"
+"Bixi_sample"

@@ -21,7 +21,7 @@ with the average of their corresponding row and column means.
 \details{
 The function efficiently computes row and column means using an internal C++
 functions, excluding missing entries. It replaces
-each missing value at index \eqn{(i, j)} with the arithmetic mean of the i-th
+each missing value at index \eqn{(i, j)} with the mean of the  i-th
 row mean and the j-th column mean.
 }
 \examples{
