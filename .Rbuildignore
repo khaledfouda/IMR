@@ -11,3 +11,4 @@ old_to_be_removed
 ^\.positai$
 ^\.claude$
 ^cran-comments\.md$
+^CRAN-SUBMISSION$
