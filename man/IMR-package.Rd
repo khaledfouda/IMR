@@ -15,7 +15,7 @@ Other contributors:
 \itemize{
   \item Aurelie Labbe [thesis advisor, contributor]
   \item Karim Oualkacha [thesis advisor, contributor]
-  \item Korbinian Strimmer (Author of the fast.svd algorithm) [contributor]
+  \item Korbinian Strimmer (Author of the 'fast.svd' algorithm) [contributor]
 }
 
 }
