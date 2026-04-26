@@ -1,5 +1,3 @@
-## R CMD check results
+## Resubmission
 
-0 errors | 0 warnings | 1 note
-
-* This is a new release.
+This is a resubmission. In this version I added a "src/Makevars" file to link the BLAS, LAPACK, and Fortran libraries.
