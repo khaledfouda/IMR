@@ -96,17 +96,13 @@ saveRDS(prepared_objects, "vignette_prepared_objects.rda")
 
 The `IMR` package provides a framework for both matrix completion and regression on response matrices with missing values. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either `NA` or zero. The estimator for each entry of the matrix is specified by any combination of the following
 
-$$
-\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z^{'}_j} + \boldsymbol{\hat M_{ij}}
-$$
+$$\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z^{'}_j} + \boldsymbol{\hat M_{ij}}$$
 
-where $\boldsymbol{X}\in \Re^{n\times p} and  \boldsymbol{Z}\in \Re^{m\times q}$ are row and column covariate matrices, respectively. The vectors $\boldsymbol{\hat\beta_{o}}\in \Re^{n}$ and $\boldsymbol{\hat\Gamma_{o}}\in \Re^{m}$ represent the row-level and column-level intercepts. The term $\boldsymbol{\hat\beta}$ denotes the row covariate coefficients, which may be structured as either an $p\times m$ matrix, allowing coefficients to vary across columns, or a $p$-dimensional vector, forcing coefficients to be equal across all columns for each covariate. Similarly, the column covariate coefficients, denoted by $\boldsymbol{\hat\Gamma}$, can be either an $n \times q$ matrix or a $q$-dimensional vector where all rows share the same coefficient for each covariate. Finally, $\boldsymbol{M}$ is a rank-r (r is a hyperparameter) low-rank matrix subject to a nuclear norm penalty. Lasso ($L_1$) penalties are imposed on the row and column covariates as well, yielding the following penalty structure:
+where $\boldsymbol{X}\in \Re^{n\times p}$ and  $\boldsymbol{Z}\in \Re^{m\times q}$ are row ($p$ predictors) and column ($q$ predictors) covariate matrices, respectively. The vectors $\boldsymbol{\hat\beta_{o}}\in \Re^{n}$ and $\boldsymbol{\hat\Gamma_{o}}\in \Re^{m}$ represent the row-level and column-level intercepts. The term $\boldsymbol{\hat\beta}$ denotes the row covariate coefficients, which may be structured as either an $p\times m$ matrix (one coefficient of each (predictor,column) pair, or a $p$-dimensional vector (one coefficient for each predictor), forcing coefficients to be equal across all columns for each covariate. Similarly, the column covariate coefficients, denoted by $\boldsymbol{\hat\Gamma}$, can be either an $n \times q$ matrix or a $q$-dimensional vector where all rows share the same coefficient for each covariate. To avoid having too many parameters, we impose Lasso ($L_1$) penalties on the row and column covariate coefficients. Finally, $\boldsymbol{M}$ is a rank-r (r is a hyper-parameter) low-rank matrix subject to a nuclear norm penalty. Together, they yield the following penalty structure:
 
-$$
-\mathrm{Penalty} = \lambda_\beta {\|\boldsymbol{\beta}\|}_{1} + \lambda_\Gamma {\|\boldsymbol{\Gamma}\|}_{1} + \lambda_m {\|\boldsymbol{S_r^{1/2}MS_c^{1/2}}\|}_{*},
-$$
+$$\mathrm{Penalty} = \lambda_\beta {\|\boldsymbol{\beta}\|}_{1} + \lambda_\Gamma {\|\boldsymbol{\Gamma}\|}_{1} + \lambda_m {\|\boldsymbol{S_r^{1/2}MS_c^{1/2}}\|}_{*},$$
 
-where $\boldsymbol{S_r} \in \Re^{n\times n}$ and $\boldsymbol{S_c} \in \Re^{m \times m}$ are similarity (or information) matrices that describe the correlation structure among the rows and columns of the response matrix, respectively. In the absence of a known correlation structure, this penalty term reduces to the standard nuclear norm, ${\|\boldsymbol{M}\|}_{*}$.
+where $\boldsymbol{S_r} \in \Re^{n\times n}$ and $\boldsymbol{S_c} \in \Re^{m \times m}$ are similarity (or information) matrices that describe the correlation structure among the rows and columns of the response matrix, respectively. In the absence of a known correlation structure, this penalty term reduces to the standard nuclear norm, ${\|\boldsymbol{M}\|}_{*}$. We have 4 penalty parameters: $(\lambda_\beta,  \lambda_\Gamma, \lambda_m, r)$. We provide a method to estimate those parameters.
 
 As we said above, we can use any combination of the model components to define our estimator. Examples of these combinations include:
 
@@ -114,17 +110,19 @@ As we said above, we can use any combination of the model components to define o
 2.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} +\boldsymbol{\hat M_{ij}}$ with $\boldsymbol{S_r}$ set to a the inverse of a Matern kernel and $S_c$ left unspecified.
 3.  $\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat M_{ij}}$, where neither $\boldsymbol{S_r}$ or $\boldsymbol{S_c}$ is specified. This corresponds exactly to the Soft-Impute model [@hastie2015].
 
-A primary advantage of the algorithm is that it can deal with very large matrices, as long as they are sparse. With the exception of the similarity matrices, the algorithm neither stores nor performs operations on any matrix with dimensions $\min{(n,m)}\times \min{(n,m)}$ or larger. The matrix $\boldsymbol{Y}$ is stored as a sparse object, which replaces the dense matrix format with a vector of the observed values and their corresponding coordinate locations. All other matrices and associated operations are restricted to dimensions bounded by $\max\{m\times r,\, n \times r,\, n\times p,\, m\times q\}$.
+A primary advantage of the algorithm is that it can deal with very large matrices, as long as they are sparse. With the exception of the similarity matrices, the algorithm neither stores nor performs operations on any matrices with dimensions $\min{(n,m)}\times \min{(n,m)}$ or larger. The matrix $\boldsymbol{Y}$ is stored as a sparse object, which replaces the dense matrix format with a vector of the observed values and their corresponding coordinate locations. All other matrices and associated operations are restricted to dimensions bounded by $\max\{m\times r,\, n \times r,\, n\times p,\, m\times q\}$.
 
 To illustrate the standard workflow within the package, assume the matrices $\boldsymbol{Y}$ and $\boldsymbol{X}$ are defined as above, and the objective is to fit example 1 above to obtain the complete estimated matrix $\boldsymbol{\hat Y}$. Then, the implementation is as follows:
 
-```{r eval=FALSE, echo=TRUE}
+```{r eval=TRUE, echo=TRUE}
 # load the library
 require(IMR)
 # set the hyperparameter value.
 lambda_beta <- 0.02
+# load the data example (see ?IMR::Bixi_sample for more information)
+Bixi <- IMR::Bixi_sample
 # create the data object
-data <- imr_data(Y = Y, X = X)
+data <- imr_data(Y = Bixi$Y, X = Bixi$X)
 # update the model structure to fit example 1
 data <- update(data, row_covariates = TRUE, # turn  XBeta on (on by default when X is provided)
                shared_beta = TRUE, # make beta a p-dimensional vector (off by default)
@@ -137,11 +135,11 @@ Y_hat <- reconstruct(fit, data)$estimates
 
 ```
 
-This vignette is structured as follows: we first discuss the data structure and processing steps for the proposed model, using an illustrative example. Second, we show the specification of the model architecture and how we modify it. Third, we demonstrate the application of the fitting function under known regularization parameters, followed by a presentation of the results and performance assessment. Next, we describe our procedure for regularization parameters' tuning. We conclude with a discussion on the construction and integration of the similarity matrices, $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$.
+This vignette is structured as follows: we first discuss the data structure and processing steps for the proposed model, using an illustrative example. Second, we show how to define the model structures (i.e., which components to include in the estimator). Third, we show an example of the fit function, followed by a presentation of the results and performance assessment. Next, we describe our procedure for selecting the values of the penalty parameters. We conclude with a discussion on the construction and integration of the similarity matrices, $\boldsymbol{S_r}$ and $\boldsymbol{S_c}$.
 
 ## Data
 
-As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 196 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). We also consider a sample of 150 stations and 100 days, taken at random. Below is a summary of the data (Note that the dataset also contains similarity matrices which we we discuss them in the final section).
+As an example, we analyze data from Bixi [^1], a docked bike-sharing service in Montreal, Canada. We use the data compiled by [@lei2025], which contains normalized daily departure counts for each of 579 stations over 196 days (April 15 to October 27, 2019). The data is accompanied by side information. We select two temporal variables (temperature and precipitation) and one spatial variable (park area). For simplicity, we only consider a sample of 150 stations and 100 days, taken at random. Below is a summary of the data (Note that the data list also contains similarity matrices which we discuss in the final section).
 
 [^1]: website: <https://Bixi.com/>
 
@@ -175,11 +173,11 @@ Bixi$test <- as_incomplete(Bixi$test)
 Bixi$test[3:5,3:4]
 ```
 
-Furthermore, the function performs a QR decomposition on both covariate matrices, $\boldsymbol{X}$ and $\boldsymbol{Z}$, storing the resultant components as `XQ`, `XR`, `ZQ` and `ZR`. This transformation is necessary as the fit function works on orthonormal matrices (see the main article for more details). However, in our final coefficient estimates, the estimates are projected back onto the original covariate spaces.
+Furthermore, the function performs a QR decomposition on both covariate matrices, $\boldsymbol{X}$ and $\boldsymbol{Z}$, storing the resultant components as `XQ`, `XR`, `ZQ` and `ZR`. This transformation is necessary as the fit function works on orthonormal matrices (see the main article for more details on the methodology). However, in our final coefficient estimates, the estimates are projected back onto the original covariate spaces.
 
 ## Model Structure
 
-The latter portion of the preceding data summary shows the model configuration. The first column contains the supplied auxiliary information, indicating, for instance, the presence of two row covariates and one column covariate. The second column specifies the active components in the estimator. By default, the low-rank matrix and any provided side information are included in the active model specification. The designation `(Unshared)` indicates that the covariate coefficients are permitted to vary across rows or columns; that is, the coefficients take the form of matrices rather than vectors. This default specification can be modified via the `update()` function. To illustrate, we introduce row intercepts and constrain the row covariate coefficients to be shared across all columns, thereby enforcing a fixed effect of temperature and precipitation across all stations.
+The latter portion of the preceding data summary shows the model configuration. The first column contains the supplied auxiliary information, indicating, for instance, the presence of two row covariates and one column covariate. The second column specifies the active components in the estimator. By default, the low-rank matrix and any provided side information are included in the active model specification. The designation `(Unshared)` indicates that the covariate coefficients are permitted to vary across rows or columns; that is, the coefficients take the form of matrices rather than vectors. This default specification can be modified via the `update()` function. To illustrate, we introduce row intercepts and constrain the row covariate coefficients to be shared across all columns, which enforces a fixed effect of temperature and precipitation across all stations.
 
 ```{r}
 data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
@@ -190,7 +188,7 @@ The `update` function modifies the model architecture through logical arguments 
 
 ## Fit function
 
-The fit function requires fixed values for the regularization parameters: the three penalty terms and the rank of the low-rank component. For now, let's set arbitrary values for these parameters. Tuning procedure is detailed in a subsequent section.
+The fit function requires fixed values for the penalty parameters: the three lambda terms and the rank of the low-rank component. For now, let's set arbitrary values for these parameters. Tuning procedure is detailed in a subsequent section.
 
 ```{r echo=TRUE, eval=FALSE}
 fit <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma = 0.02)
@@ -201,7 +199,7 @@ prepared <- readRDS("vignette_prepared_objects.rda")
 fit <- prepared$fit
 ```
 
-The `print` function yields diagnostic information regarding the estimation procedure, while the `summary` function provides an overview of the resultant estimates. The estimated coefficients can be extracted using `coef` function or directly by accessing the `fit$coefficients` object. It should be noted that the `summary` function show the covariate coefficients with respect to the original covariate matrices $\boldsymbol{X}$ and $\boldsymbol{Z}$, while the raw extracted coefficients in `coef()` correspond to the orthonormal matrices `XQ` and `ZQ`.
+The `print` function yields diagnostic information regarding the estimation procedure, while the `summary` function provides an overview of the resultant estimates. The estimated coefficients can be extracted using the `coef` function, or directly by accessing the `fit$coefficients` object. It should be noted that the `summary` function show the covariate coefficients with respect to the original covariate matrices $\boldsymbol{X}$ and $\boldsymbol{Z}$, while the raw extracted coefficients in `coef()` correspond to the orthonormal matrices `XQ` and `ZQ`.
 
 ```{r}
 print(fit)
@@ -209,7 +207,7 @@ summary(fit)
 names(coef(fit))
 ```
 
-Convergence criteria, specifically the maximum allowed iterations and the tolerance threshold are specified using the `imr_convergence` object:
+Since the `fit` function runs an iterative estimation algorithm, we need to specify convergence parameter. There are two parameters to set: the maximum allowed iterations and the tolerance threshold. We suggest setting the threshold to $1e-5$ or less, and set the number of iteration to be large enough to reach this threshold. These parameters are specified using the `imr_convergence` object.
 
 ```{r}
 convergence <- imr_convergence(maxit = 15, thresh = 1e-5, trace = TRUE); print(convergence)
@@ -217,7 +215,7 @@ fit2 <- imr_fit(data, rank = 10, lambda_m = 1e-1, lambda_beta = 0, lambda_gamma 
                 convergence = convergence)
 ```
 
-In the output above, `obj` denotes the value of the objective function at the current iteration and `ratio` represents the relative change in the parameter estimates between successive iterations, evaluated using the Frobenius norm. The optimization algorithm terminates when either the maximal iteration limit is attained or the computed ratio falls below the specified tolerance threshold.
+In the output above, `obj` denotes the value of the objective function at the current iteration and `ratio` represents the relative change in the parameter estimates between successive iterations, evaluated using the Frobenius norm. The optimization algorithm terminates when either the maximal iteration limit is attained or the Frobenius difference between subsequent estimates falls below the specified tolerance threshold.
 
 ## Interpreting Results and Assessing Performance
 
@@ -233,14 +231,18 @@ The `reconstruct` function outputs all estimated model components alongside the 
 ```{r}
 cat(sprintf("True value of the entry (1,1) int he data matrix is %.4f and the estimated value is %.4f",
         data$Y[1,1],
-        data_out$beta0[1] + # row intercept
-        Bixi$X[1,] %*% data_out$beta + # row covariates
-        data_out$gamma[1,] %*% t(Bixi$Z)[,1] + # column covariates
-        data_out$M[1,1]))# low-rank matrix
+        # row intercept + 
+        data_out$beta0[1] + 
+          # row covariates (X beta) +
+        Bixi$X[1,] %*% data_out$beta + 
+          # column covariates (gamma Z) +
+        data_out$gamma[1,] %*% t(Bixi$Z)[,1] +
+          # low-rank matrix (M)
+        data_out$M[1,1]))
 
 ```
 
-This reconstruction function can be computationally prohibitive in high-dimensional settings. Moreover, we may only be interested in imputing a subset of the response matrix. Consider the test dataset we have. Let's only impute the entries that corresponds to that set.
+This reconstruction function can be computationally prohibitive in high-dimensional settings. Moreover, we may only be interested in imputing a subset of the response matrix. Consider the test matrix we have. Let's only impute the entries that corresponds to that non-missing entries in this matrix.
 
 ```{r}
 preds <- reconstruct_partial(fit, data, Bixi$test@i, Bixi$test@p, 
@@ -254,9 +256,9 @@ The `reconstruct_partial` function takes two additional arguments, the $i$ and $
 knitr::kable(evaluate(preds@x, Bixi$test@x),format = "pipe",digits = 4)
 ```
 
-## Hyperparameter Tuning
+## Selecting the Penalty Parameters
 
-We now address the tuning of the regularization hyperparameters. Our model incorporates four parameters: three regularization weights $(\lambda)$ and the rank of the low-rank component, $r$. We begin by constructing a parameter grid. For the lambdas ($\lambda_\beta,\lambda_\Gamma, \lambda_m$), the grid is defined by a minimum, a maximum, and a sequence length. For the rank, the grid requires a minimum, a maximum, and a step size. Both the nuclear norm penalty and the rank require an early-stopping tolerance parameter; a value of 2 or 3 is generally sufficient. If the maximum for any of the lambdas is unknown, it may be initialized to `NA`. A dedicated function is subsequently used to estimate these upper bounds using the Karush-Kuhn-Tucker (KKT) conditions.
+We now address the tuning of the penalty parameters. Our model has four parameters: three regularization weights $(\lambda)$ and the rank of the low-rank component, $r$. We begin by constructing a parameter grid. For the lambdas ($\lambda_\beta,\lambda_\Gamma, \lambda_m$), the grid is defined by a minimum, a maximum, and a sequence length. For the rank, the grid requires a minimum, a maximum, and a step size. Both the nuclear norm penalty and the rank require an early-stopping tolerance parameter; a value of 2 or 3 is generally sufficient. If the maximum for any of the lambdas is unknown, it may be initialized to `NA`. We later estimate their upper bounds using the Karush-Kuhn-Tucker (KKT) conditions.
 
 ```{r}
 grid <- imr_tune_grid(
@@ -269,13 +271,13 @@ print(grid)
 
 ```
 
-To fix any parameter to a specific constant, it can be supplied as a scalar. Parameters omitted from the specification will automatically default to standard configurations, as illustrate below:
+To fix any parameter, it can be supplied as a scalar. Parameters omitted from the specification will automatically default to standard configurations, as illustrate below:
 
 ```{r}
 imr_tune_grid(
   beta = 3, 
   gamma = c(0, NA),
-  nuclear = 0,
+  nuclear = c(0),
   rank = c(0, 10)
 )
 ```
@@ -284,7 +286,7 @@ Returning to the initial grid specification, we need to find upper limits for th
 
 1- An initial upper bound is derived using the KKT conditions. 2- Because the KKT bound can occasionally be too big, we perform a subsequent bisection search to find the minimum $\lambda$ required to shrink all corresponding coefficients exactly to zero.
 
-When determining the maximum for either $\lambda_\beta$ or $\lambda_\Gamma$, the penalty for the alternate covariate is set to infinity, while the low-rank hyperparameters are held at default values. Conversely, when determining the upper limit for $\lambda_m$, the two covariate penalties are fixed at default values.
+When determining the maximum for either $\lambda_\beta$ or $\lambda_\Gamma$, the penalty for the alternate covariate is set to infinity, while the low-rank penalty parameters are held at default values. Conversely, when determining the upper limit for $\lambda_m$, the two covariate penalties are fixed at default values.
 
 ```{r eval=FALSE, echo=TRUE}
 convergence <- imr_convergence(maxit = 1000, thresh = 1e-5)
@@ -304,14 +306,14 @@ grid <- prepared$grid1
 print(grid)
 ```
 
-With the grid fully specified, we proceed to find the optimal hyperparameters. The tuning function internally runs one of the three estimation processes:
+With the grid fully specified, we proceed to find the optimal penalty parameters. The tuning function internally runs one of the three estimation processes:
 
 1.  Tuning $\lambda_m$ and $r$ only: if both $\lambda_\beta$ and $\lambda_\Gamma$ do not require tuning, then the procedure optimizes the low-rank component parameters sequentially using one of the two following modes:
 
--   Fast Mode: Initializes at the maximum $\lambda_m$ and minimum rank $r$ then simultaneously decreases $\lambda_m$ and increases $r$ at each iteration. We terminate when validation performance cease to improve, governed by the early-stopping tolerance of $\lambda_m$.
--   Slow Mode: Constructs a fully nested grid. For every candidate value in $\lambda_m$, it sequentially evaluates ranks in ascending order until validation performance degrades, governed by the early-stopping tolerance of the rank.
+- Fast Mode: Initializes at the maximum $\lambda_m$ and minimum rank $r$ then simultaneously decreases $\lambda_m$ and increases $r$ at each iteration. We terminate when validation performance cease to improve, governed by the early-stopping tolerance of $\lambda_m$.
+- Slow Mode: Constructs a fully nested grid. For every candidate value in $\lambda_m$, it sequentially evaluates ranks in ascending order until validation performance degrades, governed by the early-stopping tolerance of the rank.
 
-2.  One Covariate: if only one of $\lambda_\beta$ and $\lambda_\Gamma$ requires tuning, the algorithm parallelizes across the respective covariate grid. For each candidate value, it executes the first scheme above to determine the optimal low-rank parameters.
+2.  One Covariate: if only one of $\lambda_\beta$ and $\lambda_\Gamma$ requires tuning, the algorithm runs in parallel across the respective covariate grid. For each candidate value, it executes the first scheme above to determine the optimal low-rank parameters.
 
 3.  Alternating Optimization: If both $\lambda_\beta$ and $\lambda_\Gamma$ require tuning, an alternating minimization procedure is employed. The algorithm fixes $\lambda_\Gamma$ and tunes $\lambda_\beta$ (along with $\lambda_m$ and $r$) using scheme 2 above; it then fixes $\lambda_\beta$ and tunes $\lambda_\Gamma$, again using scheme 2. It iterates until the difference in estimated coefficients is smaller than some threshold.
 
@@ -340,7 +342,7 @@ knitr::kable(evaluate(preds, Bixi$test@x),format = "simple",digits = 4)
 
 We now turn to the final component of the proposed methodology: the incorporation of similarity matrices. In many applications, the response matrix exhibits correlation structures across its rows, its columns, or both. These structures can be explicitly described with similarity or covariance matrices. The framework adjusts the estimates of the low-rank component for these correlation structures.
 
-Returning to the Bixi dataset, the data are supplemented by two auxiliary distance matrices: a spatial distance matrix derived from the geographic coordinates of the stations (columns) and a temporal distance matrix representing the elapsed days (rows). For the purpose of this illustration, we impose a Matern 5/2 covariance structure on the columns and a Gaussian (radial basis function) kernel with a length-scale of 6 on the rows. These kernels are defined using the `imr_similarity` function.
+Returning to the Bixi example, the data are supplemented by two distance matrices: a spatial distance matrix derived from the geographic coordinates of the stations (columns) and a temporal distance matrix representing the elapsed days (rows). For the purpose of this illustration, we impose a Matern 5/2 covariance structure on the columns and a Gaussian (radial basis function) kernel with a length-scale of 6 on the rows. These kernels are defined using the `imr_similarity` function.
 
 ```{r}
 similarity_cols <- imr_similarity(x = "matern", d = Bixi$spatial_distance, 
@@ -356,13 +358,13 @@ similarity_rows <- imr_similarity(x = "rbf", d = Bixi$temporal_distance,
 
 Key notes regarding the `imr_similarity` function:
 
-1- The primary argument, `x`, accepts either a character string ("Matern" or "RBF") or a pre-computed covariance or information matrix. If a string is provided, a corresponding distance matrix `d` must be supplied. If a matrix is supplied, then `d` is omitted.
+1- The primary argument, `x`, accepts either a character string ("Matern" or "RBF") or a matrix (covariance or information). If a string is provided, a corresponding distance matrix `d` must be supplied. If a matrix is supplied, then `d` is omitted.
 
 2- The framework uses an information (precision) matrix. Consequently, if a covariance kernel is specified or provided, the argument `invert=TRUE` must be declared to compute the inverse.
 
-3- Setting `jitter` to small positive value help reducing the condition number. The supplied value will be added to the diagonal elements of the covariance matrix before inverting it.
+3- Setting `jitter` to a small positive value helps reducing the condition number. The supplied value will be added to the diagonal elements of the covariance matrix before inverting it.
 
-4- The functions returns the components `U` and `d`, corresponding to the eigenvectors and eigenvalues of the target similarity matrix, respectively. This representation is the required input for the framework.
+4- The functions returns the components `U` and `d`, corresponding to the singular vectors and singular values of the target similarity matrix, respectively. This representation is the required input for the framework.
 
 We proceed to integrate these matrices into the data object and update the model specification
 
@@ -376,7 +378,7 @@ data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
 print(data)
 ```
 
-We rerun the hyperparamter tuning. However, this time, we only tune $\lambda_m$ and we fix the values of $r$, $\lambda_\beta$, and $\lambda_\Gamma$ to their previously determined optimal values.
+We rerun the parameter tuning. However, this time, we only tune $\lambda_m$ and we fix the values of $r$, $\lambda_\beta$, and $\lambda_\Gamma$ to their previously determined optimal values.
 
 ```{r}
 grid <- imr_tune_grid(
