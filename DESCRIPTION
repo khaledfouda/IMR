@@ -1,7 +1,7 @@
 Type: Package
 Package: IMR
 Title: Incomplete Matrix Regression
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: c(
     person("Khaled", "Fouda", , "khaled.fouda@hec.ca", role = c("aut", "cre")),
     person("Aurelie", "Labbe", role = c("ths", "ctb")),

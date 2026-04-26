@@ -1,3 +1,5 @@
+# IMR 0.1.2
+
 # IMR 0.1.1
 
 * Initial release (CRAN and GitHub).
