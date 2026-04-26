@@ -4,11 +4,18 @@ Title: Incomplete Matrix Regression
 Version: 0.1.0
 Authors@R: c(
     person("Khaled", "Fouda", , "khaled.fouda@hec.ca", role = c("aut", "cre")),
-    person("Aurelie", "Labbe", role = "aut"),
-    person("Karim", "Oualkacha", role = "aut")
+    person("Aurelie", "Labbe", role = c("ths", "ctb")),
+    person("Karim", "Oualkacha", role = c("ths", "ctb")),
+    person("Korbinian", "Strimmer", role = "ctb",
+           comment = "Author of the fast.svd algorithm")
   )
 Description: A framework for matrix completion and regression on response
-    matrices with missing values.
+    matrices with missing values. The model estimates missing entries
+    using any combination of intercepts, row and column covariates, and a
+    low-rank matrix approximation. It applies Lasso penalties on the
+    covariates and a nuclear norm penalty on the low-rank component. It
+    also adjusts for correlation within the rows and columns of the target
+    matrix using similarity matrices.
 License: GPL (>= 3)
 Depends: 
     R (>= 3.5)
@@ -22,8 +29,6 @@ Imports:
     Rcpp,
     RSpectra,
     stats,
-    stringr,
-    tidyr,
     utils
 Suggests: 
     knitr,

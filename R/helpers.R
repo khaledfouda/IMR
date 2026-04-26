@@ -153,7 +153,7 @@ verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
 #' rmse_function(true, predictions, na.rm = TRUE)
 #' @export
 get_metric <- function(metric) {
-  metric_name <- stringr::str_to_lower(metric)
+  metric_name <- tolower(metric)
   switch(
     metric_name,
     "mape" = function(predicted, actual, na.rm = TRUE) {
@@ -236,7 +236,7 @@ get_metric <- function(metric) {
 evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
   p <- as.numeric(predicted)
   a <- as.numeric(actual)
-  if (stringr::str_to_lower(metric) != "all") {
+  if (tolower(metric) != "all") {
     return(get_metric(metric)(p, a, na.rm))
   }
   data.frame(

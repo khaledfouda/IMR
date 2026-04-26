@@ -361,7 +361,7 @@ imr_tune_lasso <- function(data,
     is_incomplete(data$y_valid),
     is_incomplete(data$y_train)
   )
-  target <- stringr::str_to_lower(target)
+  target <- tolower(target)
   stopifnot(target %in% c("beta", "gamma"))
   is_beta <- target == "beta"
   lambda_obj <- if (is_beta) grid$beta else grid$gamma
@@ -476,15 +476,18 @@ imr_tune_lasso <- function(data,
 #' models. The procedure evaluates predictive performance on a validation set
 #' (`y_valid`) while estimating the model on a training set (`y_train`).
 #'
+#' @inheritParams imr_fit
 #' @param data An object of class `"imr_data"` containing the training and
 #'   validation partitions.
 #' @param grid An object of class `"imr_tune_grid"`. **Note:** Any `"auto"`
 #'   specifications for maximum values within this grid must be resolved via
 #'   \code{\link{imr_set_grid_limits}} prior to invoking `imr_tune`.
 #' @param final_fit Logical. If `TRUE`, the function performs a final model
-#'   estimation on the complete dataset (`Y`) using the identified optimal
+#'   estimation on the complete matrix (`Y`) using the identified optimal
 #'   hyperparameters. Defaults to `TRUE`.
-#' @param use_warm_in_final Internal. Pending deprecation.
+#' @param use_warm_in_final Logical. If `TRUE` (default), the model fit of the best parameter set will
+#'  given as `warm_start` input for the final model estimation. If `FALSE`, the initialization procedure
+#'  specified in `convergence` will be used.
 #' @param fast_nuclear Logical. Specifies the algorithmic approach for tuning the
 #'   low-rank component (nuclear norm penalty). Defaults to `TRUE`.
 #' @param convergence An `"imr_convergence"` object specifying numerical tolerances
@@ -492,7 +495,6 @@ imr_tune_lasso <- function(data,
 #' @param error_function A function used to evaluate prediction error on the
 #'   validation set. Must accept two arguments, `(predicted, actual)`.
 #'   Defaults to `get_metric("rmse")`.
-#' @param warm_start Internal. Pending deprecation.
 #' @param verbose Integer. Controls the level of diagnostic progress output.
 #'   Defaults to `1`.
 #' @param n_cores Integer. Number of CPU cores allocated for parallel execution

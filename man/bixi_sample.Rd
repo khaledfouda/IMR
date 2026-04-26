@@ -3,17 +3,7 @@
 \docType{data}
 \name{Bixi_sample}
 \alias{Bixi_sample}
-\title{Bixi sample data
-A subset of data from Bixi (https://Bixi.com/fr/), a docked bike-sharing service
-in Montreal, Canada.
-We use the data compiled by Lei et al., 2025, which contains normalized daily
-departure counts for each of 579 stations over 196 days (April 15 to
-October 27, 2019). The data is accompanied by side information.
-We select two temporal variables (temperature and precipitation) and
-one spatial variable (park area). We also take a sample of 150 stations and
-the first 100 consecutive days. The data also contains two distance matrices:
-a spatial distance matrix derived from the geographic coordinates of the stations
-(columns) and a temporal distance matrix representing the elapsed days (rows)}
+\title{Bixi Sample Data}
 \format{
 \subsection{\code{Bixi_sample}}{
 
@@ -35,7 +25,6 @@ Both are normalized.}
 Bixi_sample
 }
 \description{
-Bixi sample data
 A subset of data from Bixi (https://Bixi.com/fr/), a docked bike-sharing service
 in Montreal, Canada.
 We use the data compiled by Lei et al., 2025, which contains normalized daily

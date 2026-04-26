@@ -1,4 +1,6 @@
-#' Bixi sample data
+#' @title Bixi Sample Data
+#'
+#' @description
 #' A subset of data from Bixi (https://Bixi.com/fr/), a docked bike-sharing service
 #' in Montreal, Canada.
 #' We use the data compiled by Lei et al., 2025, which contains normalized daily

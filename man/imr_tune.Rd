@@ -30,10 +30,12 @@ specifications for maximum values within this grid must be resolved via
 \code{\link{imr_set_grid_limits}} prior to invoking \code{imr_tune}.}
 
 \item{final_fit}{Logical. If \code{TRUE}, the function performs a final model
-estimation on the complete dataset (\code{Y}) using the identified optimal
+estimation on the complete matrix (\code{Y}) using the identified optimal
 hyperparameters. Defaults to \code{TRUE}.}
 
-\item{use_warm_in_final}{Internal. Pending deprecation.}
+\item{use_warm_in_final}{Logical. If \code{TRUE} (default), the model fit of the best parameter set will
+given as \code{warm_start} input for the final model estimation. If \code{FALSE}, the initialization procedure
+specified in \code{convergence} will be used.}
 
 \item{fast_nuclear}{Logical. Specifies the algorithmic approach for tuning the
 low-rank component (nuclear norm penalty). Defaults to \code{TRUE}.}
@@ -45,7 +47,10 @@ for internal model estimation.}
 validation set. Must accept two arguments, \verb{(predicted, actual)}.
 Defaults to \code{get_metric("rmse")}.}
 
-\item{warm_start}{Internal. Pending deprecation.}
+\item{warm_start}{An optional object of class \code{"imr_fit"}. If provided, the
+coefficients from this previous fit are used as the starting values for the
+new optimization, overriding the initialization strategy in \code{convergence}.
+Defaults to \code{NULL}.}
 
 \item{verbose}{Integer. Controls the level of diagnostic progress output.
 Defaults to \code{1}.}

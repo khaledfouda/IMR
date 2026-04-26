@@ -1,3 +1,11 @@
+// ----------------------------------------------------------------------------
+// Note: The following C++ implementation is a translation of the `fast.svd`
+// R function originally written by Korbinian Strimmer for the `corpcor` package.
+//
+// Original Copyright 2003-06 Korbinian Strimmer
+// Released under the GNU General Public License, version 3.
+// ----------------------------------------------------------------------------
+
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 using namespace Rcpp;

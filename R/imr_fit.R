@@ -457,7 +457,10 @@ imr_solver <- function(
 
       BD <- svd_small_nc_cpp(BD)
       V <- BD$u
-      Dsq <- tidyr::replace_na(BD$d, 0)
+      #Dsq <- tidyr::replace_na(BD$d, 0)
+      Dsq <- BD$d
+      Dsq[is.na(Dsq)] <- 0
+
       U <- U %*% BD$v
 
       # update Y
@@ -476,7 +479,10 @@ imr_solver <- function(
 
       AD <- svd_small_nc_cpp(AD)
       U <- AD$u
-      Dsq <- tidyr::replace_na(AD$d, 0)
+      #Dsq <- tidyr::replace_na(AD$d, 0)
+      Dsq <- AD$d
+      Dsq[is.na(Dsq)] <- 0
+
       V <- V %*% AD$v
 
       # update Y
