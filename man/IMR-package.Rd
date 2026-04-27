@@ -8,6 +8,14 @@
 \description{
 A framework for matrix completion and regression on response matrices with missing values. The model estimates missing entries using any combination of intercepts, row and column covariates, and a low-rank matrix approximation. It applies Lasso penalties on the covariates and a nuclear norm penalty on the low-rank component. It also adjusts for correlation within the rows and columns of the target matrix using similarity matrices.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/khaledfouda/IMR}
+  \item Report bugs at \url{https://github.com/khaledfouda/IMR/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Khaled Fouda \email{khaled.fouda@hec.ca}
 
