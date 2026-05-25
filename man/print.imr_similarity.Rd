@@ -24,7 +24,7 @@ y = runif(5, 0 , 10))
 distance_matrix <- as.matrix(dist(coords))
 
 # generate the similarity object of a 5/2 matern kernel
-sim <- imr_similarity("matern", distance_matrix, matern_smoothness = 1.5, invert = TRUE)
+sim <- imr_similarity(x = "matern", d = distance_matrix, matern_smoothness = 1.5)
 
 # print the matrix's metadata
 print(sim)

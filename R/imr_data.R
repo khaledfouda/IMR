@@ -564,19 +564,22 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 #'   kernel method (`"matern"` or `"rbf"`). If a matrix is provided, it should
 #'   be a similarity or information matrix (if `invert = FALSE`), or a covariance
 #'   matrix (if `invert = TRUE`).
+#' @param normalize Logical. Should the kernel be normalized using their degree matrices. This
+#'  is highly recommended for better performance. Defaults to `TRUE`.
+#' @param invert Logical. Should the kernel be inverted? The IMR model
+#'   expects an information matrix. If your input (or generated kernel)
+#'   represents a covariance matrix, you must set this to `TRUE` to invert it.
+#'   Defaults to `TRUE`.
+#' @param jitter Numeric. A small positive value added to the diagonal of the
+#'   matrix to improve numerical stability and reduce the condition number.
+#'   This is applied before any inversion. A value between `0` and `1` and appropriately away from
+#'   the boundaries is recommended. Defaults to `0.2`.
 #' @param d A numeric distance matrix. This is strictly required if `x` is set to
 #'   `"matern"` or `"rbf"`. Defaults to `NULL`.
 #' @param matern_smoothness,matern_range  the parameters for the Matern kernel:
 #'   `smoothness` and `range`. Defaults to `(smoothness = 1.5, range = 1)`.
 #' @param rbf_ell The length-scale parameter for the Radial Basis Function
 #'   (RBF) kernel. Defaults to `1`.
-#' @param jitter Numeric. A small positive value added to the diagonal of the
-#'   matrix to improve numerical stability and reduce the condition number.
-#'   This is applied before any inversion. Defaults to `0`.
-#' @param invert Logical. Should the matrix be inverted? The IMR model
-#'   expects an information matrix. If your input (or generated kernel)
-#'   represents a covariance matrix, you must set this to `TRUE` to invert it.
-#'   Defaults to `FALSE`.
 #'
 #' @return An object of class `"imr_similarity"`. This is a list containing:
 #' \itemize{
@@ -596,22 +599,25 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 #' distance_matrix <- as.matrix(dist(coords))
 #'
 #' # generate the similarity object of a 5/2 matern kernel
-#' sim <- imr_similarity("matern", distance_matrix, matern_smoothness = 1.5, invert = TRUE)
+#' sim <- imr_similarity(x = "matern", d = distance_matrix, matern_smoothness = 1.5)
 #'
 #' # print the matrix's metadata
 #' print(sim)
 #'
 #' @export
 imr_similarity <- function(x,
+                           normalize = TRUE,
+                           invert = TRUE,
+                           jitter = 0.2,
                            d = NULL,
                            matern_smoothness = 1.5,
                            matern_range = 1,
-                           rbf_ell = 1,
-                           jitter = 0,
-                           invert = FALSE) {
+                           rbf_ell = 1) {
   S <- NULL
   source_type <- "User Matrix"
   params_used <- list()
+
+  stopifnot(is.numeric(jitter) && jitter >= 0 && jitter < 1)
 
   if (is.matrix(x)) {
     if (nrow(x) != ncol(x)) stop("Input matrix 'x' must be square.")
@@ -636,19 +642,35 @@ imr_similarity <- function(x,
     } else {
       stop("Unknown method. 'x' must be a matrix, 'matern', or 'RBF'.")
     }
-    if (!invert) {
-      warning(paste(
-        "Generated a raw Covariance matrix without inversion.",
-        "fit_imr() expects the inverse."
-      ))
-    }
+    # if (!invert) {
+    #   warning(paste(
+    #     "Generated a raw Covariance matrix without inversion.",
+    #     "fit_imr() expects the inverse."
+    #   ))
+    # }
   } else {
     stop("Input 'x' must be a matrix or a character string ('matern', 'RBF').")
   }
 
-  if (is.numeric(jitter) && jitter > 0) {
+  if(!(normalize && invert && jitter > 0))
+    warning(paste("For best practice, normalize the kernel and add a small jitter between 0 and 1",
+    "but not too close to the boundaries. fit_imr() expects the inverse of the kernel so make sure",
+    "to either set invert=TRUE or provide the kernel inverted. If the kernel is provided inverted,
+    you should set normalize=FALSE and jitter=FALSE."))
+
+  if(normalize) {
+    #if(!invert)
+     # warning("Normalizing without inverting. Normalization should be done to the Kernel.")}
+    sqrt_inv_degree <- 1 / sqrt(rowSums(S))
+    # S = D^{-1/2} S D^{-1/2}
+    S <- sweep(sweep(S, 1, sqrt_inv_degree, "*"), 2, sqrt_inv_degree, "*")
+    source_type <- paste(source_type, "(Normalized)")
+  }
+
+  if (jitter > 0) {
+    #if(!invert)
+      #warning("Additing Jitter without inverting. Jitter should be added to the Kernel.")
     S <- S + diag(jitter, nrow(S), ncol(S))
-    # source_type <- paste(source_type, "(With Jitter)")
   } else {
     jitter <- 0
   }

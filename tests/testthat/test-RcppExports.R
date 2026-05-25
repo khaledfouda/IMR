@@ -6,8 +6,8 @@ testthat::test_that("C++/Fortran functions", {
   dat <- generate_simulated_data(100, 200, 5, 5, 5,sparsity_beta = 0)
   d1 <-  matrix(rbinom(10000,100,.2), 100, 100);d1 <- (d1 + t(d1)) / 2
   d2 <-  matrix(rbinom(20000,200,.2), 200, 200);d2 <- (d2 + t(d2)) / 2
-  S <- imr_similarity(d1, invert = T, jitter = 1);S
-  S2 <- imr_similarity(d2, invert = T, jitter = 1);S
+  S <- imr_similarity(d1, invert = T, jitter = 0.5);S
+  S2 <- imr_similarity(d2, invert = T, jitter = 0.5);S
   data <- imr_data(dat$Y, dat$X, dat$Z, S, S2, 0.2);data
 
   # -------------------------------------------------------------------

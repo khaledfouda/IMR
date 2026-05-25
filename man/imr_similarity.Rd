@@ -6,12 +6,13 @@
 \usage{
 imr_similarity(
   x,
+  normalize = TRUE,
+  invert = TRUE,
+  jitter = 0.2,
   d = NULL,
   matern_smoothness = 1.5,
   matern_range = 1,
-  rbf_ell = 1,
-  jitter = 0,
-  invert = FALSE
+  rbf_ell = 1
 )
 }
 \arguments{
@@ -19,6 +20,19 @@ imr_similarity(
 kernel method (\code{"matern"} or \code{"rbf"}). If a matrix is provided, it should
 be a similarity or information matrix (if \code{invert = FALSE}), or a covariance
 matrix (if \code{invert = TRUE}).}
+
+\item{normalize}{Logical. Should the kernel be normalized using their degree matrices. This
+is highly recommended for better performance. Defaults to \code{TRUE}.}
+
+\item{invert}{Logical. Should the kernel be inverted? The IMR model
+expects an information matrix. If your input (or generated kernel)
+represents a covariance matrix, you must set this to \code{TRUE} to invert it.
+Defaults to \code{TRUE}.}
+
+\item{jitter}{Numeric. A small positive value added to the diagonal of the
+matrix to improve numerical stability and reduce the condition number.
+This is applied before any inversion. A value between \code{0} and \code{1} and appropriately away from
+the boundaries is recommended. Defaults to \code{0.2}.}
 
 \item{d}{A numeric distance matrix. This is strictly required if \code{x} is set to
 \code{"matern"} or \code{"rbf"}. Defaults to \code{NULL}.}
@@ -28,15 +42,6 @@ matrix (if \code{invert = TRUE}).}
 
 \item{rbf_ell}{The length-scale parameter for the Radial Basis Function
 (RBF) kernel. Defaults to \code{1}.}
-
-\item{jitter}{Numeric. A small positive value added to the diagonal of the
-matrix to improve numerical stability and reduce the condition number.
-This is applied before any inversion. Defaults to \code{0}.}
-
-\item{invert}{Logical. Should the matrix be inverted? The IMR model
-expects an information matrix. If your input (or generated kernel)
-represents a covariance matrix, you must set this to \code{TRUE} to invert it.
-Defaults to \code{FALSE}.}
 }
 \value{
 An object of class \code{"imr_similarity"}. This is a list containing:
@@ -63,7 +68,7 @@ y = runif(5, 0 , 10))
 distance_matrix <- as.matrix(dist(coords))
 
 # generate the similarity object of a 5/2 matern kernel
-sim <- imr_similarity("matern", distance_matrix, matern_smoothness = 1.5, invert = TRUE)
+sim <- imr_similarity(x = "matern", d = distance_matrix, matern_smoothness = 1.5)
 
 # print the matrix's metadata
 print(sim)

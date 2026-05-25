@@ -21,6 +21,8 @@ set.seed(2026)
 
 ```{r echo=FALSE, eval=FALSE}
 # to be run once and save objects
+library(IMR)
+set.seed(2026)
 Bixi <- IMR::Bixi_sample
 data <- imr_data(Y = Bixi$Y, X =  Bixi$X, Z =  Bixi$Z, val_prop = 0.2, seed = 2026)
 data <- update(data, shared_beta = TRUE, row_intercept = TRUE)
