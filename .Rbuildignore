@@ -12,3 +12,4 @@ old_to_be_removed
 ^\.claude$
 ^cran-comments\.md$
 ^CRAN-SUBMISSION$
+^data-raw$
