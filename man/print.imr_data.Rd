@@ -2,7 +2,7 @@
 % Please edit documentation in R/imr_data.R
 \name{print.imr_data}
 \alias{print.imr_data}
-\title{Summary of data and model structure}
+\title{Print an IMR data object}
 \usage{
 \method{print}{imr_data}(x, ...)
 }
@@ -12,7 +12,7 @@
 \item{...}{Additional arguments to comply with generic function}
 }
 \description{
-Summary of data and model structure
+Print an IMR data object
 }
 \examples{
 

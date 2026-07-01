@@ -18,9 +18,7 @@ two arguments: predictions and true values.
 }
 \examples{
 rmse_function <- get_metric("rmse")
-true <- c(1,2,3)
-predictions <- c(1,3,NA)
-rmse_function(true, predictions, na.rm = TRUE)
+rmse_function(predicted = c(1,3,NA), actual = c(1,2,3), na.rm = TRUE)
 }
 \seealso{
 \code{\link[=evaluate]{evaluate()}}

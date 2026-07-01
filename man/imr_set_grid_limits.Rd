@@ -92,5 +92,5 @@ cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, n_cores = 1)
 
 }
 \seealso{
-\code{\link[=imr_tune_grid]{imr_tune_grid()}}, \code{\link[=imr_tune]{imr_tune()}}, \link{imr_data}
+\code{\link[=imr_tune_grid]{imr_tune_grid()}}, \code{\link[=imr_tune]{imr_tune()}}, \code{\link[=imr_data]{imr_data()}}
 }

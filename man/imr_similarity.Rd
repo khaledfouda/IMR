@@ -21,8 +21,12 @@ kernel method (\code{"matern"} or \code{"rbf"}). If a matrix is provided, it sho
 be a similarity or information matrix (if \code{invert = FALSE}), or a covariance
 matrix (if \code{invert = TRUE}).}
 
-\item{normalize}{Logical. Should the kernel be normalized using their degree matrices. This
-is highly recommended for better performance. Defaults to \code{TRUE}.}
+\item{normalize}{Logical. Should the kernel be symmetrically normalized by its
+degree matrix (\eqn{S \leftarrow D^{-1/2} S D^{-1/2}}, where \eqn{D} is the
+diagonal matrix of row sums)? This assumes a non-negative kernel and is highly
+recommended for better performance. See the appendix of the accompanying paper
+(Fouda et al., 2026; \url{https://arxiv.org/abs/2606.26325}) for details.
+Defaults to \code{TRUE}.}
 
 \item{invert}{Logical. Should the kernel be inverted? The IMR model
 expects an information matrix. If your input (or generated kernel)
@@ -47,7 +51,7 @@ the boundaries is recommended. Defaults to \code{0.2}.}
 An object of class \code{"imr_similarity"}. This is a list containing:
 \itemize{
 \item \code{U}: A matrix of eigenvectors.
-\item \code{d}: A vector of absolute eigenvalues.
+\item \code{d}: A vector of  eigenvalues.
 \item \code{meta}: A list of metadata.
 }
 }

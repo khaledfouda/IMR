@@ -2,7 +2,7 @@
 % Please edit documentation in R/imr_data.R
 \name{print.imr_similarity}
 \alias{print.imr_similarity}
-\title{Summary of the similarity matrix}
+\title{Print an IMR similarity object}
 \usage{
 \method{print}{imr_similarity}(x, ...)
 }
@@ -12,7 +12,7 @@
 \item{...}{Additional arguments to comply with generic function}
 }
 \description{
-Summary of the similarity matrix
+Print an IMR similarity object
 }
 \examples{
 # generate 5 random spatial locations

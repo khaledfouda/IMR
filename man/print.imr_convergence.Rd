@@ -17,7 +17,7 @@ Summary of the model's convergence parameters
 \examples{
 # Use the default convergence parameters
 convergence <- imr_convergence()
-print(imr_convergence)
+print(convergence)
 
 }
 \seealso{

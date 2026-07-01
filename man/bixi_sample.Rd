@@ -7,12 +7,12 @@
 \format{
 \subsection{\code{Bixi_sample}}{
 
-A list of four matrices:
+A list of six matrices:
 \describe{
 \item{Y}{a 100 x 150 matrix of normalized departure counts. Missing values
 are set to zero. Each row is a day and each column is a station.}
 \item{test}{a 100 x 150 test matrix where test indices are nonzero. All
-nonzero elements in \code{test} are zero in \code{Y} and vice-versa.}
+nonzero in \code{test} are set to zero in \code{Y} and vice-versa.}
 \item{X}{a 100 x 2 matrix of two row covariates: temperature and precipitation.
 Both are normalized.}
 \item{Z}{a 150 x 1 matrix of one column covariate: park area.}
