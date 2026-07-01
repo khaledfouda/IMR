@@ -17,13 +17,18 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Khaled Fouda \email{khaled.fouda@hec.ca}
+\strong{Maintainer}: Khaled Fouda \email{khaled.fouda@hec.ca} (\href{https://orcid.org/0009-0000-3688-8767}{ORCID})
+
+Authors:
+\itemize{
+  \item Khaled Fouda \email{khaled.fouda@hec.ca} (\href{https://orcid.org/0009-0000-3688-8767}{ORCID})
+}
 
 Other contributors:
 \itemize{
-  \item Aurelie Labbe [thesis advisor, contributor]
+  \item Aurélie Labbe [thesis advisor, contributor]
   \item Karim Oualkacha [thesis advisor, contributor]
-  \item Korbinian Strimmer (Author of the 'fast.svd' algorithm) [contributor]
+  \item Korbinian Strimmer (Authored original fast.svd R implementation in the corpcor package) [copyright holder, contributor]
 }
 
 }

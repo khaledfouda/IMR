@@ -1,0 +1,13 @@
+bibentry(
+  bibtype = "misc",
+  title = "Incomplete Matrix Regression",
+  author = c(person("Khaled", "Fouda"),
+               person("Aurélie", "Labbe"),
+               person("Karim", "Oualkacha")),
+  year = "2026",
+  archivePrefix = "arXiv",
+  doi = "10.48550/arXiv.2606.26325",
+  eprint="2606.26325",
+  url = "https://arxiv.org/abs/2606.26325",
+  note = "Submitted to the Journal of the American Statistical Association"
+)
