@@ -35,7 +35,7 @@ An object of class \code{"imr_tune_grid"}, a list of the parameters and their va
 }
 \description{
 Constructs a configuration object specifying the search space for hyperparameter
-optimization within an Integrated Matrix Regression (IMR) framework. This object
+optimization within an Incomplete Matrix Regression (IMR) framework. This object
 facilitates the execution of the \code{imr_tune} function by defining the domain for identifying
 optimal hyperparameters.
 }

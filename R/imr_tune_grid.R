@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Constructs a configuration object specifying the search space for hyperparameter
-#' optimization within an Integrated Matrix Regression (IMR) framework. This object
+#' optimization within an Incomplete Matrix Regression (IMR) framework. This object
 #' facilitates the execution of the `imr_tune` function by defining the domain for identifying
 #'  optimal hyperparameters.
 #'
@@ -182,7 +182,7 @@ print.imr_tune_grid <- function(x, ...) {
 #' @return A modified `"imr_tune_grid"` object where all `"auto"` placeholders
 #'   are replaced by the numerically determined maximum values.
 #'
-#' @seealso [imr_tune_grid()], [imr_tune()], [imr_data]
+#' @seealso [imr_tune_grid()], [imr_tune()], [imr_data()]
 #' @inherit imr_tune examples
 #'
 #' @export

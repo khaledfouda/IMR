@@ -584,7 +584,7 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 #' @return An object of class `"imr_similarity"`. This is a list containing:
 #' \itemize{
 #'   \item \code{U}: A matrix of eigenvectors.
-#'   \item \code{d}: A vector of absolute eigenvalues.
+#'   \item \code{d}: A vector of  eigenvalues.
 #'   \item \code{meta}: A list of metadata.
 #' }
 #' @seealso [imr_data()], [print.imr_similarity()]

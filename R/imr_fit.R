@@ -23,7 +23,7 @@
 #' @examples
 #' # Use the default convergence parameters
 #' convergence <- imr_convergence()
-#' print(imr_convergence)
+#' print(convergence)
 #'
 imr_convergence <- function(maxit = 600,
                             thresh = 1e-5,

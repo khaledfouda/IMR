@@ -148,9 +148,7 @@ verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
 #' @importFrom stats complete.cases cor
 #' @examples
 #' rmse_function <- get_metric("rmse")
-#' true <- c(1,2,3)
-#' predictions <- c(1,3,NA)
-#' rmse_function(true, predictions, na.rm = TRUE)
+#' rmse_function(predicted = c(1,3,NA), actual = c(1,2,3), na.rm = TRUE)
 #' @export
 get_metric <- function(metric) {
   metric_name <- tolower(metric)
