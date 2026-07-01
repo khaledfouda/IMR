@@ -89,7 +89,7 @@ test_that("imr_fit handles shared covariates and intercepts", {
   corrcoef_gamma_warm <- evaluate(rec_intercepts_warm$gamma0, as.vector(dat_shared$gamma %*% t(dat_shared$Z)), "spearman")
   expect_gte(min(corrcoef_beta_warm, corrcoef_gamma_warm), 0.5)
 
-  expect_warning(
+  expect_message(
     imr_fit(data_intercepts, 2, convergence = imr_convergence(5, 0.001, FALSE, FALSE))
   )
 

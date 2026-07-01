@@ -354,4 +354,21 @@ svd_opt <- function(mat,
   return(dec)
 }
 
+# ---------------------------------------------------------------------------
+# Internal number formatters shared by print.imr_fit() and summary.imr_fit().
+# Both keep the sign of the value: a small-magnitude number (|x| rounds to 0)
+# is shown as a threshold string, but negatives are printed as-is rather than
+# being collapsed to the "< ...".
+# ---------------------------------------------------------------------------
+
+#' @noRd
+.imr_fmt_num <- function(x) {
+  ifelse(abs(round(x, 4)) >= 1e-4 | x == 0, sprintf("%.4f", x), "< 1e-4")
+}
+
+#' @noRd
+.imr_fmt_pct <- function(x) {
+  ifelse(abs(round(x, 1)) >= 0.1 | x == 0, sprintf("%.1f%%", x), "< 0.1%")
+}
+
 #

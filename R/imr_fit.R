@@ -182,8 +182,9 @@ imr_fit <- function(
   if (!training) {
     ss <- function(x) sum((x - mean(x))^2)
     sum_squares <- list(
-      sst = ss(data$Y@x),
-      sse = ss(result_list$residuals@x)
+      sst = ss(data$Y@x),                          # centered total SS
+      sse = ss(result_list$residuals@x),           # centered residual SS
+      rss = sum(result_list$residuals@x^2)         # uncentered residual SS (for RMSE / R^2)
     )
     if (data$model$row_covariates) {
       coefs <- if (data$model$shared_beta) {
@@ -586,7 +587,7 @@ imr_solver <- function(
     }
   }
   if (iter == maxit) {
-    warning("Did not converge in ", maxit, " iterations.")
+    message("Did not converge in ", maxit, " iterations.")
   }
 
   # 5) Trim effective rank and return -----------------------------------------
@@ -630,19 +631,17 @@ print.imr_fit <- function(x, ...) {
   has_row_int <- !is.null(x$coefficients$beta0)
   has_col_int <- !is.null(x$coefficients$gamma0)
 
-  # --- 1. Equation ---
+  # --- 1. Equation (intercepts first, then covariates, then latent term) ---
   terms <- c()
-  if (has_row_cov) {
-    beta_type <- if (x$meta$shared_effects["beta"]) "" else ""
-    terms <- c(terms, paste0("X\u00b7\u03b2"))
-  }
-  if (has_col_cov) {
-    gamma_type <- if (x$meta$shared_effects["gamma"]) "shared" else ""
-    terms <- c(terms, paste0("\u03b3", "\u00b7Z"))
-  }
-  if (has_low_rank) terms <- c(terms, "M")
   if (has_row_int) terms <- c(terms, "\u03b2\u2080")
   if (has_col_int) terms <- c(terms, "\u03b3\u2080")
+  if (has_row_cov) {
+    terms <- c(terms, if (x$meta$shared_effects["beta"]) "X\u00b7\u03b2 (shared)" else "X\u00b7\u03b2")
+  }
+  if (has_col_cov) {
+    terms <- c(terms, if (x$meta$shared_effects["gamma"]) "\u03b3\u00b7Z (shared)" else "\u03b3\u00b7Z")
+  }
+  if (has_low_rank) terms <- c(terms, "M")
   if (length(terms) == 0) terms <- c("0")
 
   cat(sprintf("Formula :  Y ~ %s\n", paste(terms, collapse = " + ")))
@@ -679,21 +678,18 @@ print.imr_fit <- function(x, ...) {
 
   # --- 3. Fit Statistics ---
   if (!is.null(x$meta$sum_squares)) {
-    sse <- x$meta$sum_squares$sse
     sst <- x$meta$sum_squares$sst
+    rss <- x$meta$sum_squares$rss
+    if (is.null(rss)) rss <- sum(x$residuals@x^2)
     n <- length(x$residuals@x)
-    mse <- sse / n
-    rmse <- sqrt(mse)
-    r2 <- 1 - (sse / sst)
-
-    prepare_d <- function(x) ifelse(round(x, 4) >= 1e-4 || x == 0, sprintf("%.4f", x), "< 1e-4")
+    rmse <- sqrt(rss / n)                 # true RMSE (matches evaluate())
+    r2 <- 1 - (rss / sst)                 # standard pseudo R^2
 
     # Ensure R2 isn't negative
     r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else sprintf("%.4f", r2)
 
-    cat("\n-- Fit Statistics --\n")
-    cat(sprintf("RMSE       : %s\n", prepare_d(rmse)))
-    cat(sprintf("MSE        : %s\n", prepare_d(mse)))
+    cat("\n-- Fit (in-sample, on observed entries) --\n")
+    cat(sprintf("RMSE       : %s\n", .imr_fmt_num(rmse)))
     cat(sprintf("Pseudo R2  : %s\n", r2_str))
   }
 
@@ -701,13 +697,13 @@ print.imr_fit <- function(x, ...) {
   cat("\n-- Penalties & Hyperparameters --\n")
   if (has_low_rank) {
     cat(sprintf("Rank (r)          : %d\n", x$meta$rank))
-    cat(sprintf("Lambda M          : %s\n", prepare_d(x$meta$lambdas["M"])))
+    cat(sprintf("Lambda M          : %s\n", .imr_fmt_num(x$meta$lambdas["M"])))
   }
   if (has_row_cov) {
-    cat(sprintf("Lambda Beta       : %s\n", prepare_d(x$meta$lambdas["beta"])))
+    cat(sprintf("Lambda Beta       : %s\n", .imr_fmt_num(x$meta$lambdas["beta"])))
   }
   if (has_col_cov) {
-    cat(sprintf("Lambda Gamma      : %s\n", prepare_d(x$meta$lambdas["gamma"])))
+    cat(sprintf("Lambda Gamma      : %s\n", .imr_fmt_num(x$meta$lambdas["gamma"])))
   }
   if (has_low_rank) {
     cat(sprintf("Row Similarity    : %s\n", ifelse(x$model$row_similarity, "Active", "None")))
@@ -735,7 +731,8 @@ summary.imr_fit <- function(object, ...) {
   #-- first part: training object metrics:
 
   sst <- object$meta$sum_squares$sst
-  sse <- object$meta$sum_squares$sse
+  rss <- object$meta$sum_squares$rss
+  if (is.null(rss)) rss <- sum(object$residuals@x^2)
   ssrc <- object$meta$sum_squares$ssrc
   sscc <- object$meta$sum_squares$sscc
   ssri <- object$meta$sum_squares$ssri
@@ -743,42 +740,38 @@ summary.imr_fit <- function(object, ...) {
   ssm <- object$meta$sum_squares$ssm
   sss <- ssrc + sscc + ssri + ssci + ssm
 
-
-  exp_var <- 1 - (sse / sst)
   n <- length(object$residuals@x)
-  mse <- sse / n
-  rmse <- sqrt(mse)
-  prepare_fmt <- function(x) ifelse(round(x, 1) >= 0.1 || x == 0, sprintf("%2.1f%%", x), "< 0.1%")
-  prepare_d <- function(x) ifelse(round(x, 4) >= 1e-4 || x == 0, sprintf("%.4f", x), "< 1e-4")
-  cat("\nGoodness of Fit (on observed entries)")
+  rmse <- sqrt(rss / n)                 # true RMSE (matches evaluate())
+  r2 <- 1 - (rss / sst)                 # standard pseudo R^2
+  explained <- sst - rss                # explained SS (== r2 * sst)
+
+  cat("\nGoodness of Fit (in-sample, on observed entries)")
   cat("\n-------------------------------------------------------------\n")
-  cat(sprintf("RMSE                                   : %s\n", prepare_d(rmse)))
-  cat(sprintf("MSE                                    : %s\n", prepare_d(mse)))
-  cat(sprintf("Total Explained Variance (1 - SSE/SST) : %s\n", prepare_fmt(100 * exp_var)))
-  cat(sprintf("Unexplained Variance (SSE/SST)         : %s\n", prepare_fmt(100 * (sse / sst))))
+  cat(sprintf("RMSE                    : %s\n", .imr_fmt_num(rmse)))
+  cat(sprintf("MSE                     : %s\n", .imr_fmt_num(rss / n)))
+  r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else .imr_fmt_pct(100 * r2)
+  cat(sprintf("Pseudo R2 (1 - RSS/SST) : %s\n", r2_str))
 
-
-  cat("\nRelative Contribution to Explained Variance")
+  cat("\nVariance Decomposition (share of explained variance)")
   cat("\n-------------------------------------------------------------\n")
-  cat(sprintf("Additive Components        : %2.1f%% of explained variance\n", 100 * sss / (sst - sse)))
-  if (object$model$low_rank_component) {
-    cat(sprintf("    |-- Latent Matrix      :    %s\n", prepare_fmt(100 * ssm / sss)))
+  if (explained <= 0) {
+    cat("Model explains no variance beyond the grand mean (Pseudo R2 <= 0);\n")
+    cat("component decomposition omitted.\n")
+  } else {
+    # Each component's centered variance on observed cells, plus a non-additive
+    # remainder, all expressed as a share of the explained variance. The shares
+    # sum to 100% by construction.
+    comp_line <- function(label, ss) {
+      cat(sprintf("  %-24s : %s\n", label, .imr_fmt_pct(100 * ss / explained)))
+    }
+    if (object$model$low_rank_component) comp_line("Latent Matrix (M)", ssm)
+    if (object$model$row_covariates)     comp_line("Row Covariates (X.beta)", ssrc)
+    if (object$model$col_covariates)     comp_line("Col Covariates (gamma.Z)", sscc)
+    if (object$model$row_intercept)      comp_line("Row Intercepts (beta0)", ssri)
+    if (object$model$col_intercept)      comp_line("Col Intercepts (gamma0)", ssci)
+    comp_line("Overlap / non-additive", explained - sss)
+    cat("(Overlap is due to regularization.)\n")
   }
-  if (object$model$row_covariates) {
-    cat(sprintf("    |-- Row Covariates     :    %s\n", prepare_fmt(100 * ssrc / sss)))
-  }
-  if (object$model$col_covariates) {
-    cat(sprintf("    |-- Column Covariates  :    %s\n", prepare_fmt(100 * sscc / sss)))
-  }
-  if (object$model$row_intercept) {
-    cat(sprintf("    |-- Row Intercepts     :    %s\n", prepare_fmt(100 * ssri / sss)))
-  }
-  if (object$model$col_intercept) {
-    cat(sprintf("    |-- Column Intercepts  :    %s\n", prepare_fmt(100 * ssci / sss)))
-  }
-
-  cat(sprintf("\nRegularization & Overlap   : %s of explained variance\n", prepare_fmt(100 * (1 - (sss / (sst - sse))))))
-  cat("(Measures the deviation from orthogonal additivity due to shrinkage penalties and missing data.)\n")
   cat("-------------------------------------------------------------\n")
 
   cat("\n Model Estimates")
@@ -861,10 +854,10 @@ summary.imr_fit <- function(object, ...) {
   if (object$model$low_rank_component) {
     cat("\n-- Latent Component --")
     cat(sprintf("\nRank (r): %d\nSingular Values:\n", length(object$coefficients$d)))
-    print(object$coefficients$d)
+    print(round(object$coefficients$d, 4))
   }
 
-  invisible()
+  invisible(object)
 }
 
 
