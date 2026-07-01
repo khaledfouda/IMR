@@ -383,8 +383,8 @@ svd_opt <- function(mat,
   list(
     beta   = "\U0001D6C3",
     Gamma  = "\U0001D6AA",
-    beta0  = "\U0001D6C3₀",
-    Gamma0 = "\U0001D6AA₀",
+    beta0  = "\U0001D6C3\u2080",
+    Gamma0 = "\U0001D6AA\u2080",
     dot    = ""
   )
 }
