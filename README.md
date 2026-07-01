@@ -1,18 +1,16 @@
 
-# IMR
+# IMR (Incomplete Matrix Regression)
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/khaledfouda/IMR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/khaledfouda/IMR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-## Citation
+## Intro
 
-If you use IMR, please cite:
+This package is a *R* implementation of the IMR framework presented by Khaled Fouda, Aurélie Labbe & Karim Oualkacha (2026).
+The article can be found [here](https://arxiv.org/abs/2606.26325).
 
-> Fouda, K., Labbe, A., & Oualkacha, K. (2026). *Incomplete Matrix Regression*. arXiv preprint arXiv:2606.26325.
-
-
-The IMR package provides a framework for both matrix completion and regression on response matrices with missing values. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either NA or zero. The estimator for each entry of the matrix is specified by any combination of the following
+We provide a framework for both matrix completion and regression on response matrices with missing values. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either NA or zero. The estimator for each entry of the matrix is specified by any combination of the following
 
 $$\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z^{'}_j} + \boldsymbol{\hat M_{ij}}$$
 
