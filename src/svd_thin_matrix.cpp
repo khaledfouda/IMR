@@ -1,9 +1,20 @@
 // ----------------------------------------------------------------------------
-// Note: The following C++ implementation is a translation of the `fast.svd`
-// R function originally written by Korbinian Strimmer for the `corpcor` package.
+// Description:
+// C++ implementation of the covariance-based Singular Value Decomposition
+// (Method of Snapshots) for highly rectangular matrices.
 //
-// Original Copyright 2003-06 Korbinian Strimmer
-// Released under the GNU General Public License, version 3.
+// Intellectual Provenance & Copyright:
+// This code is a direct C++ translation of the `fast.svd` R function
+// originally developed for the `corpcor` R package.
+//
+// Original R implementation: Copyright (C) 2003-06 Korbinian Strimmer
+// C++ translation and modifications: Copyright (C) 2026 Khaled Fouda
+//
+// License:
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 // ----------------------------------------------------------------------------
 
 // [[Rcpp::depends(RcppArmadillo)]]

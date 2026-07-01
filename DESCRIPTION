@@ -5,7 +5,9 @@ Version: 0.1.2
 Authors@R: c(
     person("Khaled", "Fouda", , "khaled.fouda@hec.ca", role = c("aut", "cre")),
     person("Aurelie", "Labbe", role = c("ths", "ctb")),
-    person("Karim", "Oualkacha", role = c("ths", "ctb"))
+    person("Karim", "Oualkacha", role = c("ths", "ctb")),
+    person("Korbinian", "Strimmer", role = c("cph", "ctb"),
+    comment = "Authored original fast.svd R implementation in the corpcor package"),
   )
 Description: A framework for matrix completion and regression on response
     matrices with missing values. The model estimates missing entries
