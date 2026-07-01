@@ -6,7 +6,7 @@
 \alias{IMR-package}
 \title{IMR package}
 \description{
-A framework for matrix completion and regression on response matrices with missing values. The model estimates missing entries using any combination of intercepts, row and column covariates, and a low-rank matrix approximation. It applies Lasso penalties on the covariates and a nuclear norm penalty on the low-rank component. It also adjusts for correlation within the rows and columns of the target matrix using similarity matrices.
+A framework for matrix completion and regression on response matrices with missing values. The model estimates missing entries using any combination of intercepts, row and column covariates, and a low-rank matrix approximation. It applies Lasso penalties on the covariates and a nuclear norm penalty on the low-rank component. It also adjusts for correlation within the rows and columns of the target matrix using similarity matrices. The framework is described in Fouda, Labbe and Oualkacha (2026) \href{https://arxiv.org/abs/2606.26325}{arXiv:2606.26325}.
 }
 \references{
 Fouda, K., Labbe, A., & Oualkacha, K. (2026).
