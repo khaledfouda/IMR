@@ -94,9 +94,12 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
 #' @title Summary of the hyperparameter grid
 #' @param x An `imr_tune_grid` object
 #' @param ... Additional arguments to comply with generic function
+#' @return The input `imr_tune_grid` object `x`, invisibly. Called for its side
+#'   effect of printing the configured search ranges to the console.
 #' @seealso [imr_tune_grid()]
 #' @inherit imr_tune_grid examples
 #' @export
+#' @method print imr_tune_grid
 print.imr_tune_grid <- function(x, ...) {
   cat("\n== IMR Hyperparameter Configuration ==\n")
 

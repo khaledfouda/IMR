@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+The input \code{imr_tune_grid} object \code{x}, invisibly. Called for its side
+effect of printing the configured search ranges to the console.
+}
 \description{
 Summary of the hyperparameter grid
 }

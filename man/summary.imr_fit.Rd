@@ -11,6 +11,11 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+The input \code{imr_fit} object, invisibly. Called for its side effect of
+printing goodness-of-fit statistics, a variance decomposition, and the
+estimated coefficients to the console.
+}
 \description{
 Summary of the fitted model's parameters
 }

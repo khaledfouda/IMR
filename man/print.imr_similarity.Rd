@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+The input \code{imr_similarity} object \code{x}, invisibly. Called for its side
+effect of printing the decomposition metadata to the console.
+}
 \description{
 Print an IMR similarity object
 }

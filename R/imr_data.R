@@ -261,6 +261,8 @@ update.imr_data <- function(object,
 #' @title Print an IMR data object
 #' @param x An `imr_data` object
 #' @param ... Additional arguments to comply with generic function
+#' @return The input `imr_data` object `x`, invisibly. Called for its side effect
+#'   of printing the data dimensions, split, and model configuration to the console.
 #' @seealso [imr_data()] [update.imr_data()] [imr_similarity()]
 #' @inherit imr_data examples
 #' @export
@@ -699,6 +701,8 @@ imr_similarity <- function(x,
 #' @title Print an IMR similarity object
 #' @param x An `imr_similarity` object
 #' @param ... Additional arguments to comply with generic function
+#' @return The input `imr_similarity` object `x`, invisibly. Called for its side
+#'   effect of printing the decomposition metadata to the console.
 #' @seealso [imr_similarity()]
 #' @inherit imr_similarity examples
 #' @importFrom utils head

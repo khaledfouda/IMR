@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+The input \code{imr_convergence} object \code{x}, invisibly. Called for its side
+effect of printing the convergence settings to the console.
+}
 \description{
 Summary of the model's convergence parameters
 }

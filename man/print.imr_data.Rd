@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+The input \code{imr_data} object \code{x}, invisibly. Called for its side effect
+of printing the data dimensions, split, and model configuration to the console.
+}
 \description{
 Print an IMR data object
 }

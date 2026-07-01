@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+The input \code{imr_fit} object \code{x}, invisibly. Called for its side effect
+of printing a compact overview of the fitted model to the console.
+}
 \description{
 Summary of the model's fit operation
 }

@@ -615,6 +615,8 @@ imr_solver <- function(
 #' @title Summary of the model's fit operation
 #' @param x An `imr_fit` object
 #' @param ... Additional arguments to comply with generic function
+#' @return The input `imr_fit` object `x`, invisibly. Called for its side effect
+#'   of printing a compact overview of the fitted model to the console.
 #' @seealso [imr_fit()], [summary.imr_fit()]
 #' @inherit imr_fit examples
 #' @export
@@ -724,6 +726,9 @@ print.imr_fit <- function(x, ...) {
 #' @title Summary of the fitted model's parameters
 #' @param object An `imr_fit` object
 #' @param ... Additional arguments to comply with generic function
+#' @return The input `imr_fit` object, invisibly. Called for its side effect of
+#'   printing goodness-of-fit statistics, a variance decomposition, and the
+#'   estimated coefficients to the console.
 #' @seealso [imr_fit()], [print.imr_fit()]
 #' @inherit imr_fit examples
 #' @importFrom stats sd
@@ -872,6 +877,8 @@ summary.imr_fit <- function(object, ...) {
 #' @title Summary of the model's convergence parameters
 #' @param x An `imr_convergence` object
 #' @param ... Additional arguments to comply with generic function
+#' @return The input `imr_convergence` object `x`, invisibly. Called for its side
+#'   effect of printing the convergence settings to the console.
 #' @seealso [imr_convergence()] [imr_fit()]
 #' @inherit imr_convergence examples
 #' @export
@@ -890,12 +897,14 @@ print.imr_convergence <- function(x, ...) {
   cat(sprintf("Trace Progress: %s\n", trace_status))
 
   cat("================================\n")
-  invisible()
+  invisible(x)
 }
 
 #' @title Extract the fitted model's coefficients
 #' @param object An `imr_fit` object
 #' @param ... Additional arguments to comply with generic function
+#' @return A named list of the estimated model coefficients (any of `u`, `d`,
+#'   `v`, `beta`, `gamma`, `beta0`, `gamma0`), as stored in the `imr_fit` object.
 #' @seealso [imr_fit()]
 #' @inherit imr_fit examples
 #' @export

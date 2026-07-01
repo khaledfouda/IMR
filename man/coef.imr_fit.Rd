@@ -11,6 +11,10 @@
 
 \item{...}{Additional arguments to comply with generic function}
 }
+\value{
+A named list of the estimated model coefficients (any of \code{u}, \code{d},
+\code{v}, \code{beta}, \code{gamma}, \code{beta0}, \code{gamma0}), as stored in the \code{imr_fit} object.
+}
 \description{
 Extract the fitted model's coefficients
 }
