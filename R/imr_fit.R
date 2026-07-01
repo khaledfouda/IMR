@@ -126,6 +126,11 @@ imr_convergence <- function(maxit = 600,
 #' # compute the training Root Mean Squared Error
 #' evaluate(estimates, data$Y@x, metric = "RMSE")
 #'
+#' @references
+#' Fouda, K., Labbe, A., & Oualkacha, K. (2026).
+#' \emph{Incomplete Matrix Regression}.
+#' \url{https://arxiv.org/abs/2606.26325}
+#'
 #' @export
 imr_fit <- function(
     data,

@@ -108,6 +108,11 @@ estimates <- reconstruct_partial(fit, data, data$Y@i, data$Y@p, return_matrix = 
 evaluate(estimates, data$Y@x, metric = "RMSE")
 
 }
+\references{
+Fouda, K., Labbe, A., & Oualkacha, K. (2026).
+\emph{Incomplete Matrix Regression}.
+\url{https://arxiv.org/abs/2606.26325}
+}
 \seealso{
 \code{\link[=imr_data]{imr_data()}}, \code{\link[=imr_convergence]{imr_convergence()}}, \code{\link[=print.imr_fit]{print.imr_fit()}}, \code{\link[=summary.imr_fit]{summary.imr_fit()}}, \code{\link[=coef.imr_fit]{coef.imr_fit()}}
 }

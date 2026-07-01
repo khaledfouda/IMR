@@ -5,6 +5,11 @@
 [![R-CMD-check](https://github.com/khaledfouda/IMR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/khaledfouda/IMR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
+## Citation
+
+If you use IMR, please cite:
+
+> Fouda, K., Labbe, A., & Oualkacha, K. (2026). *Incomplete Matrix Regression*. arXiv preprint arXiv:2606.26325.
 
 
 The IMR package provides a framework for both matrix completion and regression on response matrices with missing values. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either NA or zero. The estimator for each entry of the matrix is specified by any combination of the following

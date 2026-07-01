@@ -74,6 +74,11 @@ sim <- imr_similarity(x = "matern", d = distance_matrix, matern_smoothness = 1.5
 print(sim)
 
 }
+\references{
+Fouda, K., Labbe, A., & Oualkacha, K. (2026).
+\emph{Incomplete Matrix Regression}.
+\url{https://arxiv.org/abs/2606.26325}
+}
 \seealso{
 \code{\link[=imr_data]{imr_data()}}, \code{\link[=print.imr_similarity]{print.imr_similarity()}}
 }

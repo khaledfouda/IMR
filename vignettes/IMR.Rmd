@@ -96,7 +96,7 @@ saveRDS(prepared_objects, "vignette_prepared_objects.rda")
 
 ## Introduction and Model Description
 
-The `IMR` package provides a framework for both matrix completion and regression on response matrices with missing values. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either `NA` or zero. The estimator for each entry of the matrix is specified by any combination of the following
+The `IMR` package implements the Incomplete Matrix Regression method of Fouda et al. [@fouda2026imr]. It provides a framework for both matrix completion and regression on response matrices with missing values. Let $\boldsymbol{Y} \in \Re^{n\times m}$ denote the observed incomplete matrix, where missing values are designated by either `NA` or zero. The estimator for each entry of the matrix is specified by any combination of the following
 
 $$\boldsymbol{\hat Y_{ij}} = \boldsymbol{\hat\beta_{oi}} + \boldsymbol{\hat\Gamma_{oj}} + \boldsymbol{X_i\hat\beta_j} + \boldsymbol{\hat\Gamma_i Z^{'}_j} + \boldsymbol{\hat M_{ij}}$$
 

@@ -604,6 +604,11 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
 #' # print the matrix's metadata
 #' print(sim)
 #'
+#' @references
+#' Fouda, K., Labbe, A., & Oualkacha, K. (2026).
+#' \emph{Incomplete Matrix Regression}.
+#' \url{https://arxiv.org/abs/2606.26325}
+#'
 #' @export
 imr_similarity <- function(x,
                            normalize = TRUE,

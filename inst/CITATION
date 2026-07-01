@@ -1,3 +1,5 @@
+citHeader("To cite the IMR package in publications, please use:")
+
 bibentry(
   bibtype = "misc",
   title = "Incomplete Matrix Regression",

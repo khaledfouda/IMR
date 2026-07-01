@@ -8,6 +8,11 @@
 \description{
 A framework for matrix completion and regression on response matrices with missing values. The model estimates missing entries using any combination of intercepts, row and column covariates, and a low-rank matrix approximation. It applies Lasso penalties on the covariates and a nuclear norm penalty on the low-rank component. It also adjusts for correlation within the rows and columns of the target matrix using similarity matrices.
 }
+\references{
+Fouda, K., Labbe, A., & Oualkacha, K. (2026).
+\emph{Incomplete Matrix Regression}. arXiv preprint arXiv:2606.26325.
+\url{https://arxiv.org/abs/2606.26325}
+}
 \seealso{
 Useful links:
 \itemize{
