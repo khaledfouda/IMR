@@ -667,14 +667,14 @@ print.imr_fit <- function(x, ...) {
 
   cat("\n-- Dimensions --\n")
   dim_line <- function(symbol, desc, val) {
-    cat(sprintf("  %-2s (%-14s) : %s\n", symbol, desc, val))
+    cat(sprintf("  %-3s %-16s : %s\n", symbol, desc, val))
   }
-  if (has_row_cov) dim_line(sym$beta,   "row covariates", get_dim_str(x$coefficients$beta))
-  if (has_col_cov) dim_line(sym$Gamma,  "col covariates", get_dim_str(x$coefficients$gamma))
-  if (has_row_int) dim_line(sym$beta0,  "row intercepts", get_dim_str(x$coefficients$beta0))
-  if (has_col_int) dim_line(sym$Gamma0, "col intercepts", get_dim_str(x$coefficients$gamma0))
+  if (has_row_cov) dim_line(sym$beta,   "(row covariates)", get_dim_str(x$coefficients$beta))
+  if (has_col_cov) dim_line(sym$Gamma,  "(col covariates)", get_dim_str(x$coefficients$gamma))
+  if (has_row_int) dim_line(sym$beta0,  "(row intercepts)", get_dim_str(x$coefficients$beta0))
+  if (has_col_int) dim_line(sym$Gamma0, "(col intercepts)", get_dim_str(x$coefficients$gamma0))
   if (has_low_rank) {
-    dim_line("M", "latent factors", sprintf(
+    dim_line("M", "(latent factors)", sprintf(
       "U(%d x %d), D(length %d), V(%d x %d)",
       nrow(x$coefficients$u), ncol(x$coefficients$u),
       length(x$coefficients$d),
@@ -770,7 +770,7 @@ summary.imr_fit <- function(object, ...) {
     # remainder, all expressed as a share of the explained variance. The shares
     # sum to 100% by construction.
     comp_line <- function(label, ss) {
-      cat(sprintf("  %-24s : %s\n", label, .imr_fmt_pct(100 * ss / explained)))
+      cat(sprintf("  %-21s : %s\n", label, .imr_fmt_pct(100 * ss / explained)))
     }
     if (object$model$low_rank_component) comp_line("Latent Matrix (M)", ssm)
     if (object$model$row_covariates)     comp_line(sprintf("Row Covariates (X%s%s)", sym$dot, sym$beta), ssrc)
