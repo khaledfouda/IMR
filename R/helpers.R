@@ -371,4 +371,22 @@ svd_opt <- function(mat,
   ifelse(abs(round(x, 1)) >= 0.1 | x == 0, sprintf("%.1f%%", x), "< 0.1%")
 }
 
+# ---------------------------------------------------------------------------
+# smybols shown by print.imr_fit() and summary.imr_fit().
+# LaTeX equivalents:
+#   beta   -> \mathbf{\beta}      Gamma  -> \mathbf{\Gamma}
+#   beta0  -> \mathbf{\beta}_{0}  Gamma0 -> \mathbf{\Gamma}_{0}
+# ---------------------------------------------------------------------------
+
+#' @noRd
+.imr_symbols <- function() {
+  list(
+    beta   = "\U0001D6C3",
+    Gamma  = "\U0001D6AA",
+    beta0  = "\U0001D6C3₀",
+    Gamma0 = "\U0001D6AA₀",
+    dot    = ""
+  )
+}
+
 #

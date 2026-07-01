@@ -625,6 +625,8 @@ print.imr_fit <- function(x, ...) {
   cat("\n====================================================\n")
 
 
+  sym <- .imr_symbols()
+
   has_low_rank <- !is.null(x$coefficients$d) && length(x$coefficients$d) > 0
   has_row_cov <- !is.null(x$coefficients$beta)
   has_col_cov <- !is.null(x$coefficients$gamma)
@@ -633,13 +635,15 @@ print.imr_fit <- function(x, ...) {
 
   # --- 1. Equation (intercepts first, then covariates, then latent term) ---
   terms <- c()
-  if (has_row_int) terms <- c(terms, "\u03b2\u2080")
-  if (has_col_int) terms <- c(terms, "\u03b3\u2080")
+  if (has_row_int) terms <- c(terms, sym$beta0)
+  if (has_col_int) terms <- c(terms, sym$Gamma0)
   if (has_row_cov) {
-    terms <- c(terms, if (x$meta$shared_effects["beta"]) "X\u00b7\u03b2 (shared)" else "X\u00b7\u03b2")
+    term <- paste0("X", sym$dot, sym$beta)
+    terms <- c(terms, if (x$meta$shared_effects["beta"]) paste0(term, " (shared)") else term)
   }
   if (has_col_cov) {
-    terms <- c(terms, if (x$meta$shared_effects["gamma"]) "\u03b3\u00b7Z (shared)" else "\u03b3\u00b7Z")
+    term <- paste0(sym$Gamma, sym$dot, "Z")
+    terms <- c(terms, if (x$meta$shared_effects["gamma"]) paste0(term, " (shared)") else term)
   }
   if (has_low_rank) terms <- c(terms, "M")
   if (length(terms) == 0) terms <- c("0")
@@ -662,15 +666,17 @@ print.imr_fit <- function(x, ...) {
   }
 
   cat("\n-- Dimensions --\n")
-  if (has_row_cov) cat(sprintf("  %-7s : %s\n", "\u03b2", get_dim_str(x$coefficients$beta)))
-  if (has_col_cov) cat(sprintf("  %-7s : %s\n", "\u03b3", get_dim_str(x$coefficients$gamma)))
-  if (has_row_int) cat(sprintf("  %-9s : %s\n", "\u03b2\u2080", get_dim_str(x$coefficients$beta0)))
-  if (has_col_int) cat(sprintf("  %-9s : %s\n", "\u03b3\u2080", get_dim_str(x$coefficients$gamma0)))
+  dim_line <- function(symbol, desc, val) {
+    cat(sprintf("  %-2s (%-14s) : %s\n", symbol, desc, val))
+  }
+  if (has_row_cov) dim_line(sym$beta,   "row covariates", get_dim_str(x$coefficients$beta))
+  if (has_col_cov) dim_line(sym$Gamma,  "col covariates", get_dim_str(x$coefficients$gamma))
+  if (has_row_int) dim_line(sym$beta0,  "row intercepts", get_dim_str(x$coefficients$beta0))
+  if (has_col_int) dim_line(sym$Gamma0, "col intercepts", get_dim_str(x$coefficients$gamma0))
   if (has_low_rank) {
-    # It's also helpful to remind them of the dimensions of the latent factor matrices
-    cat(sprintf(
-      "  %-6s : U(%d x %d), D(length %d), V(%d x %d)\n",
-      "M", nrow(x$coefficients$u), ncol(x$coefficients$u),
+    dim_line("M", "latent factors", sprintf(
+      "U(%d x %d), D(length %d), V(%d x %d)",
+      nrow(x$coefficients$u), ncol(x$coefficients$u),
       length(x$coefficients$d),
       nrow(x$coefficients$v), ncol(x$coefficients$v)
     ))
@@ -728,6 +734,8 @@ summary.imr_fit <- function(object, ...) {
   cat("\n=== Summary of Incomplete Matrix Regression (IMR) ===")
   cat("\n=====================================================\n")
 
+  sym <- .imr_symbols()
+
   #-- first part: training object metrics:
 
   sst <- object$meta$sum_squares$sst
@@ -765,10 +773,10 @@ summary.imr_fit <- function(object, ...) {
       cat(sprintf("  %-24s : %s\n", label, .imr_fmt_pct(100 * ss / explained)))
     }
     if (object$model$low_rank_component) comp_line("Latent Matrix (M)", ssm)
-    if (object$model$row_covariates)     comp_line("Row Covariates (X.beta)", ssrc)
-    if (object$model$col_covariates)     comp_line("Col Covariates (gamma.Z)", sscc)
-    if (object$model$row_intercept)      comp_line("Row Intercepts (beta0)", ssri)
-    if (object$model$col_intercept)      comp_line("Col Intercepts (gamma0)", ssci)
+    if (object$model$row_covariates)     comp_line(sprintf("Row Covariates (X%s%s)", sym$dot, sym$beta), ssrc)
+    if (object$model$col_covariates)     comp_line(sprintf("Col Covariates (%s%sZ)", sym$Gamma, sym$dot), sscc)
+    if (object$model$row_intercept)      comp_line(sprintf("Row Intercepts (%s)", sym$beta0), ssri)
+    if (object$model$col_intercept)      comp_line(sprintf("Col Intercepts (%s)", sym$Gamma0), ssci)
     comp_line("Overlap / non-additive", explained - sss)
     cat("(Overlap is due to regularization.)\n")
   }
