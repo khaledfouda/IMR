@@ -17,7 +17,7 @@ Description: A framework for matrix completion and regression on response
     covariates and a nuclear norm penalty on the low-rank component. It
     also adjusts for correlation within the rows and columns of the target
     matrix using similarity matrices. The framework is described in Fouda,
-    Labbe and Oualkacha (2026) <arXiv:2606.26325>.
+    Labbe and Oualkacha (2026) <doi:10.48550/arXiv.2606.26325>.
 License: GPL (>= 3)
 URL: https://github.com/khaledfouda/IMR
 BugReports: https://github.com/khaledfouda/IMR/issues
