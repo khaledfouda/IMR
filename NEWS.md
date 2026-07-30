@@ -1,3 +1,5 @@
+# IMR (development version)
+
 # IMR 0.1.2
 I added a 'src/Makevars' file to link the BLAS, LAPACK, and Fortran libraries.
 
