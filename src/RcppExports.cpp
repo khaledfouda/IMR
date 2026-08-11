@@ -73,6 +73,18 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// add_inplace_cpp
+void add_inplace_cpp(NumericVector y, const double alpha, const NumericVector delta);
+RcppExport SEXP _IMR_add_inplace_cpp(SEXP ySEXP, SEXP alphaSEXP, SEXP deltaSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< const NumericVector >::type delta(deltaSEXP);
+    add_inplace_cpp(y, alpha, delta);
+    return R_NilValue;
+END_RCPP
+}
 // frob_ratio_cpp
 double frob_ratio_cpp(const arma::mat& Uold, const arma::vec& Dsqold, const arma::mat& Vold, const arma::mat& U, const arma::vec& Dsq, const arma::mat& V);
 RcppExport SEXP _IMR_frob_ratio_cpp(SEXP UoldSEXP, SEXP DsqoldSEXP, SEXP VoldSEXP, SEXP USEXP, SEXP DsqSEXP, SEXP VSEXP) {
@@ -124,6 +136,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type out(outSEXP);
     huber_clip_into_cpp(yx, huber_c, out);
+    return R_NilValue;
+END_RCPP
+}
+// huber_clip_inplace_cpp
+void huber_clip_inplace_cpp(NumericVector y, const double huber_c, NumericVector excess);
+RcppExport SEXP _IMR_huber_clip_inplace_cpp(SEXP ySEXP, SEXP huber_cSEXP, SEXP excessSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type excess(excessSEXP);
+    huber_clip_inplace_cpp(y, huber_c, excess);
     return R_NilValue;
 END_RCPP
 }
@@ -233,10 +257,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_col_means_cpp", (DL_FUNC) &_IMR_col_means_cpp, 3},
     {"_IMR_add_to_rows_inplace_cpp", (DL_FUNC) &_IMR_add_to_rows_inplace_cpp, 3},
     {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 3},
+    {"_IMR_add_inplace_cpp", (DL_FUNC) &_IMR_add_inplace_cpp, 3},
     {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
     {"_IMR_update_huber_c_cpp", (DL_FUNC) &_IMR_update_huber_c_cpp, 4},
     {"_IMR_huber_clip_cpp", (DL_FUNC) &_IMR_huber_clip_cpp, 2},
     {"_IMR_huber_clip_into_cpp", (DL_FUNC) &_IMR_huber_clip_into_cpp, 3},
+    {"_IMR_huber_clip_inplace_cpp", (DL_FUNC) &_IMR_huber_clip_inplace_cpp, 3},
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
     {"_IMR_update_A_sim_cpp", (DL_FUNC) &_IMR_update_A_sim_cpp, 6},
     {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},

@@ -4,7 +4,13 @@
 \alias{imr_convergence}
 \title{Control Parameters for IMR Convergence}
 \usage{
-imr_convergence(maxit = 600, thresh = 1e-05, trace = FALSE, ls_initial = TRUE)
+imr_convergence(
+  maxit = 600,
+  thresh = 1e-05,
+  trace = FALSE,
+  huber_max_sample = 1e+05,
+  ls_initial = TRUE
+)
 }
 \arguments{
 \item{maxit}{Integer. The maximum number of iterations allowed for the fit
@@ -33,7 +39,6 @@ IMR fit function.
 # Use the default convergence parameters
 convergence <- imr_convergence()
 print(convergence)
-
 }
 \seealso{
 \code{\link[=imr_fit]{imr_fit()}}, \code{\link[=print.imr_convergence]{print.imr_convergence()}}

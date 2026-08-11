@@ -21,6 +21,10 @@ add_to_cols_inplace_cpp <- function(yx, p, add_per_col) {
     invisible(.Call(`_IMR_add_to_cols_inplace_cpp`, yx, p, add_per_col))
 }
 
+add_inplace_cpp <- function(y, alpha, delta) {
+    invisible(.Call(`_IMR_add_inplace_cpp`, y, alpha, delta))
+}
+
 frob_ratio_cpp <- function(Uold, Dsqold, Vold, U, Dsq, V) {
     .Call(`_IMR_frob_ratio_cpp`, Uold, Dsqold, Vold, U, Dsq, V)
 }
@@ -35,6 +39,10 @@ huber_clip_cpp <- function(yx, huber_c) {
 
 huber_clip_into_cpp <- function(yx, huber_c, out) {
     invisible(.Call(`_IMR_huber_clip_into_cpp`, yx, huber_c, out))
+}
+
+huber_clip_inplace_cpp <- function(y, huber_c, excess) {
+    invisible(.Call(`_IMR_huber_clip_inplace_cpp`, y, huber_c, excess))
 }
 
 update_A_cpp <- function(yS4, U, V, Dsq, lambda_M) {

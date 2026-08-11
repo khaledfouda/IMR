@@ -10,6 +10,7 @@ imr_fit(
   lambda_m = 0,
   lambda_beta = 0,
   lambda_gamma = 0,
+  huber_shift = 0,
   convergence = imr_convergence(),
   warm_start = NULL,
   training = FALSE

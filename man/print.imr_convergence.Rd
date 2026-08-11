@@ -22,7 +22,6 @@ Summary of the model's convergence parameters
 # Use the default convergence parameters
 convergence <- imr_convergence()
 print(convergence)
-
 }
 \seealso{
 \code{\link[=imr_convergence]{imr_convergence()}} \code{\link[=imr_fit]{imr_fit()}}

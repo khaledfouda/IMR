@@ -173,6 +173,19 @@ void add_to_cols_inplace_cpp(NumericVector yx,
   }
 }
 
+// In-place addition/subtraction for vectors in R
+// That is, doing y += alpha * delta
+// where alpha is a scalar and delta is a vector
+// [[Rcpp::export]]
+void add_inplace_cpp(NumericVector y, const double alpha,
+                     const NumericVector delta) {
+  if (delta.size() != y.size())
+    Rcpp::stop("add_inplace_cpp: `delta` and `y` must have the same length.");
+  double*        p_y = REAL(y);
+  const double*  p_d  = REAL(delta);
+  const R_xlen_t n    = y.size();
+  for (R_xlen_t k = 0; k < n; ++k) p_y[k] += alpha * p_d[k];
+}
 
 
 
@@ -352,8 +365,33 @@ void huber_clip_into_cpp(const NumericVector yx,
   }
 }
 
+//type later: similar to above but in-place and returns the difference since it's needed
+// [[Rcpp::export]]
+void huber_clip_inplace_cpp(NumericVector y, const double huber_c,
+                             NumericVector excess) {
 
+  if (ISNAN(huber_c)) Rcpp::stop("huber_split_inplace_cpp: `huber_c` must not be NA/NaN.");
+  if (huber_c < 0.0)  Rcpp::stop("huber_split_inplace_cpp: `huber_c` must be non-negative.");
+  if (excess.size() != y.size())
+    Rcpp::stop("huber_split_inplace_cpp: `excess` and `y` must have the same length.");
+
+  double*      p_y  = REAL(y);
+  double*      p_e  = REAL(excess);
+  const double neg_c = -huber_c;
+  const R_xlen_t n   = y.size();
+
+  for (R_xlen_t k = 0; k < n; ++k) {
+    const double val = p_y[k];
+    const double psi = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
+    p_y[k] = psi;
+    p_e[k] = val - psi;
+  }
+}
+
+//-----------------------------------------------
 // The following two functions compute the least-squares updates for A and B
+
+
 
 
 static arma::sp_mat as_spmat_dgc(const S4& y) {

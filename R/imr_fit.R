@@ -331,7 +331,8 @@ imr_solver <- function(
   trace <- convergence$trace
   ls_initial <- convergence$ls_initial
 
-  # Laplacian flags (L_* expected as eigendecompositions) -------------------
+  # flags -------------------
+  huber_flag <- huber_shift > 0
   beta_flag <- !(is.null(X))
   gamma_flag <- !(is.null(Z))
   nuclear_r_flag <- !(is.null(Ur) || is.null(dr))
@@ -392,7 +393,7 @@ imr_solver <- function(
         r = 0, lambda_m = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
         convergence = convergence,
-        warm_start = NULL
+        warm_start = NULL, huber_shift = 0
       )
 
       if (beta_flag) {
@@ -456,6 +457,8 @@ imr_solver <- function(
       rm(init)
     }
   }
+
+  # -- the following function will be evaluated at the beginning of every iteration
 
 
   #  Update residuals (first iteration only)  -----------------------------
