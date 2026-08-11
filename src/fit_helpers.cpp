@@ -317,6 +317,10 @@ double update_huber_c_cpp(const NumericVector yx,
 
   const double d = iqr_type7_(v) / 1.349;
 
+  // the purpose of this is that, if we have ferwer than 3 elements, or that all elements are
+  // equal then d will be exactly 0. it would be then better to return c_old to avoid problems.
+  if (!(d > 0.0)) return c_old;
+
   const double cand = huber_shift * d;
   return (cand < c_old) ? cand : c_old;
 }
@@ -368,10 +372,10 @@ double update_huber_c_cpp(const NumericVector yx,
 void huber_clip_inplace_cpp(NumericVector y, const double huber_c,
                              NumericVector excess) {
 
-  if (ISNAN(huber_c)) Rcpp::stop("huber_split_inplace_cpp: `huber_c` must not be NA/NaN.");
-  if (huber_c < 0.0)  Rcpp::stop("huber_split_inplace_cpp: `huber_c` must be non-negative.");
+  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_inplace_cpp: `huber_c` must not be NA/NaN.");
+  if (huber_c < 0.0)  Rcpp::stop("huber_clip_inplace_cpp: `huber_c` must be non-negative.");
   if (excess.size() != y.size())
-    Rcpp::stop("huber_split_inplace_cpp: `excess` and `y` must have the same length.");
+    Rcpp::stop("huber_clip_inplace_cpp: `excess` and `y` must have the same length.");
 
   double*      p_y  = REAL(y);
   double*      p_e  = REAL(excess);

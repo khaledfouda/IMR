@@ -8,8 +8,8 @@ imr_convergence(
   maxit = 600,
   thresh = 1e-05,
   trace = FALSE,
-  huber_max_sample = 1e+05,
-  ls_initial = TRUE
+  ls_initial = TRUE,
+  huber_max_sample = 1e+05
 )
 }
 \arguments{

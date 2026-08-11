@@ -37,6 +37,10 @@ huber_clip_inplace_cpp <- function(y, huber_c, excess) {
     invisible(.Call(`_IMR_huber_clip_inplace_cpp`, y, huber_c, excess))
 }
 
+huber_loss_cpp <- function(yx, huber_c) {
+    .Call(`_IMR_huber_loss_cpp`, yx, huber_c)
+}
+
 update_A_cpp <- function(yS4, U, V, Dsq, lambda_M) {
     .Call(`_IMR_update_A_cpp`, yS4, U, V, Dsq, lambda_M)
 }

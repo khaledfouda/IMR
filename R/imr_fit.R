@@ -27,11 +27,11 @@
 imr_convergence <- function(maxit = 600,
                             thresh = 1e-5,
                             trace = FALSE,
-                            huber_max_sample = 1e5,
-                            ls_initial = TRUE) {
+                            ls_initial = TRUE,
+                            huber_max_sample = 1e5) {
 
   stopifnot(.imr_check_param(maxit, "numeric", 1, integer = TRUE))
-  stopifnot(.imr_check_param(thresh, "numeric", 0))
+  stopifnot(.imr_check_param(thresh, "numeric", 0, min_inclusive = FALSE))
   stopifnot(.imr_check_param(trace, "bool"))
   stopifnot(.imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE))
   stopifnot(.imr_check_param(ls_initial, "bool"))
@@ -155,7 +155,7 @@ imr_fit <- function(
   # validation
   stopifnot(inherits(data, "imr_data"))
   stopifnot(inherits(convergence, "imr_convergence"))
-  stopifnot(.imr_check_param(huber_shift, 0))
+  stopifnot(.imr_check_param(huber_shift, "numeric", 0))
 
   if (inherits(warm_start, "imr_fit")) {
     warm_start <- warm_start$coefficients
@@ -656,7 +656,7 @@ imr_solver <- function(
     u = U,
     d = Dsq,
     v = V,
-    huber_c = ifelse(huber_flag, huber_c, NULL),
+    huber_c = if(huber_flag)  huber_c else NULL,
     beta = beta,
     gamma = gamma,
     beta0 = beta0,
@@ -753,8 +753,8 @@ print.imr_fit <- function(x, ...) {
     cat("\n-- Fit (in-sample, on observed entries) --\n")
     cat(sprintf("RMSE       : %s\n", .imr_fmt_num(rmse)))
     cat(sprintf("Pseudo R2  : %s\n", r2_str))
-    f (!is.null(x$meta$huber))
-    cat("(The Huber objective was minimised)\n")
+    if (!is.null(x$meta$huber))
+      cat("(The Huber objective was minimised)\n")
   }
 
   # --- 4. Hyperparameters ---
@@ -779,7 +779,7 @@ print.imr_fit <- function(x, ...) {
     cat(sprintf("Huber shift       : %s\n", .imr_fmt_num(hb$shift)))
     cat(sprintf("Huber c (final)   : %s\n", .imr_fmt_num(hb$huber_c)))
     cat(sprintf("Clipped residuals : %s obs (%s)\n",
-                format(hb$n_clipped, big.mark = ", ", scientific = FALSE),
+                format(hb$n_clipped, big.mark = ",", scientific = FALSE),
                 .imr_fmt_pct(100 * hb$prop_clipped)))
   }
 
