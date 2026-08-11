@@ -352,25 +352,6 @@ void huber_clip_into_cpp(const NumericVector yx,
   }
 }
 
-// [[Rcpp::export]]
-void huber_clip_inplace_cpp(NumericVector yx, const double huber_c) {
-
-  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_inplace_cpp: `huber_c` must not be NA/NaN.");
-  if (huber_c < 0.0)  Rcpp::stop("huber_clip_inplace_cpp: `huber_c` must be non-negative.");
-
-  double*      p_yx  = REAL(yx);
-  const double neg_c = -huber_c;
-  const R_xlen_t n   = yx.size();
-
-  for (R_xlen_t k = 0; k < n; ++k) {
-    const double val = p_yx[k];
-    p_yx[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
-  }
-}
-
-
-
-
 
 // The following two functions compute the least-squares updates for A and B
 
