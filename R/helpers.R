@@ -389,4 +389,72 @@ svd_opt <- function(mat,
   )
 }
 
-#
+#' @noRd
+.imr_check_param <- function(x,
+                             type,
+                             min = -Inf,
+                             max = Inf,
+                             min_inclusive = TRUE,
+                             max_inclusive = TRUE,
+                             integer = FALSE,
+                             choices = NULL,
+                             case_insensitive = TRUE,
+                             allow_null = FALSE) {
+
+  type <- match.arg(type, c("numeric", "numeric_list", "bool", "character"))
+
+  if (is.null(x)) return(isTRUE(allow_null))
+
+  switch(
+    type,
+
+    numeric = ,
+    numeric_list = {
+      if (!is.numeric(min) || length(min) != 1L || is.na(min))
+        stop("`min` must be a single non-missing number.", call. = FALSE)
+      if (!is.numeric(max) || length(max) != 1L || is.na(max))
+        stop("`max` must be a single non-missing number.", call. = FALSE)
+      if (min > max)
+        stop("`min` must not exceed `max`.", call. = FALSE)
+
+
+      if (!is.numeric(x)) return(FALSE)
+      n <- length(x)
+      if (n == 0L) return(FALSE)
+      if (type == "numeric" && n != 1L) return(FALSE)
+      if (anyNA(x)) return(FALSE)
+
+      if (isTRUE(min_inclusive)) {
+        if (!all(x >= min)) return(FALSE)
+      } else if (!all(x > min)) return(FALSE)
+
+      if (isTRUE(max_inclusive)) {
+        if (!all(x <= max)) return(FALSE)
+      } else if (!all(x < max)) return(FALSE)
+
+      if (isTRUE(integer)) {
+        if (!all(is.finite(x))) return(FALSE)
+        if (!all(x == round(x))) return(FALSE)
+      }
+      TRUE
+    },
+
+    bool = {
+      is.logical(x) && length(x) == 1L && !is.na(x)
+    },
+
+    character = {
+      if (!is.null(choices) && !is.character(choices))
+        stop("`choices` must be a character vector or NULL.", call. = FALSE)
+
+      if (!is.character(x) || length(x) != 1L || is.na(x)) return(FALSE)
+      if (is.null(choices)) return(TRUE)
+
+      if (isTRUE(case_insensitive)) {
+        tolower(x) %in% tolower(choices)
+      } else {
+        x %in% choices
+      }
+    }
+  )
+}

@@ -24,21 +24,30 @@
 #' # Use the default convergence parameters
 #' convergence <- imr_convergence()
 #' print(convergence)
-#'
 imr_convergence <- function(maxit = 600,
                             thresh = 1e-5,
                             trace = FALSE,
+                            huber_max_sample = 1e5,
                             ls_initial = TRUE) {
+
+  stopifnot(.imr_check_param(maxit, "numeric", 1, integer = TRUE))
+  stopifnot(.imr_check_param(thresh, "numeric", 0))
+  stopifnot(.imr_check_param(trace, "bool"))
+  stopifnot(.imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE))
+  stopifnot(.imr_check_param(ls_initial, "bool"))
+
   structure(
     list(
       maxit = maxit,
       thresh = thresh,
       trace = trace,
+      huber_max_sample = huber_max_sample,
       ls_initial = ls_initial
     ),
     class = "imr_convergence"
   )
 }
+
 
 #' Fit an IMR Model
 #'
@@ -138,6 +147,7 @@ imr_fit <- function(
     lambda_m = 0,
     lambda_beta = 0,
     lambda_gamma = 0,
+    huber_shift = 0,
     convergence = imr_convergence(),
     warm_start = NULL,
     training = FALSE # if training use y_train instead of Y.
@@ -145,7 +155,7 @@ imr_fit <- function(
   # validation
   stopifnot(inherits(data, "imr_data"))
   stopifnot(inherits(convergence, "imr_convergence"))
-
+  stopifnot(.imr_check_param(huber_shift, 0))
 
   if (inherits(warm_start, "imr_fit")) {
     warm_start <- warm_start$coefficients
@@ -175,10 +185,14 @@ imr_fit <- function(
     shared_beta = model$shared_beta,
     shared_gamma = model$shared_gamma,
     convergence = convergence,
-    warm_start = warm_start
+    warm_start = warm_start,
+    huber_shift = huber_shift
   )
 
-  # 5. Construct Final Object
+  #  Construct meta data
+
+  # compute the sum of squares only when fitting on the full data (to avoid unnecessary computations
+  # during cross-validation)
   if (!training) {
     ss <- function(x) sum((x - mean(x))^2)
     sum_squares <- list(
@@ -236,6 +250,22 @@ imr_fit <- function(
   } else {
     sum_squares <- NULL
   }
+  # robustness information
+  if(huber_shift > 0 && !training){
+    robs <- result_list$residuals@x
+    huber_c <- result_list$huber_c
+    nobs <- length(robs)
+    n_clip <- sum(abs(robs) > huber_c)
+    huber_meta <- list(
+      shift        = huber_shift,
+      huber_c      = huber_c,
+      n_clipped    = n_clip,
+      prop_clipped = n_clip / nobs,
+      max_sample   = convergence$huber_max_sample
+    )
+  } else   huber_meta <- NULL
+
+  # -- return results and meta data
   structure(
     list(
       coefficients = list(
@@ -258,6 +288,7 @@ imr_fit <- function(
         n_iter = result_list$n_iter,
         converged = result_list$n_iter < convergence$maxit,
         training = training,
+        huber = huber_meta,
         # statistic for print function
         sum_squares = sum_squares
       ),
@@ -281,7 +312,8 @@ imr_solver <- function(
     r, lambda_m, lambda_beta, lambda_gamma,
     Ur, dr, Uc, dc,
     convergence,
-    warm_start
+    warm_start,
+    huber_shift
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
@@ -699,6 +731,8 @@ print.imr_fit <- function(x, ...) {
     cat("\n-- Fit (in-sample, on observed entries) --\n")
     cat(sprintf("RMSE       : %s\n", .imr_fmt_num(rmse)))
     cat(sprintf("Pseudo R2  : %s\n", r2_str))
+    f (!is.null(x$meta$huber))
+    cat("(The Huber objective was minimised)\n")
   }
 
   # --- 4. Hyperparameters ---
@@ -716,6 +750,15 @@ print.imr_fit <- function(x, ...) {
   if (has_low_rank) {
     cat(sprintf("Row Similarity    : %s\n", ifelse(x$model$row_similarity, "Active", "None")))
     cat(sprintf("Column Similarity : %s", ifelse(x$model$col_similarity, "Active", "None")))
+  }
+  if (!is.null(x$meta$huber)) {
+    hb <- x$meta$huber
+    cat("Loss              : Huber (robust)\n")
+    cat(sprintf("Huber shift       : %s\n", .imr_fmt_num(hb$shift)))
+    cat(sprintf("Huber c (final)   : %s\n", .imr_fmt_num(hb$huber_c)))
+    cat(sprintf("Clipped residuals : %s obs (%s)\n",
+                format(hb$n_clipped, big.mark = ", ", scientific = FALSE),
+                .imr_fmt_pct(100 * hb$prop_clipped)))
   }
 
   cat("\n====================================================\n")
@@ -764,6 +807,22 @@ summary.imr_fit <- function(object, ...) {
   cat(sprintf("MSE                     : %s\n", .imr_fmt_num(rss / n)))
   r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else .imr_fmt_pct(100 * r2)
   cat(sprintf("Pseudo R2 (1 - RSS/SST) : %s\n", r2_str))
+
+  if (!is.null(object$meta$huber)) {
+    hb <- object$meta$huber
+    r  <- object$residuals@x
+    cat(sprintf("Median abs. residual    : %s\n",
+                .imr_fmt_num(stats::median(abs(r)))))
+    cat(sprintf("Robust scale (IQR/1.349): %s\n",
+                .imr_fmt_num(stats::IQR(r) / 1.349)))
+    cat(sprintf("Clipped residuals       : %s (%s)\n",
+                format(hb$n_clipped, big.mark = ", ", scientific = FALSE),
+                .imr_fmt_pct(100 * hb$prop_clipped)))
+    cat("\nFitted with the Huber loss (shift = ",
+        .imr_fmt_num(hb$shift), ", final c = ", .imr_fmt_num(hb$huber_c), ").\n",
+        sep = "")
+  }
+
 
   cat("\nVariance Decomposition (share of explained variance)")
   cat("\n-------------------------------------------------------------\n")
@@ -895,6 +954,10 @@ print.imr_convergence <- function(x, ...) {
   # 3. Trace/Verbosity
   trace_status <- if (x$trace) "Enabled" else "Disabled"
   cat(sprintf("Trace Progress: %s\n", trace_status))
+
+  # 4. Huber max sample
+  huber_str <- format(x$huber_max_sample, big.mark = ",", scientific = FALSE)
+  cat(sprintf("Huber Subsample: %s\n", huber_str))
 
   cat("================================\n")
   invisible(x)
