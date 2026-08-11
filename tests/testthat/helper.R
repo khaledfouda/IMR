@@ -124,3 +124,13 @@ generate_simulated_data <- function(
 silent <- function(x){
   suppressMessages(invisible(capture.output(x)))
 }
+#----------------------------------
+# Equivalent implementations in R for the cpp Huber functions
+#-----------------------------------------
+update_huber_c_R <- function(yx, huber_shift, c_old) {
+  d <-  stats::IQR(yx) / 1.349
+  min(huber_shift * d, c_old)
+}
+huber_clip_R <- function(yx, huber_c) {
+  pmin(pmax(yx, -huber_c), huber_c)
+}

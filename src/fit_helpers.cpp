@@ -204,6 +204,173 @@ double frob_ratio_cpp(const arma::mat& Uold,  const arma::vec& Dsqold, const arm
   return num / std::max(denom, 1e-9);
 }
 
+// --------------------------------------------------------------------------
+// Huber helpers
+//
+// rho_c(u) = u^2/2 for |u| <= c
+//          = c |u| - c^2/2 otherwise
+// psi_c(u) = rho_c'(u) = max(-c, min(c,u)) # we apply this to the residuals
+//
+// `update_huber_c_cpp` computes the tuning constant, c.
+// `huber_clip_cpp` apply psi_c element-wise to an input vector.
+// ------------------------------------------------------------------
+
+// Inter-quartile range
+// R equivalence: stats::IQR(x, type=7) = quantile(x, 3/4, type=7) - quantile(x, 1/4, type=7)
+static double iqr_type7_(std::vector<double>&  v) {
+
+  const std::ptrdiff_t n = static_cast<std::ptrdiff_t>(v.size());
+  if(n < 3) return 0; // must have more than 3 observations for peace of mind
+
+  // from stats::IQR docs we have k = 1 + (n-1)p
+  // we subtract 1 because cpp is 0-based. so we compute k = (n-1)p
+  const double k_lo = 0.25 * static_cast<double>(n-1);
+  const double k_hi = 0.75 * static_cast<double>(n-1);
+  // j is the floor of k. j = floor(np+m)
+  const std::ptrdiff_t j_lo = static_cast<std::ptrdiff_t>(std::floor(k_lo));
+  const std::ptrdiff_t j_hi = static_cast<std::ptrdiff_t>(std::floor(k_hi));
+  // g = k - j in [0,1) (g is gamma in stats::IQR definition)
+  const double g_lo = k_lo - static_cast<double>(j_lo);
+  const double g_hi = k_hi - static_cast<double>(j_hi);
+
+  // Q(p) = (1-g) v[i] + g v[i+1]
+  double a_lo, b_lo, a_hi, b_hi;
+  // compute upper quartile
+  // partition the vector and leaves the j_hi smallest elements in [0, j_hi).
+  // partial sort. we only need j_hi, h_lo+1 to be in place.
+  std::nth_element(v.begin(), v.begin() + j_hi, v.end());
+  a_hi = v[j_hi];
+  b_hi = (g_hi > 0.0)
+    ? *std::min_element(v.begin() + j_hi + 1, v.end())
+      : a_hi;
+
+  // lower quartile inside [0, j_hi + 1)
+  std::nth_element(v.begin(), v.begin() + j_lo + 1, v.begin() + j_hi + 1);
+  b_lo = v[j_lo + 1];
+  a_lo = *std::max_element(v.begin(), v.begin() + j_lo + 1);
+
+  // return (1-g)*a + g*b
+  const double q_lo = (g_lo > 0.0 && b_lo != a_lo)
+    ? (1.0 - g_lo) * a_lo + g_lo * b_lo : a_lo;
+  const double q_hi = (g_hi > 0.0 && b_hi != a_hi)
+    ? (1.0 - g_hi) * a_hi + g_hi * b_hi : a_hi;
+
+  return q_hi - q_lo;
+
+}
+
+// update Huber c .. fill description later
+
+// [[Rcpp::export]]
+double update_huber_c_cpp(const NumericVector yx,
+                          const double huber_shift,
+                          const double c_old,
+                          const int max_sample = 100000) {
+
+  if (ISNAN(huber_shift) || ISNAN(c_old))
+    Rcpp::stop("update_huber_c_cpp: `huber_shift` and `c_old` must not be NA/NaN.");
+
+  const R_xlen_t n = yx.size();
+  const double* p_x = REAL(yx);
+
+  //std::vector<double> v(p_x, p_x + n);
+
+  // nth_element permutes its input, so a copy is mandatory; the copy is a memcpy
+  std::vector<double> v;
+
+  if (max_sample <= 0 || n <= static_cast<R_xlen_t>(max_sample)) {
+    // use all data
+    v.assign(p_x, p_x + n);
+
+  } else {
+
+    // work on a sample instead
+    // Sampling is with replacement for a lower computational cost
+    // it shouldn't be a problem for very large vectors which is what sampling is intended for
+    const R_xlen_t m = static_cast<R_xlen_t>(max_sample);
+    const double dn = static_cast<double>(n);
+    const double phi_inv = 0.6180339887498948482;
+
+    v.resize(static_cast<std::size_t>(m));
+
+    for (R_xlen_t t = 0; t < m; ++t) {
+      double u = static_cast<double>(t) * phi_inv;
+      u -= std::floor(u);
+      R_xlen_t idx = static_cast<R_xlen_t>(u* dn);
+      if (idx >= n) idx = n - 1;
+      v[static_cast<std::size_t>(t)] = p_x[idx];
+    }
+  }
+
+  const double d = iqr_type7_(v) / 1.349;
+
+  const double cand = huber_shift * d;
+  return (cand < c_old) ? cand : c_old;
+}
+
+// clip residual vector to the Huber chosen constant
+// [[Rcpp::export]]
+NumericVector huber_clip_cpp(const NumericVector yx, const double huber_c) {
+
+  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_cpp: `huber_c` must not be NA/NaN.");
+  if (huber_c < 0.0)  Rcpp::stop("huber_clip_cpp: `huber_c` must be non-negative.");
+
+  const R_xlen_t n = yx.size();
+  NumericVector out(Rcpp::no_init(n));
+
+  const double* p_x   = REAL(yx);
+  double*       p_out = REAL(out);
+  const double  neg_c = -huber_c;
+
+  for (R_xlen_t k = 0; k < n; ++k) {
+    const double val = p_x[k];
+    // Both comparisons are false for NA/NaN, so `val` passes through intact.
+    p_out[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+void huber_clip_into_cpp(const NumericVector yx,
+                         const double huber_c,
+                         NumericVector out) {
+
+  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_into_cpp: `huber_c` must not be NA/NaN.");
+  if (huber_c < 0.0)  Rcpp::stop("huber_clip_into_cpp: `huber_c` must be non-negative.");
+  if (out.size() != yx.size())
+    Rcpp::stop("huber_clip_into_cpp: `out` and `yx` must have the same length.");
+
+  const double* p_x   = REAL(yx);
+  double*       p_out = REAL(out);
+  const double  neg_c = -huber_c;
+  const R_xlen_t n    = yx.size();
+
+  for (R_xlen_t k = 0; k < n; ++k) {
+    const double val = p_x[k];
+    p_out[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
+  }
+}
+
+// [[Rcpp::export]]
+void huber_clip_inplace_cpp(NumericVector yx, const double huber_c) {
+
+  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_inplace_cpp: `huber_c` must not be NA/NaN.");
+  if (huber_c < 0.0)  Rcpp::stop("huber_clip_inplace_cpp: `huber_c` must be non-negative.");
+
+  double*      p_yx  = REAL(yx);
+  const double neg_c = -huber_c;
+  const R_xlen_t n   = yx.size();
+
+  for (R_xlen_t k = 0; k < n; ++k) {
+    const double val = p_yx[k];
+    p_yx[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
+  }
+}
+
+
+
+
 // The following two functions compute the least-squares updates for A and B
 
 

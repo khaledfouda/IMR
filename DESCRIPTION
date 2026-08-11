@@ -5,8 +5,8 @@ Version: 1.0.0.9000
 Authors@R: c(
     person("Khaled", "Fouda", , "khaled.fouda@hec.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0000-3688-8767")),
-    person("Aurélie", "Labbe", role = c("ths", "ctb")),
-    person("Karim", "Oualkacha", role = c("ths", "ctb")),
+    person("Aurélie", "Labbe", role = c("aut", "ths", "ctb")),
+    person("Karim", "Oualkacha", role = c("aut", "ths", "ctb")),
     person("Korbinian", "Strimmer", role = c("cph", "ctb"),
            comment = "Authored original fast.svd R implementation in the corpcor package")
   )

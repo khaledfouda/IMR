@@ -173,5 +173,7 @@ testthat::test_that("C++/Fortran functions", {
   testthat::expect_equal(actual, expected,
                          info = "Crossprod don't match")
 
+  #--------------------------------------------------------------------------
 
 })
+

@@ -89,6 +89,55 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// update_huber_c_cpp
+double update_huber_c_cpp(const NumericVector yx, const double huber_shift, const double c_old, const int max_sample);
+RcppExport SEXP _IMR_update_huber_c_cpp(SEXP yxSEXP, SEXP huber_shiftSEXP, SEXP c_oldSEXP, SEXP max_sampleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector >::type yx(yxSEXP);
+    Rcpp::traits::input_parameter< const double >::type huber_shift(huber_shiftSEXP);
+    Rcpp::traits::input_parameter< const double >::type c_old(c_oldSEXP);
+    Rcpp::traits::input_parameter< const int >::type max_sample(max_sampleSEXP);
+    rcpp_result_gen = Rcpp::wrap(update_huber_c_cpp(yx, huber_shift, c_old, max_sample));
+    return rcpp_result_gen;
+END_RCPP
+}
+// huber_clip_cpp
+NumericVector huber_clip_cpp(const NumericVector yx, const double huber_c);
+RcppExport SEXP _IMR_huber_clip_cpp(SEXP yxSEXP, SEXP huber_cSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector >::type yx(yxSEXP);
+    Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
+    rcpp_result_gen = Rcpp::wrap(huber_clip_cpp(yx, huber_c));
+    return rcpp_result_gen;
+END_RCPP
+}
+// huber_clip_into_cpp
+void huber_clip_into_cpp(const NumericVector yx, const double huber_c, NumericVector out);
+RcppExport SEXP _IMR_huber_clip_into_cpp(SEXP yxSEXP, SEXP huber_cSEXP, SEXP outSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericVector >::type yx(yxSEXP);
+    Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type out(outSEXP);
+    huber_clip_into_cpp(yx, huber_c, out);
+    return R_NilValue;
+END_RCPP
+}
+// huber_clip_inplace_cpp
+void huber_clip_inplace_cpp(NumericVector yx, const double huber_c);
+RcppExport SEXP _IMR_huber_clip_inplace_cpp(SEXP yxSEXP, SEXP huber_cSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type yx(yxSEXP);
+    Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
+    huber_clip_inplace_cpp(yx, huber_c);
+    return R_NilValue;
+END_RCPP
+}
 // update_A_cpp
 arma::mat update_A_cpp(SEXP yS4, const arma::mat& U, const arma::mat& V, const arma::vec& Dsq, const double lambda_M);
 RcppExport SEXP _IMR_update_A_cpp(SEXP yS4SEXP, SEXP USEXP, SEXP VSEXP, SEXP DsqSEXP, SEXP lambda_MSEXP) {
@@ -196,6 +245,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_add_to_rows_inplace_cpp", (DL_FUNC) &_IMR_add_to_rows_inplace_cpp, 3},
     {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 3},
     {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
+    {"_IMR_update_huber_c_cpp", (DL_FUNC) &_IMR_update_huber_c_cpp, 4},
+    {"_IMR_huber_clip_cpp", (DL_FUNC) &_IMR_huber_clip_cpp, 2},
+    {"_IMR_huber_clip_into_cpp", (DL_FUNC) &_IMR_huber_clip_into_cpp, 3},
+    {"_IMR_huber_clip_inplace_cpp", (DL_FUNC) &_IMR_huber_clip_inplace_cpp, 2},
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
     {"_IMR_update_A_sim_cpp", (DL_FUNC) &_IMR_update_A_sim_cpp, 6},
     {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},

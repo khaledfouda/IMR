@@ -25,6 +25,22 @@ frob_ratio_cpp <- function(Uold, Dsqold, Vold, U, Dsq, V) {
     .Call(`_IMR_frob_ratio_cpp`, Uold, Dsqold, Vold, U, Dsq, V)
 }
 
+update_huber_c_cpp <- function(yx, huber_shift, c_old, max_sample = 100000L) {
+    .Call(`_IMR_update_huber_c_cpp`, yx, huber_shift, c_old, max_sample)
+}
+
+huber_clip_cpp <- function(yx, huber_c) {
+    .Call(`_IMR_huber_clip_cpp`, yx, huber_c)
+}
+
+huber_clip_into_cpp <- function(yx, huber_c, out) {
+    invisible(.Call(`_IMR_huber_clip_into_cpp`, yx, huber_c, out))
+}
+
+huber_clip_inplace_cpp <- function(yx, huber_c) {
+    invisible(.Call(`_IMR_huber_clip_inplace_cpp`, yx, huber_c))
+}
+
 update_A_cpp <- function(yS4, U, V, Dsq, lambda_M) {
     .Call(`_IMR_update_A_cpp`, yS4, U, V, Dsq, lambda_M)
 }

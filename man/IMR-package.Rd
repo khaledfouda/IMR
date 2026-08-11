@@ -27,12 +27,12 @@ Useful links:
 Authors:
 \itemize{
   \item Khaled Fouda \email{khaled.fouda@hec.ca} (\href{https://orcid.org/0009-0000-3688-8767}{ORCID})
+  \item Aurélie Labbe [thesis advisor, contributor]
+  \item Karim Oualkacha [thesis advisor, contributor]
 }
 
 Other contributors:
 \itemize{
-  \item Aurélie Labbe [thesis advisor, contributor]
-  \item Karim Oualkacha [thesis advisor, contributor]
   \item Korbinian Strimmer (Authored original fast.svd R implementation in the corpcor package) [copyright holder, contributor]
 }
 
