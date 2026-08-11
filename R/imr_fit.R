@@ -330,6 +330,7 @@ imr_solver <- function(
   thresh <- convergence$thresh
   trace <- convergence$trace
   ls_initial <- convergence$ls_initial
+  huber_max_samples <- convergence$huber_max_sample
 
   # flags -------------------
   huber_flag <- huber_shift > 0
@@ -345,6 +346,11 @@ imr_solver <- function(
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
+  if(huber_flag){
+    huber_c <- Inf # initial value. accept all observations.
+    excess <- numeric(length(Y@x)) # to hold the difference after applying huber loss.
+  }
+
 
   # 3) Warm-start or initialize ------------------------------------------------
   if (!is.null(warm_start)) {
@@ -487,6 +493,12 @@ imr_solver <- function(
     beta_old <- beta
     gamma_old <- gamma
 
+    if(huber_flag) {
+      huber_c <- update_huber_c_cpp(Y@x, huber_shift, huber_c, huber_max_samples)
+      huber_clip_inplace_cpp(Y@x, huber_c, excess) # updates both Y@x and excess vectors
+    }
+
+
     if (low_rank_flag) {
       #  Update (V, Dsq, U) from the "B" side --------------------------------
       # B_mat = BD
@@ -595,6 +607,10 @@ imr_solver <- function(
       add_to_cols_inplace_cpp(Y@x, pcol, change)
     }
 
+    #---------------------------------------------------------------------------
+    # undo the changes to the huber vector.
+    if(huber_flag) add_inplace_cpp(Y@x, 1, excess)
+
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- 0
     if (low_rank_flag) {
@@ -613,12 +629,14 @@ imr_solver <- function(
       }
     }
     if (trace) {
-      obj <- (0.5 * sum(Y@x^2) +
+      loss <- if(huber_flag) huber_loss_cpp(Y@x, huber_c) else 0.5 * sum(Y@x^2)
+      obj <- (loss +
                 ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
                 ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
                 ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
-      cat(iter, " obj=", round(obj, 5), " ratio=", ratio, "\n")
+      cat(iter, " loss=", loss ," obj=", round(obj, 5), " ratio=", ratio,
+          if (huber_flag) sprintf(" c=%.4g", huber_c) else "", "\n")
     }
   }
   if (iter == maxit) {
@@ -638,6 +656,7 @@ imr_solver <- function(
     u = U,
     d = Dsq,
     v = V,
+    huber_c = ifelse(huber_flag, huber_c, NULL),
     beta = beta,
     gamma = gamma,
     beta0 = beta0,

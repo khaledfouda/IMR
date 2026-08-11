@@ -33,14 +33,6 @@ update_huber_c_cpp <- function(yx, huber_shift, c_old, max_sample = 100000L) {
     .Call(`_IMR_update_huber_c_cpp`, yx, huber_shift, c_old, max_sample)
 }
 
-huber_clip_cpp <- function(yx, huber_c) {
-    .Call(`_IMR_huber_clip_cpp`, yx, huber_c)
-}
-
-huber_clip_into_cpp <- function(yx, huber_c, out) {
-    invisible(.Call(`_IMR_huber_clip_into_cpp`, yx, huber_c, out))
-}
-
 huber_clip_inplace_cpp <- function(y, huber_c, excess) {
     invisible(.Call(`_IMR_huber_clip_inplace_cpp`, y, huber_c, excess))
 }

@@ -322,48 +322,46 @@ double update_huber_c_cpp(const NumericVector yx,
 }
 
 // clip residual vector to the Huber chosen constant
-// [[Rcpp::export]]
-NumericVector huber_clip_cpp(const NumericVector yx, const double huber_c) {
+// NumericVector huber_clip_cpp(const NumericVector yx, const double huber_c) {
+//
+//   if (ISNAN(huber_c)) Rcpp::stop("huber_clip_cpp: `huber_c` must not be NA/NaN.");
+//   if (huber_c < 0.0)  Rcpp::stop("huber_clip_cpp: `huber_c` must be non-negative.");
+//
+//   const R_xlen_t n = yx.size();
+//   NumericVector out(Rcpp::no_init(n));
+//
+//   const double* p_x   = REAL(yx);
+//   double*       p_out = REAL(out);
+//   const double  neg_c = -huber_c;
+//
+//   for (R_xlen_t k = 0; k < n; ++k) {
+//     const double val = p_x[k];
+//     // Both comparisons are false for NA/NaN, so `val` passes through intact.
+//     p_out[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
+//   }
+//
+//   return out;
+// }
 
-  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_cpp: `huber_c` must not be NA/NaN.");
-  if (huber_c < 0.0)  Rcpp::stop("huber_clip_cpp: `huber_c` must be non-negative.");
-
-  const R_xlen_t n = yx.size();
-  NumericVector out(Rcpp::no_init(n));
-
-  const double* p_x   = REAL(yx);
-  double*       p_out = REAL(out);
-  const double  neg_c = -huber_c;
-
-  for (R_xlen_t k = 0; k < n; ++k) {
-    const double val = p_x[k];
-    // Both comparisons are false for NA/NaN, so `val` passes through intact.
-    p_out[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
-  }
-
-  return out;
-}
-
-// [[Rcpp::export]]
-void huber_clip_into_cpp(const NumericVector yx,
-                         const double huber_c,
-                         NumericVector out) {
-
-  if (ISNAN(huber_c)) Rcpp::stop("huber_clip_into_cpp: `huber_c` must not be NA/NaN.");
-  if (huber_c < 0.0)  Rcpp::stop("huber_clip_into_cpp: `huber_c` must be non-negative.");
-  if (out.size() != yx.size())
-    Rcpp::stop("huber_clip_into_cpp: `out` and `yx` must have the same length.");
-
-  const double* p_x   = REAL(yx);
-  double*       p_out = REAL(out);
-  const double  neg_c = -huber_c;
-  const R_xlen_t n    = yx.size();
-
-  for (R_xlen_t k = 0; k < n; ++k) {
-    const double val = p_x[k];
-    p_out[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
-  }
-}
+// void huber_clip_into_cpp(const NumericVector yx,
+//                          const double huber_c,
+//                          NumericVector out) {
+//
+//   if (ISNAN(huber_c)) Rcpp::stop("huber_clip_into_cpp: `huber_c` must not be NA/NaN.");
+//   if (huber_c < 0.0)  Rcpp::stop("huber_clip_into_cpp: `huber_c` must be non-negative.");
+//   if (out.size() != yx.size())
+//     Rcpp::stop("huber_clip_into_cpp: `out` and `yx` must have the same length.");
+//
+//   const double* p_x   = REAL(yx);
+//   double*       p_out = REAL(out);
+//   const double  neg_c = -huber_c;
+//   const R_xlen_t n    = yx.size();
+//
+//   for (R_xlen_t k = 0; k < n; ++k) {
+//     const double val = p_x[k];
+//     p_out[k] = (val > huber_c) ? huber_c : ((val < neg_c) ? neg_c : val);
+//   }
+// }
 
 //type later: similar to above but in-place and returns the difference since it's needed
 // [[Rcpp::export]]
@@ -386,6 +384,24 @@ void huber_clip_inplace_cpp(NumericVector y, const double huber_c,
     p_y[k] = psi;
     p_e[k] = val - psi;
   }
+}
+
+// [[Rcpp::export]]
+double huber_loss_cpp(const NumericVector yx, const double huber_c) {
+
+  if (ISNAN(huber_c)) Rcpp::stop("huber_loss_cpp: `huber_c` must not be NA/NaN.");
+  if (huber_c < 0.0)  Rcpp::stop("huber_loss_cpp: `huber_c` must be non-negative.");
+
+  const double*  p_x  = REAL(yx);
+  const R_xlen_t n    = yx.size();
+  const double   half = 0.5 * huber_c * huber_c;
+  double         s    = 0.0;
+
+  for (R_xlen_t k = 0; k < n; ++k) {
+    const double a = std::fabs(p_x[k]);
+    s += (a <= huber_c) ? 0.5 * a * a : huber_c * a - half;
+  }
+  return s;
 }
 
 //-----------------------------------------------
