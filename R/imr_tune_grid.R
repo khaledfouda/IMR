@@ -139,47 +139,72 @@ print.imr_tune_grid <- function(x, ...) {
 #' @title Automatically Determine Hyperparameter Grid Maximum Values
 #'
 #' @description
-#' Computes the optimal upper bounds for the hyperparameter tuning
-#' grid when specifications are set to `"auto"`. The function identifies the
-#' minimal regularization parameter required to shrink all corresponding
-#' coefficients to zero.
+#' Computes the upper bounds for the hyperparameter tuning grid when
+#' specifications are set to `"auto"`. For each penalty, the function returns
+#' the smallest value that shrinks the corresponding component exactly to zero.
 #'
 #' @param data An object of class `"imr_data"` containing the response matrices
 #'   and covariate structures.
 #' @param grid An object of class `"imr_tune_grid"`, initialized via
 #'   `imr_tune_grid()`.
-#' @param default_rank,default_lambda_m Integer,Numeric. The fixed rank and low-rank component
-#'   penalty used as reference when
-#'   estimating the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}.
-#'   Default to `2` and `0`.
+#' @param default_rank,default_lambda_m Integer,Numeric. The fixed rank and
+#'   low-rank penalty used as reference when estimating the maximum
+#'   \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}. Default to `2` and `0`.
+#'   Ignored when estimating \eqn{\lambda_M}, whose bound does not depend on
+#'   the rank.
 #' @param default_lambda_beta,default_lambda_gamma Numeric. The row and column
-#'   covariate penalties used as
-#'   a reference when estimating the maximum \eqn{\lambda_M}. Defaults to `0`.
+#'   covariate penalties used as a reference when estimating the maximum
+#'   \eqn{\lambda_M}. Defaults to `0`.
+#' @param huber_shift Numeric. Passed to [imr_fit()] for every internal fit. A
+#'   grid computed under least squares is the wrong grid for a robust fit; see
+#'   Details. Defaults to `0`.
 #' @param convergence An `"imr_convergence"` object specifying the numerical
 #'   tolerances and optimization parameters for internal model fits. Defaults
 #'   to `imr_convergence(trace = FALSE, ls_initial = FALSE)`.
-#' @param bisection_iter Integer. The number of iterations for the bisection
-#'   algorithm employed to refine the estimated upper bound. Defaults to `5`.
+#' @param training Logical. If `TRUE` (the default), bounds are computed on the
+#'   training split, matching the fits [imr_tune()] performs. Set to `FALSE`
+#'   only when the data object has no validation split.
+#' @param verify_iter Integer. Number of model fits used to confirm that the
+#'   computed bound does zero the target, doubling it if not. `0` returns the
+#'   analytic value without fitting. Defaults to `1`.
+#' @param refine_iter Integer. Number of log-scale bisection steps used to
+#'   reduce the bound after verification. `0` (the default) keeps the analytic
+#'   value; see Details.
+#' @param bisection_iter `r lifecycle::badge("deprecated")` Former name of the
+#'   refinement budget. If supplied, it is used for both `verify_iter` and
+#'   `refine_iter` with a warning.
 #' @param verbose Integer. Level of diagnostic output. `0` (default) is silent,
-#'   `1` reports final parameters, and `2` provides per-iteration updates.
+#'   `1` reports the bound for each parameter, and `2` provides per-fit updates.
 #'
 #' @details
-#' The procedure isolates each hyperparameter to determine its saturation
-#' point through a two-stage estimation process:
-#' \enumerate{
-#'   \item An initial theoretical upper bound is
-#'     derived based on the Karush-Kuhn-Tucker (KKT)  conditions.
-#'   \item The function executes a bisection search over
-#'     `bisection_iter` iterations using KKT estimates as initial values. This identifies the minimum
-#'     of the penalty values that result in a zero-solution for the
-#'     targeted parameters.
-#' }
+#' For a convex penalty the stationarity condition at the null solution is an
+#' equivalence, not a bound: \eqn{\hat\theta = 0} minimises
+#' \eqn{\ell(\theta) + \lambda\,\Omega(\theta)} if and only if
+#' \eqn{\|\nabla\ell(0)\|_* \le \lambda}, where \eqn{\|\cdot\|_*} is the dual
+#' norm of \eqn{\Omega}. The maxima are therefore computed in closed form from
+#' the residuals of a model fitted without the target component:
+#' \eqn{\sigma_1(P_\Omega^*(r))} for \eqn{\lambda_M}, and a maximum absolute
+#' entry of \eqn{X^\top P_\Omega^*(r)} or \eqn{P_\Omega^*(r) Z} for the
+#' covariate penalties. When `shared_beta` or `shared_gamma` is active the
+#' gradient is summed across columns or rows before the maximum is taken, since
+#' every entry contributes to the same coefficient.
 #'
-#' During the estimation of the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma},
-#' the other covariate penalty is treated as infinite, while the
-#' low-rank component is set to `default_rank` and `default_lambda_m`.
-#' Conversely, estimation of the maximum \eqn{\lambda_M} (nuclear norm penalty)
-#' assumes the covariate penalties are fixed at `default_lambda_beta` and
+#' `verify_iter` and `refine_iter` exist as diagnostics. Because the analytic
+#' value is exact, a refinement that returns a materially smaller number
+#' indicates that the internal fits are stopping before their coefficients
+#' reach zero, and is better addressed through a smaller `thresh` in
+#' [imr_convergence()] than by lowering the grid maximum.
+#'
+#' Under the Huber loss the gradient involves the clipped residual
+#' \eqn{\psi_c(r)} rather than \eqn{r}, so all three maxima are smaller, often
+#' substantially so when the data are contaminated. `huber_shift` must
+#' therefore match the value later passed to [imr_tune()].
+#'
+#' During the estimation of the maximum \eqn{\lambda_\beta} or
+#' \eqn{\lambda_\Gamma}, the other covariate penalty is held at
+#' `default_lambda_gamma` or `default_lambda_beta` and the low-rank component
+#' at `default_rank` and `default_lambda_m`. Conversely, estimation of
+#' \eqn{\lambda_M} holds the covariate penalties at `default_lambda_beta` and
 #' `default_lambda_gamma`.
 #'
 #' @return A modified `"imr_tune_grid"` object where all `"auto"` placeholders
@@ -195,40 +220,70 @@ imr_set_grid_limits <- function(data,
                                 default_lambda_m = 0,
                                 default_lambda_beta = 0,
                                 default_lambda_gamma = 0,
+                                huber_shift = 0,
                                 convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
-                                bisection_iter = 5,
+                                training = TRUE,
+                                verify_iter = 1L,
+                                refine_iter = 0L,
+                                bisection_iter = NULL,
                                 verbose = 0) {
-  if (data$model$row_covariates && data$meta$has_X && grid$beta$max == "auto") {
-    grid$beta$max <- imr_get_lambda_lasso_max(data, "beta",
-      rank = default_rank,
-      lambda_m = default_lambda_m,
-      convergence = convergence,
-      bisection_iter = bisection_iter,
-      verbose = verbose
-    )
-  }
-  if (data$model$col_covariates && data$meta$has_Z && grid$gamma$max == "auto") {
-    grid$gamma$max <- imr_get_lambda_lasso_max(data, "gamma",
-      rank = default_rank,
-      lambda_m = default_lambda_m,
-      convergence = convergence,
-      bisection_iter = bisection_iter,
-      verbose = verbose
-    )
-  }
-  if (data$model$low_rank_component && grid$nuclear$max == "auto") {
-    grid$nuclear$max <- imr_get_lambda_m_max(data,
-      rank = default_rank,
-      lambda_beta = default_lambda_beta,
-      lambda_gamma = default_lambda_gamma,
-      convergence = convergence,
-      bisection_iter = bisection_iter,
-      verbose = verbose
-    )
-  }
-  return(grid)
-}
 
+  stopifnot(
+    inherits(data, "imr_data"),
+    inherits(grid, "imr_tune_grid"),
+    inherits(convergence, "imr_convergence"),
+    .imr_check_param(huber_shift, "numeric", 0),
+    .imr_check_param(training, "bool"),
+    .imr_check_param(verify_iter, "numeric", 0, integer = TRUE),
+    .imr_check_param(refine_iter, "numeric", 0, integer = TRUE)
+  )
+
+  # Back-compatibility for `bisection_iter`. delete after checking the examples and vignette
+  # Also make sure the package code is updated
+  if (!is.null(bisection_iter)) {
+    warning("`bisection_iter` is deprecated; use `verify_iter` and `refine_iter`.",
+            call. = FALSE)
+    verify_iter <- max(1L, as.integer(bisection_iter))
+    refine_iter <- as.integer(bisection_iter)
+  }
+
+  common <- list(
+    data = data, huber_shift = huber_shift, convergence = convergence,
+    training = training, verify_iter = verify_iter, refine_iter = refine_iter,
+    verbose = verbose
+  )
+
+  # max for beta
+  if (data$model$row_covariates && data$meta$has_X &&
+      identical(grid$beta$max, "auto")) {
+    grid$beta$max <- do.call(imr_lambda_max, c(common, list(
+      target = "beta",
+      rank = default_rank, lambda_m = default_lambda_m,
+      lambda_gamma = default_lambda_gamma
+    )))
+  }
+
+  # max for gamma
+  if (data$model$col_covariates && data$meta$has_Z &&
+      identical(grid$gamma$max, "auto")) {
+    grid$gamma$max <- do.call(imr_lambda_max, c(common, list(
+      target = "gamma",
+      rank = default_rank, lambda_m = default_lambda_m,
+      lambda_beta = default_lambda_beta
+    )))
+  }
+
+  # max for M
+  if (data$model$low_rank_component && identical(grid$nuclear$max, "auto")) {
+    # is M = 0 for any rank, so the bound does not depend on it.
+    grid$nuclear$max <- do.call(imr_lambda_max, c(common, list(
+      target = "nuclear",
+      lambda_beta = default_lambda_beta, lambda_gamma = default_lambda_gamma
+    )))
+  }
+
+  grid
+}
 #------------------------------------------------------
 
 
