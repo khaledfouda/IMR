@@ -320,7 +320,7 @@ imr_solver <- function(
   dims <- dim(Y)
   nr <- dims[1]
   nc <- dims[2]
-  nz <- Matrix::nnzero(Y, na.counted = TRUE)
+  nz <- length(Y@x)
   irow <- Y@i
   pcol <- Y@p
   Y@x <- Y@x + 0 # force a copy so the original matrix doesn't get modified by C++
@@ -347,7 +347,8 @@ imr_solver <- function(
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
   if(huber_flag){
-    huber_c <- Inf # initial value. accept all observations.
+    huber_c <- Inf # initial value. accept all observations. needs to be high because it goes down
+    c_old <- 0 # keep it non-Inf to avoid NaN ratio values
     excess <- numeric(length(Y@x)) # to hold the difference after applying huber loss.
   }
 
@@ -628,16 +629,31 @@ imr_solver <- function(
         ratio <- ratio + sum((gamma_old - gamma)^2) / denom
       }
     }
+    if(huber_flag) {
+      huber_ratio <- ((huber_c - c_old)/c_old)^2
+      c_old <- huber_c
+    }
     if (trace) {
-      loss <- if(huber_flag) huber_loss_cpp(Y@x, huber_c) else 0.5 * sum(Y@x^2)
+      st <- huber_loss_cpp(Y@x, if(huber_flag) huber_c else Inf) # works for both huber and frob
+      loss <- st[1]
+      sae <- st[2]
+      rmse <- sqrt(2 * loss / nz)
+      mae <- sae / nz
       obj <- (loss +
                 ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
                 ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
                 ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
-      cat(iter, " loss=", loss ," obj=", round(obj, 5), " ratio=", ratio,
-          if (huber_flag) sprintf(" c=%.4g", huber_c) else "", "\n")
+
+      cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae%9.4f%s\n",
+                  iter, obj, ratio, rmse, mae,
+          if (huber_flag) sprintf("Huber: [c=%.4g, ratio=%2.3e, clip=%.1f%%]",
+                                  huber_c, huber_ratio, 100*st[3]/nz)
+          else ""))
     }
+    # add huber ratio the total ratio (huber ratio is NaN in the first iteration)
+    if(huber_flag && iter != 1) ratio <- ratio + huber_ratio
+
   }
   if (iter == maxit) {
     message("Did not converge in ", maxit, " iterations.")
@@ -771,7 +787,7 @@ print.imr_fit <- function(x, ...) {
   }
   if (has_low_rank) {
     cat(sprintf("Row Similarity    : %s\n", ifelse(x$model$row_similarity, "Active", "None")))
-    cat(sprintf("Column Similarity : %s", ifelse(x$model$col_similarity, "Active", "None")))
+    cat(sprintf("Column Similarity : %s\n", ifelse(x$model$col_similarity, "Active", "None")))
   }
   if (!is.null(x$meta$huber)) {
     hb <- x$meta$huber

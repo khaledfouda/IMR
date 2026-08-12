@@ -391,7 +391,7 @@ void huber_clip_inplace_cpp(NumericVector y, const double huber_c,
 }
 
 // [[Rcpp::export]]
-double huber_loss_cpp(const NumericVector yx, const double huber_c) {
+NumericVector huber_loss_cpp(const NumericVector yx, const double huber_c) {
 
   if (ISNAN(huber_c)) Rcpp::stop("huber_loss_cpp: `huber_c` must not be NA/NaN.");
   if (huber_c < 0.0)  Rcpp::stop("huber_loss_cpp: `huber_c` must be non-negative.");
@@ -399,13 +399,20 @@ double huber_loss_cpp(const NumericVector yx, const double huber_c) {
   const double*  p_x  = REAL(yx);
   const R_xlen_t n    = yx.size();
   const double   half = 0.5 * huber_c * huber_c;
-  double         s    = 0.0;
+  double         loss    = 0.0, sum_abs = 0;
+  R_xlen_t n_clip = 0;
 
   for (R_xlen_t k = 0; k < n; ++k) {
     const double a = std::fabs(p_x[k]);
-    s += (a <= huber_c) ? 0.5 * a * a : huber_c * a - half;
+    sum_abs += a;
+    if (a <= huber_c) {
+      loss += 0.5 * a * a;
+    } else {
+      loss += huber_c * a - half;
+      ++n_clip;
+    }
   }
-  return s;
+  return NumericVector::create(loss, sum_abs, static_cast<double>(n_clip));
 }
 
 //-----------------------------------------------

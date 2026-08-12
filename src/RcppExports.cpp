@@ -128,7 +128,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // huber_loss_cpp
-double huber_loss_cpp(const NumericVector yx, const double huber_c);
+NumericVector huber_loss_cpp(const NumericVector yx, const double huber_c);
 RcppExport SEXP _IMR_huber_loss_cpp(SEXP yxSEXP, SEXP huber_cSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
