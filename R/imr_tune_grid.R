@@ -305,10 +305,11 @@ imr_lambda_max <- function(data,
                            verify_iter = 1L,
                            refine_iter = 0L,
                            zero_tol = 1e-4,
+                           training = TRUE,
                            verbose = 0) {
 
   target <- match.arg(target)
-  training <- isTRUE(data$meta$split_data)
+  if(training) stopifnot(data$meta$split_data)
 
   # --- Null model: turn off the target ---------
   null_data <- data
