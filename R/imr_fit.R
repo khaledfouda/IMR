@@ -251,7 +251,9 @@ imr_fit <- function(
     sum_squares <- NULL
   }
   # robustness information
-  if(huber_shift > 0 && !training){
+  if(huber_shift > 0){
+    if(!training){
+
     robs <- result_list$residuals@x
     huber_c <- result_list$huber_c
     nobs <- length(robs)
@@ -263,8 +265,9 @@ imr_fit <- function(
       prop_clipped = n_clip / nobs,
       max_sample   = convergence$huber_max_sample
     )
-  } else   huber_meta <- NULL
-
+    }
+   else   huber_meta <- list(huber_c = result_list$huber_c)
+} else huber_meta <- NULL
   # -- return results and meta data
   structure(
     list(
