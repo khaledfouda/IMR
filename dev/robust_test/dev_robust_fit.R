@@ -11,7 +11,7 @@ Y[outlier_idx] <- rcauchy(60, scale = 30)
 A <- Y
 test_idx <- sample(length(Y), 300)
 Y[test_idx] <- NA
-d <- update(imr_data(Y = Y, val_prop = 0), row_intercept = TRUE)
+data <- d <- update(imr_data(Y = Y, val_prop = 0), row_intercept = TRUE)
 
 f0 <- imr_fit(d, rank = 3, convergence = imr_convergence(maxit = 30, trace=TRUE))
 f1 <- imr_fit(d, rank = 3, huber_shift = 5,

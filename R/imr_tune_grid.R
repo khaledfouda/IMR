@@ -135,7 +135,7 @@ print.imr_tune_grid <- function(x, ...) {
   invisible(x)
 }
 
-#-----------------------------------------------------
+# -----------------------------------------------------
 #' @title Automatically Determine Hyperparameter Grid Maximum Values
 #'
 #' @description
@@ -230,225 +230,168 @@ imr_set_grid_limits <- function(data,
 }
 
 #------------------------------------------------------
+
+
+#' Dual norm of the loss gradient at the null solution
+#'
+#'  value of the penalty at which the target component is zero.
+#' For convex problems (and this is a convex problem), the KKT value is the supremum
+#'
+#' @param resid An `Incomplete` residual matrix from the model fitted WITHOUT
+#'   the target component, all other parameters at their conditional optimum.
+#' @param target One of "nuclear", "beta", "gamma".
+#' @param data The `imr_data` object (for `Xq`, `Zq`, and the shared flags).
+#' @param huber_c Transition point of the Huber loss, or `Inf` for least
+#'   squares. The gradient involves psi_c(r), not r.
 #' @noRd
-imr_get_lambda_m_max <-
-  function(data,
-           lambda_beta = 0,
-           lambda_gamma = 0,
-           rank = 2,
-           bisection_iter = 15,
-           convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
-           verbose = 0) {
-    need_fit <- any(!is.null(data$Xq), !is.null(data$Zq), data$model$row_intercept, data$model$col_intercept)
+imr_lambda_max_kkt <- function(resid, target, data, huber_c = Inf) {
 
+  R <- resid
+  if (is.finite(huber_c)) R@x <- pmin(pmax(R@x, -huber_c), huber_c)
 
-    if (!need_fit) {
-      lambda_kkt <- svd_opt(data$Y, 1)$d[1]
+  switch(
+    target,
+    # grad = -P_Omega*(psi_c(r)); dual of the nuclear norm is the operator norm
+    nuclear = svd_opt(R, 1)$d[1],
+
+    # Shared effects sum the gradient across columns/rows
+    beta = if (isTRUE(data$model$shared_beta)) {
+      max(abs(crossprod(data$Xq, Matrix::rowSums(R))))
     } else {
-      data$model$low_rank_component <- FALSE
-      fit <- imr_fit(data,
-        rank = 0,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        convergence = convergence
-      )
-      data$model$low_rank_component <- TRUE
-      # return largest singular value
-      lambda_kkt <- svd_opt(fit$residuals, 1)$d[1]
-    }
-    lower <- 0
-    upper <- lambda_kkt
+      max(abs(crossprod(data$Xq, R)))
+    },
 
-    # helper, fits a single model
-    fit_test <- function(lam) {
-      imr_fit(data,
-        rank = rank,
-        lambda_m = lam,
-        lambda_beta = lambda_beta,
-        lambda_gamma = lambda_gamma,
-        convergence = convergence,
-        warm_start = baseline_fit
-      )
-    }
-    baseline_fit <- NULL
-    baseline_fit <- fit_test(0)
+    gamma = if (isTRUE(data$model$shared_gamma)) {
+      max(abs(Matrix::colSums(R) %*% data$Zq))
+    } else {
+      max(abs(R %*% data$Zq))
+    },
 
-    # we begin by adjusting the upper bound (in case the KKT bound isn't enough)
-    for (i in seq_len(bisection_iter)) {
-      coefs <- fit_test(upper)$coefficients$d
-      zero_ratio <- mean(abs(coefs) < 1e-6)
-
-      if (zero_ratio == 1) {
-        # we achieved an upper-bound. Let's return.
-        break
-      } else {
-        # It is not fully sparse. We must try a HIGHER lambda.
-        # upper <- lambda_kkt * (i + 1)
-        lower <- upper
-        upper <- upper * 1.5
-      }
-      if (verbose >= 2) {
-        message(sprintf("parameter = %.4f, zero ratio = %.2f", upper, zero_ratio))
-      }
-    }
-
-    for (i in seq_len(bisection_iter)) {
-      mid <- (lower + upper) / 2
-      coefs <- fit_test(mid)$coefficients$d
-      zero_ratio <- mean(abs(coefs) < 1e-6)
-
-      if (zero_ratio == 1) {
-        # It is fully sparse. We can try a lower lambda.
-        upper <- mid
-      } else {
-        # It is NOT fully sparse. We must try a higher lambda.
-        lower <- mid
-      }
-      if (verbose >= 2) {
-        message(sprintf("parameter = %.4f, zero ratio = %.2f", mid, zero_ratio))
-      }
-    }
-
-    # The upper bound is guaranteed to be the minimum lambda that achieves 100% sparsity
-    lambda_sup <- upper
-
-    if (verbose > 0) {
-      message(sprintf(
-        "Target: nuclear | KKT max: %.3f | Empiric Sup: %.3f (%.1f%% of KKT)",
-        lambda_kkt, lambda_sup, 100 * lambda_sup / lambda_kkt
-      ))
-    }
-
-    return(lambda_sup)
-  }
-#------------------------------------------------
-#' Find the minimum Lasso lambda that forces all covariates to zero
-#' @noRd
-imr_get_lambda_lasso_max <- function(
-  data, # Must be an 'imr_data' S3 object
-  target = c("beta", "gamma"),
-  rank = 2,
-  lambda_m = 0,
-  bisection_iter = 15,
-  convergence = imr_convergence(),
-  verbose = 0
-) {
-  stopifnot(inherits(data, "imr_data"))
-  target <- match.arg(target, c("beta", "gamma"))
-  is_beta <- target == "beta"
-  # remove the other set of covariates from the data.
-  if (is_beta) {
-    data$model$row_covariates <- FALSE
-  } else {
-    data$model$col_covariates <- FALSE
-  }
-
-  if (is_beta && !data$meta$has_X) stop("Target is 'beta' but no X matrix found in data.")
-  if (!is_beta && !data$meta$has_Z) stop("Target is 'gamma' but no Z matrix found in data.")
-
-
-  # ---  Baseline Fit  ---
-  # Fit the model but keep our target penalized to 0
-  baseline_fit <- imr_fit(
-    data = data,
-    rank = rank,
-    lambda_m = lambda_m,
-    lambda_beta = 0,
-    lambda_gamma = 0,
-    convergence = convergence
+    stop("unknown target")
   )
-
-  #-- put them back in the model
-  if (is_beta) {
-    data$model$row_covariates <- TRUE
-  } else {
-    data$model$col_covariates <- TRUE
-  }
-
-  # --- Calculate training Residuals for KKT Conditions ---
-  resids <- baseline_fit$residuals
-
-  # ---  KKT Max  ---
-  # The theoretical minimum lambda that forces all coefs to 0 is max(abs(X^T * Residuals))
-  if (is_beta) {
-    lambda_kkt <- max(abs(crossprod(data$Xq, resids)))
-  } else {
-    lambda_kkt <- max(abs(resids %*% data$Zq))
-  }
-
-  # --- Bisection Search for Supremum ---
-  # Supermum is typicaly smaller than the KKT max due to missing data.
-
-  lower <- 0
-  upper <- lambda_kkt
-
-
-  # Helper to fit a single model
-  fit_test <- function(lam) {
-    imr_fit(
-      data = data,
-      rank = rank,
-      lambda_m = lambda_m,
-      lambda_beta = if (is_beta) lam else 0,
-      lambda_gamma = if (!is_beta) lam else 0,
-      warm_start = baseline_fit,
-      convergence = convergence
-    )
-  }
-  baseline_fit <- NULL
-  baseline_fit <- fit_test(0)
-  # we begin by adjusting the upper bound (in case the KKT bound isn't enough)
-  for (i in seq_len(bisection_iter)) {
-    test_model <- fit_test(upper)
-    # Check if all coefficients are effectively zero
-    coefs <- if (is_beta) test_model$coefficients$beta else test_model$coefficients$gamma
-    zero_ratio <- mean(abs(coefs) < 1e-6)
-
-    if (zero_ratio == 1) {
-      # we achieved an upper-bound. Let's return.
-      break
-    } else {
-      # It is not fully sparse. We must try a HIGHER lambda.
-      # upper <- lambda_kkt * (i + 1)
-      lower <- upper
-      upper <- upper * 1.5
-    }
-    if (verbose >= 2) {
-      message(sprintf("parameter = %.4f, zero ratio = %.2f", upper, zero_ratio))
-    }
-  }
-
-  for (i in seq_len(bisection_iter)) {
-    mid <- (lower + upper) / 2
-    test_model <- fit_test(mid)
-
-    # Check if all coefficients are effectively zero
-    coefs <- if (is_beta) test_model$coefficients$beta else test_model$coefficients$gamma
-    zero_ratio <- mean(abs(coefs) < 1e-6)
-
-    if (zero_ratio == 1) {
-      # It is fully sparse. We can try a lower lambda.
-      upper <- mid
-    } else {
-      # It is NOT fully sparse. We must try a higher lambda.
-      lower <- mid
-    }
-    if (verbose >= 2) {
-      message(sprintf("parameter = %.4f, zero ratio = %.2f", mid, zero_ratio))
-    }
-  }
-
-  # The upper bound is guaranteed to be the minimum lambda that achieves 100% sparsity
-  lambda_sup <- upper
-
-  if (verbose > 0) {
-    message(sprintf(
-      "Target: %s | KKT max: %.3f | Empiric Sup: %.3f (%.1f%% of KKT)",
-      ifelse(is_beta, "Beta", "Gamma"), lambda_kkt, lambda_sup, 100 * lambda_sup / lambda_kkt
-    ))
-  }
-
-  return(lambda_sup)
 }
 
-#-----------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+#' Penalty value at which a model is exactly zero
+#'
+#' Computes the KKT bound, then optionally spends a small number of
+#' model fits verifying it and refining downward on the log scale. Refinement
+#' is off by default.
+#'
+#' @param verify_iter Integer. Fits used to confirm the bound does zero the
+#'   target, expanding geometrically if not. `0` trusts the KKT bound.
+#' @param refine_iter Integer. Log-scale bisection steps used to shrink the
+#'   bound afterwards. `0` (the default) keeps the exact value.
+#' @param zero_tol Relative tolerance for "all coefficients zero", measured
+#'   against the un-penalized fit.
+#' @noRd
+imr_lambda_max <- function(data,
+                           target = c("nuclear", "beta", "gamma"),
+                           rank = 2,
+                           lambda_m = 0,
+                           lambda_beta = 0,
+                           lambda_gamma = 0,
+                           huber_shift = 0,
+                           convergence = imr_convergence(trace = FALSE),
+                           verify_iter = 1L,
+                           refine_iter = 0L,
+                           zero_tol = 1e-4,
+                           verbose = 0) {
+
+  target <- match.arg(target)
+  training <- isTRUE(data$meta$split_data)
+
+  # --- Null model: turn off the target ---------
+  null_data <- data
+  switch(target,
+         nuclear = null_data$model$low_rank_component <- FALSE,
+         beta    = null_data$model$row_covariates     <- FALSE,
+         gamma   = null_data$model$col_covariates     <- FALSE
+  )
+  null_fit <- imr_fit(null_data,
+                      rank = if (target == "nuclear") 0 else rank,
+                      lambda_m = lambda_m, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
+                      huber_shift = huber_shift, convergence = convergence, training = training
+  )
+
+  huber_c <- if (huber_shift > 0) null_fit$meta$huber$huber_c else Inf
+  lambda_kkt <- imr_lambda_max_kkt(null_fit$residuals, target, data, huber_c)
+
+  if (verify_iter <= 0L && refine_iter <= 0L) return(lambda_kkt)
+
+  # ---  in case of fine-tuning ----------------------------------
+  extract <- function(f) switch(target,
+                                nuclear = f$coefficients$d,
+                                beta    = f$coefficients$beta,
+                                gamma   = f$coefficients$gamma
+  )
+  fit_at <- function(lam, warm) imr_fit(data,
+                                        rank = rank,
+                                        lambda_m     = if (target == "nuclear") lam else lambda_m,
+                                        lambda_beta  = if (target == "beta")    lam else lambda_beta,
+                                        lambda_gamma = if (target == "gamma")   lam else lambda_gamma,
+                                        huber_shift = huber_shift, convergence = convergence,
+                                        training = training, warm_start = warm
+  )
+
+  # Dense fit helps refine the zero_tol. The reason is in case the values are too large
+  # then the zero tol shouldn't be too small, to save time
+  dense_fit <- fit_at(0, NULL)
+  scale_ref <- max(abs(extract(dense_fit)), na.rm = TRUE)
+  # if it's already zero, no reason to continue. We also guard against NA values, but
+  # that shouldn't happen so the first condition should never be true.
+  if (!is.finite(scale_ref) || scale_ref <= 0) return(lambda_kkt)
+
+  # --- see if the limit is low, then test larger values (doubling the value at each iteration)
+  is_zero <- function(lam) max(abs(extract(fit_at(lam, dense_fit)))) < zero_tol * scale_ref
+  upper <- lambda_kkt
+  lower <- 0
+  ok <- FALSE
+  for (i in seq_len(max(verify_iter, 1L))) {
+    if (is_zero(upper)) { ok <- TRUE; break }
+    lower <- upper
+    upper <- upper * 2
+    if (verbose >= 2) message(sprintf("  expand: lambda = %.5g", upper))
+  }
+  # in case we never arrive at that value
+  if (!ok && verbose > 0)
+    warning(sprintf(
+      "%s: the target is not zero at lambda = %.5g. try a smaller `thresh` or a larger `maxit`.",
+      target, upper), call. = FALSE)
+
+  # --- Optional refinement on the LOG scale ---------------------------
+  # this is mid-point search.
+  # The grid is exp(seq(log(max), log(min), ...))
+  if (refine_iter > 0L && ok) {
+    lo <- log(max(lower, upper * 1e-6))
+    hi <- log(upper)
+    for (i in seq_len(refine_iter)) {
+      mid <- (lo + hi) / 2
+      if (is_zero(exp(mid))) hi <- mid else lo <- mid
+      if (verbose >= 2) message(sprintf("  refine: lambda = %.5g", exp(mid)))
+    }
+    upper <- exp(hi)
+  }
+
+  if (verbose > 0)
+    message(sprintf("Target: %-7s | KKT: %.5g | returned: %.5g (%.1f%% of KKT)%s",
+                    target, lambda_kkt, upper, 100 * upper / lambda_kkt,
+                    if (huber_shift > 0) sprintf(" | Huber c = %.4g", huber_c) else ""))
+  upper
+}
+
+
+
+
+
+
+

@@ -184,7 +184,7 @@ imr_tune_nuclear_slow <- function(data,
   #---------------------------------------------------
   # training grids
   if (grid$nuclear$max <= 0) grid$nuclear$max <- 1e-4
-  if (grid$nuclear$min <= 0) grid$nuclear$min <- 1e-6
+  if (grid$nuclear$min <= 0) grid$nuclear$min <- 1e-4 * grid$nuclear$max
   if (log_grid) {
     lambda_seq <- exp(seq(log(grid$nuclear$max),
                           log(grid$nuclear$min),
