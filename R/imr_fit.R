@@ -635,9 +635,9 @@ imr_solver <- function(
     }
     if (trace) {
       st <- huber_loss_cpp(Y@x, if(huber_flag) huber_c else Inf) # works for both huber and frob
-      loss <- st[1]
-      sae <- st[2]
-      rmse <- sqrt(2 * loss / nz)
+      loss <- st[["loss"]]
+      sae <- st[["sum_abs"]]
+      rmse <- sqrt(2 * st[["sum_sq"]] / nz)
       mae <- sae / nz
       obj <- (loss +
                 ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
@@ -645,9 +645,9 @@ imr_solver <- function(
                 ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
       ) / nz
 
-      cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae%9.4f%s\n",
+      cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae=%9.4f%s\n",
                   iter, obj, ratio, rmse, mae,
-          if (huber_flag) sprintf("Huber: [c=%.4g, ratio=%2.3e, clip=%.1f%%]",
+          if (huber_flag) sprintf(", Huber: [c=%.4g, ratio=%2.3e, clip=%.1f%%]",
                                   huber_c, huber_ratio, 100*st[3]/nz)
           else ""))
     }
