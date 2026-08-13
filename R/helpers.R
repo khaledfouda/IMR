@@ -33,6 +33,17 @@ inv <- function(X, tol = sqrt(.Machine$double.eps)) {
   # ginv for rectangle matrices
   return(MASS::ginv(X, tol = tol))
 }
+#---------------------------------------------------
+#' @noRd
+imr_compute_rank <- function(X, nv = 100L, tol = .Machine$double.eps){
+  use_irlba <- min(dim(X)) > 3L * nv
+  sv <- if(use_irlba) irlba::irlba(X, nv = nv)$d else svd(X, nu = 0, nv = 0)$d
+  rank_X <- sum(sv > tol)
+  if(use_irlba && rank_X == nv) {
+    warning("The rank is limited at `nv`; the true rank is probably larger.")
+  }
+  return(rank_X)
+}
 
 #-------------------------------------
 #' @noRd
