@@ -87,6 +87,37 @@ make_propensity <- function(mechanism, missing_rate, strength,
   matrix(stats::plogis(calibrate_logit_intercept(as.vector(lin), target) + as.vector(lin)), n, m)
 }
 
+select_outlier_cells <- function(mask, prop, structure = c("cellwise", "rowwise", "colwise")) {
+  n <- nrow(mask)
+  obs_idx <- which(mask == 1L)
+
+  if (structure == "cellwise")
+    return(obs_idx[sample.int(length(obs_idx),size =  round(prop * length(obs_idx)))])
+
+  n_lines <- if (structure == "rowwise") nrow(mask) else ncol(mask)
+  n_out <- round(prop * n_lines)
+  lines_out <-  sample.int(n_lines, size = n_out)
+
+  line_of_cell <- if (structure == "rowwise") {
+    (obs_idx - 1L) %% n + 1L
+  } else {
+    (obs_idx - 1L) %/% n + 1L
+  }
+  return(obs_idx[line_of_cell %in% lines_out])
+}
+
+draw_outlier_shifts <- function(n_out, scale_ref, mag, sign) {
+  magnitude <- stats::runif(n_out, min = 0, max = mag * scale_ref)
+  signs <- switch(
+    sign,
+    symmetric = sample(c(-1, 1), size = n_out, replace = TRUE),
+    positive  = rep(1, n_out),
+    negative  = rep(-1, n_out)
+  )
+  signs * magnitude
+}
+
+
 
 # the following for testing only, remove later.
 n = 300; m = 400; r = 10; p = 6; q = 6; shared_beta = FALSE; shared_gamma=TRUE; sparsity_beta = .2; sparsity_gamma = 0;
@@ -228,59 +259,74 @@ generate_simulated_data <- function(
 
     outlier_mask <- NULL
     if (outlier_prop > 0 && outlier_mag > 0) {
-      scale_ref <- if (noise_sd > 0) noise_sd else theta_sd
-      outlier_idx <- select_outlier_cells(
-        mask, outlier_prop, outlier_structure, outlier_within,
-        target = outlier_target,
-        lev = if (outlier_structure == "colwise") leverage(z_mat) else leverage(x_mat)
-      )
-      outlier_shift <- draw_outlier_shifts(
-        length(outlier_idx), scale_ref, outlier_mag, outlier_law, outlier_sign
-      )
+      outlier_idx <- select_outlier_cells(mask, outlier_prop, outlier_structure)
+
+      outlier_shift <- draw_outlier_shifts(length(outlier_idx), sd(theta), outlier_mag,  outlier_sign)
+
       y_mat[outlier_idx] <- y_mat[outlier_idx] + outlier_shift
       outlier_mask <- matrix(0L, n, m)
       outlier_mask[outlier_idx] <- 1L
     }else{
       outlier_mask <- NULL
-      outlier_shift <- 0
+      outlier_shift <- NULL
+      outlier_idx <- NULL
     }
+    # Done. Diagnostic information -----------------------------
+    rel <- function(a, b) a / b
 
+    theta_fro <- norm(theta, "F")
+    diagnostics <- list(
+      signal_share_target = signal_share,
+      signal_share_realised = c(
+        M = rel(norm(parts$M, "F")^2, theta_fro^2),
+        beta = rel(norm(parts$beta, "F")^2, theta_fro^2),
+        gamma = rel(norm(parts$gamma, "F")^2, theta_fro^2)
+      ),
+      theta_rms = sqrt(sum(theta^2) / (n * m)),
+      theta_sd = sd(theta),
+      rank_M = if (r > 0) IMR:::imr_compute_rank(m_mat) else 0L,
+      rank_theta = IMR:::imr_compute_rank(theta),
+      singular_values_M = d_vec,
 
-  # Combine components and generate noise ---------------------------------------
-  theta <- m_mat
-  if (p > 0 && !shared) theta <- theta + (x_mat %*% beta_mat)
-  if (q > 0 && !shared) theta <- theta + (gamma_mat %*% t(z_mat))
-  if (p > 0 && shared) theta <- sweep(theta, 1, as.vector(x_mat %*% beta_mat), "+")
-  if (q > 0 && shared) theta <- sweep(theta, 2, as.vector(gamma_mat %*% t(z_mat)), "+")
+      orth_XM = if (r > 0 && p > 0) rel(norm(crossprod(x_mat, m_mat), "F"), theta_fro) else NA_real_,
+      orth_MZ = if (r > 0 && q > 0) rel(norm(m_mat %*% z_mat, "F"), theta_fro) else NA_real_,
 
-  if(snr > 0){
-    noise_sd <- sqrt((sum((theta - mean(theta))^2) / (n * m - 1)) / (snr^2))
-    e_mat <- matrix(rnorm(n * m, mean = 0, sd = noise_sd), nrow = n, ncol = m)
-    y_mat <- (theta + e_mat) * mask
-  }else {
-    noise_sd <- 0
-    y_mat <- theta * mask
-  }
-  rank_theta <- imr_compute_rank(theta, nv = 100)
+      noise_sd = noise_sd,
 
-  #  Done :) ------------------------------------------------------------------
-  out <- list(
-    theta = theta,
-    mask  = mask,
-    Y     = y_mat,
-    M     = m_mat,
-    rank  = rank_theta
-  )
+      missing_rate_realised = 1 - mean(mask),
+      mean_prob_obs = mean(prob_obs),
+      outlier_prop_realised = rel(length(outlier_idx), sum(mask))
+    )
 
-  if (p > 0) {
-    out$X <- x_mat
-    out$beta <- beta_mat
-  }
-  if (q > 0) {
-    out$Z <- z_mat
-    out$gamma <- gamma_mat
-  }
-
-  out
+  # Output ------------------------------------------
+    out <- list(
+      theta = theta,
+      M = m_mat,
+      mask = mask,
+      prob_obs = prob_obs,
+      Y = y_mat,
+      diagnostics = diagnostics,
+      call = match.call()
+    )
+    if (p > 0) {
+      out$X <- x_mat
+      out$beta <- beta_mat
+    }
+    if (q > 0) {
+      out$Z <- z_mat
+      out$gamma <- gamma_mat
+    }
+    if (r > 0) {
+      out$U <- u_mat
+      out$V <- v_mat
+      out$d <- d_vec
+    }
+    if (!is.null(outlier_mask)) {
+      out$Y_clean <- y_clean
+      out$outlier_mask <- outlier_mask
+      out$outlier_idx <- outlier_idx
+      out$outlier_shift <- outlier_shift
+    }
+    out
 }
 
