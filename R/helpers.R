@@ -35,10 +35,10 @@ inv <- function(X, tol = sqrt(.Machine$double.eps)) {
 }
 #---------------------------------------------------
 #' @noRd
-imr_compute_rank <- function(X, nv = 100L, tol = .Machine$double.eps){
+imr_compute_rank <- function(X, nv = 100L, tol = max(dim(X))*.Machine$double.eps){
   use_irlba <- min(dim(X)) > 3L * nv
   sv <- if(use_irlba) irlba::irlba(X, nv = nv)$d else svd(X, nu = 0, nv = 0)$d
-  rank_X <- sum(sv > tol)
+  rank_X <- sum(sv > tol * sv[1])
   if(use_irlba && rank_X == nv) {
     warning("The rank is limited at `nv`; the true rank is probably larger.")
   }
@@ -402,7 +402,7 @@ svd_opt <- function(mat,
 
 #' @noRd
 .imr_check_param <- function(x,
-                             type,
+                             type = "numeric",
                              min = -Inf,
                              max = Inf,
                              min_inclusive = TRUE,
@@ -410,11 +410,13 @@ svd_opt <- function(mat,
                              integer = FALSE,
                              choices = NULL,
                              case_insensitive = TRUE,
-                             allow_null = FALSE) {
+                             allow_null = FALSE,
+                             raise_error = FALSE) {
 
   type <- match.arg(type, c("numeric", "numeric_list", "bool", "character"))
+  f <- if(raise_error) stopifnot else return
 
-  if (is.null(x)) return(isTRUE(allow_null))
+  if (is.null(x)) f(isTRUE(allow_null))
 
   switch(
     type,
@@ -429,42 +431,42 @@ svd_opt <- function(mat,
         stop("`min` must not exceed `max`.", call. = FALSE)
 
 
-      if (!is.numeric(x)) return(FALSE)
+      if (!is.numeric(x)) f(FALSE)
       n <- length(x)
-      if (n == 0L) return(FALSE)
-      if (type == "numeric" && n != 1L) return(FALSE)
-      if (anyNA(x)) return(FALSE)
+      if (n == 0L) f(FALSE)
+      if (type == "numeric" && n != 1L) f(FALSE)
+      if (anyNA(x)) f(FALSE)
 
       if (isTRUE(min_inclusive)) {
-        if (!all(x >= min)) return(FALSE)
-      } else if (!all(x > min)) return(FALSE)
+        if (!all(x >= min)) f(FALSE)
+      } else if (!all(x > min)) f(FALSE)
 
       if (isTRUE(max_inclusive)) {
-        if (!all(x <= max)) return(FALSE)
-      } else if (!all(x < max)) return(FALSE)
+        if (!all(x <= max)) f(FALSE)
+      } else if (!all(x < max)) f(FALSE)
 
       if (isTRUE(integer)) {
-        if (!all(is.finite(x))) return(FALSE)
-        if (!all(x == round(x))) return(FALSE)
+        if (!all(is.finite(x))) f(FALSE)
+        if (!all(x == round(x))) f(FALSE)
       }
-      TRUE
+      f(TRUE)
     },
 
     bool = {
-      is.logical(x) && length(x) == 1L && !is.na(x)
+      f(is.logical(x) && length(x) == 1L && !is.na(x))
     },
 
     character = {
       if (!is.null(choices) && !is.character(choices))
         stop("`choices` must be a character vector or NULL.", call. = FALSE)
 
-      if (!is.character(x) || length(x) != 1L || is.na(x)) return(FALSE)
-      if (is.null(choices)) return(TRUE)
+      if (!is.character(x) || length(x) != 1L || is.na(x)) f(FALSE)
+      if (is.null(choices)) f(TRUE)
 
       if (isTRUE(case_insensitive)) {
-        tolower(x) %in% tolower(choices)
+        f(tolower(x) %in% tolower(choices))
       } else {
-        x %in% choices
+        f(x %in% choices)
       }
     }
   )

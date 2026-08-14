@@ -1,6 +1,9 @@
+devtools::load_all()
+check_param <- function(...) IMR:::.imr_check_param(..., raise_error = TRUE)
+
 sample_matrix <- function(n, p, dist, mvnorm_means = NULL, mvnorm_vars = NULL) {
-  stopifnot(.imr_check_param(dist, "character", choices = c("uniform", "normal", "mvnorm")),
-            .imr_check_param(c(n,p), "numeric_list", 0, integer = TRUE, min_inclusive = FALSE))
+  check_param(dist, "character", choices = c("uniform", "normal", "mvnorm"))
+  check_param(c(n,p), "numeric_list", 0, integer = TRUE, min_inclusive = FALSE)
   if (p == 0) {
     return(NULL)
   }
@@ -9,10 +12,9 @@ sample_matrix <- function(n, p, dist, mvnorm_means = NULL, mvnorm_vars = NULL) {
   }else if(dist == "normal"){
   return(matrix(stats::rnorm(n * p), n, p))
   }else if(dist == "mvnorm"){
-    stopifnot(.imr_check_param(mvnorm_means, "numeric_list") &&
-              .imr_check_param(mvnorm_vars, "numeric_list", 0, min_inclusive = FALSE,
-                               max_inclusive = FALSE) &&
-              length(mvnorm_means) == p &&
+    check_param(mvnorm_means, "numeric_list")
+    check_param(mvnorm_vars, "numeric_list", 0, min_inclusive = FALSE, max_inclusive = FALSE)
+              stopifnot(length(mvnorm_means) == p &&
               length(mvnorm_vars) == p)
     MASS::mvrnorm(
       n = n,
@@ -117,15 +119,15 @@ draw_outlier_shifts <- function(n_out, scale_ref, mag, sign) {
   signs * magnitude
 }
 
-
-
-# the following for testing only, remove later.
-n = 300; m = 400; r = 10; p = 6; q = 6; shared_beta = FALSE; shared_gamma=TRUE; sparsity_beta = .2; sparsity_gamma = 0;
-coefs_rowwise_sparsity = TRUE; orthogonalise = TRUE; signal_share = c(M = 1/3, beta = 1/3, gamma = 1/3);
-signal_scale = 1; sparsity = 0.8; snr = 1.5; outlier_prop = 0; outlier_mag = 10;
-outlier_structure = c("cellwise", "rowwise", "colwise"); outlier_law = c("shift", "scale", "cauchy");
-outlier_sign = c("symmetric", "positive", "negative"); outlier_within = 1
-missing_mechanism  = "mar"; missing_rate = .8
+#
+#
+# # the following for testing only, remove later.
+# n = 300; m = 400; r = 10; p = 6; q = 6; shared_beta = FALSE; shared_gamma=TRUE; sparsity_beta = .2; sparsity_gamma = 0;
+# sparse_by_variable = TRUE; orthogonalise = TRUE; signal_share = c(M = 1/3, beta = 1/3, gamma = 1/3);
+# signal_scale = 1; sparsity = 0.8; snr = 1.5; outlier_prop = 0; outlier_mag = 10;
+# outlier_structure = c("cellwise", "rowwise", "colwise"); outlier_law = c("shift", "scale", "cauchy");
+# outlier_sign = c("symmetric", "positive", "negative"); outlier_within = 1
+# missing_mechanism  = "mar"; missing_rate = .8
 
 generate_simulated_data <- function(
     # Dimensions
@@ -139,42 +141,67 @@ generate_simulated_data <- function(
     shared_gamma = FALSE,
     sparsity_beta = 0,
     sparsity_gamma = 0,
-    coefs_rowwise_sparsity = FALSE,
+    sparse_by_variable = FALSE,
     # settings for orthogonality between M, Xbeta, and Xgamma
     orthogonalise = TRUE,
+    # signal proportion between the components
     signal_share = c(M = 1/3, beta = 1/3, gamma = 1/3),
-    signal_scale = 1,
-    # Sparsity + noise for Y
-    sparsity = 0.8,
+    # noise for Y
     snr = 1.5, # Reduced from 0.6 / 0.4
-    missing_mechanism  = "mcar",
+    # missing values in Y
+    missing_mechanism  = c("mcar", "mar", "mnar_theta", "mnar_y"),
     missing_rate = .8,
     # settings for outliers
     outlier_prop = 0,
     outlier_mag = 10,
     outlier_structure = c("cellwise", "rowwise", "colwise"),
-    outlier_law = c("shift", "scale", "cauchy"),
     outlier_sign = c("symmetric", "positive", "negative"),
-    outlier_within = 1,
     seed = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
-
   #  checks ---------------------------------------------------
-  if (sparsity <= 0 || sparsity > 1) stop("`sparsity` must be in (0, 1].")
-  if (sparsity_beta < 0 || sparsity_beta > 1) stop("`sparsity_beta` must be in [0, 1].")
-  if (sparsity_gamma < 0 || sparsity_gamma > 1) stop("`sparsity_gamma` must be in [0, 1].")
+  check_param(n, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
+  check_param(m, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
+  check_param(p, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
+  check_param(q, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
+  check_param(r, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
+  stopifnot(p>0 || q>0 || r>0)
 
-  if (outlier_prop < 0 || outlier_prop > 1) stop("`outlier_prop` must be in [0, 1].")
-  if (outlier_mag < 0) stop("`outlier_mag` must be non-negative.")
-  if (outlier_within <= 0 || outlier_within > 1) stop("`outlier_within` must be in (0, 1].")
-  outlier_structure <- match.arg(outlier_structure)
-  outlier_law <- match.arg(outlier_law)
-  outlier_sign <- match.arg(outlier_sign)
+  check_param(shared_beta, "bool")
+  check_param(shared_gamma, "bool")
+  check_param(sparsity_beta,  "numeric", 0, 1)
+  check_param(sparsity_gamma,  "numeric", 0, 1)
+  check_param(sparse_by_variable, "bool")
+
+  check_param(orthogonalise, "bool")
+  if(orthogonalise) stopifnot(r <= min(n-p, m-q))
+
+  if(! is.null(signal_share)){
+    comp <- c()
+    if(r > 0)  comp <- c(comp, "M")
+    if(p > 0) comp <- c(comp, "beta")
+    if(q > 0) comp <- c(comp, "gamma")
+    stopifnot(all(names(signal_share) %in% comp) && all(comp %in% names(signal_share)))
+  }
+  check_param(snr,  "numeric", 0, max_inclusive = FALSE, min_inclusive = FALSE)
+
+
+  check_param(missing_rate,  "numeric", 0, 1)
+  check_param(missing_mechanism, "character", choices = c("mcar", "mar", "mnar_theta", "mnar_y"))
+
+  check_param(outlier_structure, "character", choices =  c("cellwise", "rowwise", "colwise"))
+  check_param(outlier_sign, "character", choices = c("symmetric", "positive", "negative"))
+  check_param(outlier_prop,  "numeric", 0, 1)
+  check_param(outlier_mag,  "numeric", 0, min_inclusive = FALSE, max_inclusive = FALSE)
+
 
   # Covariates X and Z ---------------------------------------------
   x_mat <- if(p > 0) sample_matrix(n, p, "uniform") else NULL
   z_mat <- if(q > 0) sample_matrix(m, q, "uniform") else NULL
+
+  # the following is to fix a signal mismatch. shared_beta requires centered Z and vice-versa.
+  if (p>0 && q>0 && shared_gamma) x_mat <- sweep(x_mat, 2, colMeans(x_mat), "-")
+  if (q>0 && q>0 && shared_beta) z_mat <- sweep(z_mat, 2, colMeans(z_mat), "-")
 
   # Low-rank structure M  ------------------------
   u_mat <- orthonormal_matrix(n, r, if(orthogonalise) x_mat else NULL)
@@ -193,7 +220,7 @@ generate_simulated_data <- function(
 
   if(q > 0){
     gamma_means <- runif(q, 0.1, 1) * sample(c(-1, 1), q, replace = TRUE)
-    gamma_vars <-  runif(p, 0.5, 1)^2
+    gamma_vars <-  runif(q, 0.5, 1)^2
     gamma_mat <- if(shared_gamma) matrix(gamma_means, 1, q) else sample_matrix(n, q, "mvnorm", gamma_means, gamma_vars)
   }else
     gamma_mat <- NULL
@@ -201,9 +228,9 @@ generate_simulated_data <- function(
 
   # Sparsity in coefficients matrices beta and Gamma --------------------
   if(p > 0)
-    beta_mat <- t(zero_out(t(beta_mat), sparsity_beta, rowwise = coefs_rowwise_sparsity))
+    beta_mat <- zero_out(beta_mat, sparsity_beta, rowwise = sparse_by_variable)
   if(q > 0)
-    gamma_mat <- zero_out(gamma_mat, sparsity_gamma, rowwise = coefs_rowwise_sparsity)
+    gamma_mat <- t(zero_out(t(gamma_mat), sparsity_gamma, rowwise = sparse_by_variable))
 
 
   # Signal distribution between M, Xbeta, GammaZ and construct theta -----------
@@ -214,14 +241,24 @@ generate_simulated_data <- function(
     parts[["gamma"]] <-  gamma_mat %*% t(z_mat)
 
   if(p > 0 && shared_beta) parts[["beta"]] <- matrix(as.vector(parts[["beta"]]), n, m, byrow = FALSE)
-  if(q > 0 && shared_gamma) parts[["gamma"]] <- matrix(as.vector(t(parts[["gamma"]])), n, m, byrow = TRUE)
+ if(q > 0 && shared_gamma) parts[["gamma"]] <- matrix(as.vector(t(parts[["gamma"]])), n, m, byrow = TRUE)
 
   parts_norm <- vapply(parts, norm, 1, type="F")
 
-  signal_share <- signal_share[names(parts)]
-  signal_share[parts_norm < 0] <- 0
-  signal_share <- signal_share / sum(signal_share)
-  scale_fac <- sqrt(signal_share * n * m) / parts_norm
+  if(! is.null(signal_share)){
+
+    signal_share <- signal_share[names(parts)]
+    signal_share <- signal_share / sum(signal_share)
+    scale_fac <- sqrt(signal_share * n * m) / parts_norm
+  } else{
+    comp <- c()
+    if(r > 0)  comp <- c(comp, "M")
+    if(p > 0) comp <- c(comp, "beta")
+    if(q > 0) comp <- c(comp, "gamma")
+    scale_fac <- rep(1, length(comp))
+    names(scale_fac) <- comp
+  }
+
   if(r > 0) d_vec <- rep(scale_fac[["M"]], r)
   if(p > 0) beta_mat <- beta_mat * scale_fac[["beta"]]
   if(q > 0) gamma_mat <- gamma_mat * scale_fac[["gamma"]]
@@ -261,7 +298,7 @@ generate_simulated_data <- function(
     if (outlier_prop > 0 && outlier_mag > 0) {
       outlier_idx <- select_outlier_cells(mask, outlier_prop, outlier_structure)
 
-      outlier_shift <- draw_outlier_shifts(length(outlier_idx), sd(theta), outlier_mag,  outlier_sign)
+      outlier_shift <- draw_outlier_shifts(length(outlier_idx), noise_sd, outlier_mag,  outlier_sign)
 
       y_mat[outlier_idx] <- y_mat[outlier_idx] + outlier_shift
       outlier_mask <- matrix(0L, n, m)
@@ -278,9 +315,9 @@ generate_simulated_data <- function(
     diagnostics <- list(
       signal_share_target = signal_share,
       signal_share_realised = c(
-        M = rel(norm(parts$M, "F")^2, theta_fro^2),
-        beta = rel(norm(parts$beta, "F")^2, theta_fro^2),
-        gamma = rel(norm(parts$gamma, "F")^2, theta_fro^2)
+        M = if(r > 0) rel(norm(parts$M, "F")^2, theta_fro^2) else NA_real_,
+        beta = if(p > 0) rel(norm(parts$beta, "F")^2, theta_fro^2) else NA_real_,
+        gamma = if(q > 0) rel(norm(parts$gamma, "F")^2, theta_fro^2) else NA_real_
       ),
       theta_rms = sqrt(sum(theta^2) / (n * m)),
       theta_sd = sd(theta),
@@ -329,4 +366,37 @@ generate_simulated_data <- function(
     }
     out
 }
+
+
+
+o = generate_simulated_data(
+    # Dimensions
+  n = 800,
+  m = 900,
+  r = 10,
+  p = 3,
+  q = 2,
+  # settings for beta and gamma
+  shared_beta = F,
+  shared_gamma = F,
+  sparsity_beta = 0,
+  sparsity_gamma = 0.3,
+  sparse_by_variable = TRUE,
+  # settings for orthogonality between M, Xbeta, and Xgamma
+  orthogonalise = TRUE,
+  # signal proportion between the components
+  signal_share = c(M = 4/3, beta = 1/3, gamma=1/3),
+  # noise for Y
+  snr = 1.5, # Reduced from 0.6 / 0.4
+  # missing values in Y
+  missing_mechanism  = "mar",
+  missing_rate = .8,
+  # settings for outliers
+  outlier_prop = 0.7,
+  outlier_mag = 10,
+  outlier_structure = "rowwise", #c("cellwise", "rowwise", "colwise"),
+  outlier_sign = "positive", #c("symmetric", "positive", "negative"),
+  seed = NULL)
+o$diagnostics
+
 
