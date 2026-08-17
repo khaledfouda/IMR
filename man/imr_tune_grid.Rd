@@ -8,7 +8,8 @@ imr_tune_grid(
   beta = c(0, NA, 20),
   gamma = c(0, NA, 20),
   nuclear = c(0, NA, 20, 2),
-  rank = c(2, 30, 2, 2)
+  rank = c(2, 30, 2, 2),
+  metric = "auto"
 )
 }
 \arguments{

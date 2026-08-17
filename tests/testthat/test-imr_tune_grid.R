@@ -20,7 +20,8 @@ test_that("imr_set_grid_limits() computes numeric max values without NAs", {
   test_data <- imr_data(dat$Y, dat$X, dat$Z, val_prop = 0.3)
   grid <- imr_tune_grid()
   convergence <- imr_convergence(thresh = 1)
-  updated_grid <- imr_set_grid_limits(test_data, grid, bisection_iter = 1, convergence = convergence)
+  updated_grid <- imr_set_grid_limits(test_data, grid, verify_iter = 1, refine_iter = 1,
+                                      convergence = convergence)
 
   # Extract the relevant components
   grid_params <- unlist(updated_grid[c("beta", "gamma", "rank", "nuclear")])

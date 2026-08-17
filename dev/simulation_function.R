@@ -1,5 +1,4 @@
-devtools::load_all()
-check_param <- function(...) IMR:::.imr_check_param(..., raise_error = TRUE)
+check_param <- function(...) .imr_check_param(..., raise_error = TRUE)
 
 sample_matrix <- function(n, p, dist, mvnorm_means = NULL, mvnorm_vars = NULL) {
   check_param(dist, "character", choices = c("uniform", "normal", "mvnorm"))
@@ -129,7 +128,7 @@ draw_outlier_shifts <- function(n_out, scale_ref, mag, sign) {
 # outlier_sign = c("symmetric", "positive", "negative"); outlier_within = 1
 # missing_mechanism  = "mar"; missing_rate = .8
 
-generate_simulated_data <- function(
+simulate.d <- function(
     # Dimensions
     n = 300,
     m = 400,
@@ -321,8 +320,8 @@ generate_simulated_data <- function(
       ),
       theta_rms = sqrt(sum(theta^2) / (n * m)),
       theta_sd = sd(theta),
-      rank_M = if (r > 0) IMR:::imr_compute_rank(m_mat) else 0L,
-      rank_theta = IMR:::imr_compute_rank(theta),
+      rank_M = if (r > 0) imr_compute_rank(m_mat) else 0L,
+      rank_theta = imr_compute_rank(theta),
       singular_values_M = d_vec,
 
       orth_XM = if (r > 0 && p > 0) rel(norm(crossprod(x_mat, m_mat), "F"), theta_fro) else NA_real_,

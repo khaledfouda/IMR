@@ -7,11 +7,11 @@
 imr_tune(
   data,
   grid,
+  huber_shift = 0,
   final_fit = TRUE,
   use_warm_in_final = TRUE,
   fast_nuclear = TRUE,
   convergence = imr_convergence(),
-  error_function = get_metric("rmse"),
   warm_start = NULL,
   verbose = 1,
   n_cores = 4,
@@ -43,10 +43,6 @@ low-rank component (nuclear norm penalty). Defaults to \code{TRUE}.}
 \item{convergence}{An \code{"imr_convergence"} object specifying numerical tolerances
 for internal model estimation.}
 
-\item{error_function}{A function used to evaluate prediction error on the
-validation set. Must accept two arguments, \verb{(predicted, actual)}.
-Defaults to \code{get_metric("rmse")}.}
-
 \item{warm_start}{An optional object of class \code{"imr_fit"}. If provided, the
 coefficients from this previous fit are used as the starting values for the
 new optimization, overriding the initialization strategy in \code{convergence}.
@@ -73,6 +69,10 @@ Defaults to \code{10}.}
 \item{tune_tol}{Numeric. Relative tolerance threshold for early stopping during
 alternating optimization. Optimization terminates if the absolute relative
 change in validation error falls below this limit. Defaults to \code{1e-4}.}
+
+\item{error_function}{A function used to evaluate prediction error on the
+validation set. Must accept two arguments, \verb{(predicted, actual)}.
+Defaults to \code{get_metric("rmse")}.}
 }
 \value{
 A list comprising:

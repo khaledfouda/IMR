@@ -4,6 +4,7 @@ imr_tune_nuclear_fast <- function(data,
                                   grid,
                                   lambda_beta = 0,
                                   lambda_gamma = 0,
+                                  huber_shift = 0,
                                   final_fit = TRUE,
                                   convergence = imr_convergence(),
                                   error_function = get_metric("rmse"),
@@ -55,7 +56,8 @@ imr_tune_nuclear_fast <- function(data,
     lambda_m = lambda_seq,
     verror = rep(NA_real_, length(lambda_seq)),
     rank_in = rep(NA_integer_, length(lambda_seq)),
-    rank_out = rep(NA_integer_, length(lambda_seq))
+    rank_out = rep(NA_integer_, length(lambda_seq)),
+    huber_shift = huber_shift
   )
   best_fit_obj <- NULL
   best_params <- NULL
@@ -70,6 +72,7 @@ imr_tune_nuclear_fast <- function(data,
       lambda_gamma = lambda_gamma,
       convergence = convergence,
       training = TRUE,
+      huber_shift = huber_shift,
       warm_start = mfit
     )
     # compute validation error
@@ -138,6 +141,7 @@ imr_tune_nuclear_fast <- function(data,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
       convergence = convergence,
+      huber_shift = huber_shift,
       training = FALSE,
       warm_start = best_fit_obj
     )
@@ -154,6 +158,7 @@ imr_tune_nuclear_slow <- function(data,
                                   grid,
                                   lambda_beta = 0,
                                   lambda_gamma = 0,
+                                  huber_shift = 0,
                                   final_fit = TRUE,
                                   convergence = imr_convergence(),
                                   error_function = get_metric("rmse"),
@@ -236,6 +241,7 @@ imr_tune_nuclear_slow <- function(data,
         lambda_gamma = lambda_gamma,
         convergence = convergence,
         training = TRUE,
+        huber_shift = huber_shift,
         warm_start = mfit
       )
       # compute validation error
@@ -323,6 +329,7 @@ imr_tune_nuclear_slow <- function(data,
       lambda_m = best_params_1$lambda_m,
       lambda_beta = lambda_beta,
       lambda_gamma = lambda_gamma,
+      huber_shift = huber_shift,
       convergence = convergence,
       training = FALSE,
       warm_start = best_fit_obj_1
@@ -339,6 +346,7 @@ imr_tune_lasso <- function(data,
                            grid,
                            target = c("beta", "gamma"),
                            fixed_other_lasso = 0,
+                           huber_shift = 0,
                            final_fit = TRUE,
                            use_warm_in_final = TRUE,
                            convergence = imr_convergence(),
@@ -399,6 +407,7 @@ imr_tune_lasso <- function(data,
       grid = grid,
       lambda_beta = if (is_beta) lambda else fixed_other_lasso,
       lambda_gamma = if (is_beta) fixed_other_lasso else lambda,
+      huber_shift = huber_shift,
       final_fit = FALSE,
       convergence = convergence,
       error_function = error_function,
@@ -428,7 +437,7 @@ imr_tune_lasso <- function(data,
   },
   mc.cores = n_cores,
   mc.preschedule = FALSE,
-  mc.set.seed = seed,
+  mc.set.seed = FALSE, # so that when ls_initial=FALSE, each worker gets a different initialization
   mc.silent = if (n_cores > 1) TRUE else FALSE,
   mc.cleanup = TRUE
   )
@@ -459,6 +468,7 @@ imr_tune_lasso <- function(data,
       lambda_m = best_params$lambda_m,
       lambda_beta = best_params$lambda_beta,
       lambda_gamma = best_params$lambda_gamma,
+      huber_shift = huber_shift,
       convergence = convergence,
       warm_start = warm_start
     )
@@ -579,11 +589,11 @@ imr_tune_lasso <- function(data,
 #' @export
 imr_tune <- function(data,
                      grid,
+                     huber_shift = 0,
                      final_fit = TRUE,
                      use_warm_in_final = TRUE,
                      fast_nuclear = TRUE,
                      convergence = imr_convergence(),
-                     error_function = get_metric("rmse"),
                      warm_start = NULL,
                      verbose = 1,
                      n_cores = 4,
@@ -597,6 +607,14 @@ imr_tune <- function(data,
   # --- Determine which parameters to tune
   tune_beta <- data$model$row_covariates && data$meta$has_X && grid$beta$length > 1
   tune_gamma <- data$model$col_covariates && data$meta$has_Z && grid$gamma$length > 1
+  .imr_check_param(huber_shift, "numeric", 0, raise_error = TRUE)
+  # selecting error function
+  metric_name <- grid$metric
+  if(metric_name == "AUTO")
+    metric_name <- if(huber_shift > 0) "MAE" else "RMSE"
+  error_function <- get_metric(metric_name)
+  if(verbose > 0) message(sprintf("Validation Metric: %s", metric_name))
+
 
   # if(data$model$row_covariates && grid$beta$length == 1)
   #   default_lambda_beta <- grid$beta$min
@@ -612,6 +630,7 @@ imr_tune <- function(data,
     out_obj <- nuclear_function(
       data = data, grid = grid,
       lambda_beta = grid$beta$min, lambda_gamma = grid$gamma$min,
+      huber_shift = huber_shift,
       final_fit = final_fit, convergence = convergence,
       error_function = error_function, warm_start = warm_start,
       log_grid = nuclear_log_scale,
@@ -634,6 +653,7 @@ imr_tune <- function(data,
     if (verbose > 0) message(sprintf("Tuning %s + nuclear...", (target)))
     out_obj <- imr_tune_lasso(
       data = data, grid = grid, target = target, fixed_other_lasso = fixed_other,
+      huber_shift = huber_shift,
       final_fit = final_fit, use_warm_in_final = use_warm_in_final,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose, fast_nuclear = fast_nuclear,
@@ -670,6 +690,7 @@ imr_tune <- function(data,
     t_start_iter <- Sys.time()
     res_beta <- imr_tune_lasso(
       data = data, grid = grid, target = "beta", fixed_other_lasso = cur_gamma,
+      huber_shift = huber_shift,
       final_fit = final_fit, # if (one_more_fit) final_fit else FALSE,
       use_warm_in_final = use_warm_in_final, fast_nuclear = fast_nuclear,
       convergence = convergence, error_function = error_function,
@@ -715,6 +736,7 @@ imr_tune <- function(data,
     res_gamma <- imr_tune_lasso(
       data = data, grid = grid, target = "gamma", fixed_other_lasso = cur_beta,
       final_fit = final_fit, # if (one_more_fit) final_fit else FALSE,
+      huber_shift = huber_shift,
       use_warm_in_final = use_warm_in_final, fast_nuclear = fast_nuclear,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,

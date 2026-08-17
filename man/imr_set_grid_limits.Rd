@@ -11,8 +11,12 @@ imr_set_grid_limits(
   default_lambda_m = 0,
   default_lambda_beta = 0,
   default_lambda_gamma = 0,
+  huber_shift = 0,
   convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
-  bisection_iter = 5,
+  training = TRUE,
+  verify_iter = 1L,
+  refine_iter = 0L,
+  bisection_iter = NULL,
   verbose = 0
 )
 }
@@ -23,52 +27,81 @@ and covariate structures.}
 \item{grid}{An object of class \code{"imr_tune_grid"}, initialized via
 \code{imr_tune_grid()}.}
 
-\item{default_rank, default_lambda_m}{Integer,Numeric. The fixed rank and low-rank component
-penalty used as reference when
-estimating the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}.
-Default to \code{2} and \code{0}.}
+\item{default_rank, default_lambda_m}{Integer,Numeric. The fixed rank and
+low-rank penalty used as reference when estimating the maximum
+\eqn{\lambda_\beta} or \eqn{\lambda_\Gamma}. Default to \code{2} and \code{0}.
+Ignored when estimating \eqn{\lambda_M}, whose bound does not depend on
+the rank.}
 
 \item{default_lambda_beta, default_lambda_gamma}{Numeric. The row and column
-covariate penalties used as
-a reference when estimating the maximum \eqn{\lambda_M}. Defaults to \code{0}.}
+covariate penalties used as a reference when estimating the maximum
+\eqn{\lambda_M}. Defaults to \code{0}.}
+
+\item{huber_shift}{Numeric. Passed to \code{\link[=imr_fit]{imr_fit()}} for every internal fit. A
+grid computed under least squares is the wrong grid for a robust fit; see
+Details. Defaults to \code{0}.}
 
 \item{convergence}{An \code{"imr_convergence"} object specifying the numerical
 tolerances and optimization parameters for internal model fits. Defaults
 to \code{imr_convergence(trace = FALSE, ls_initial = FALSE)}.}
 
-\item{bisection_iter}{Integer. The number of iterations for the bisection
-algorithm employed to refine the estimated upper bound. Defaults to \code{5}.}
+\item{training}{Logical. If \code{TRUE} (the default), bounds are computed on the
+training split, matching the fits \code{\link[=imr_tune]{imr_tune()}} performs. Set to \code{FALSE}
+only when the data object has no validation split.}
+
+\item{verify_iter}{Integer. Number of model fits used to confirm that the
+computed bound does zero the target, doubling it if not. \code{0} returns the
+analytic value without fitting. Defaults to \code{1}.}
+
+\item{refine_iter}{Integer. Number of log-scale bisection steps used to
+reduce the bound after verification. \code{0} (the default) keeps the analytic
+value; see Details.}
+
+\item{bisection_iter}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Former name of the
+refinement budget. If supplied, it is used for both \code{verify_iter} and
+\code{refine_iter} with a warning.}
 
 \item{verbose}{Integer. Level of diagnostic output. \code{0} (default) is silent,
-\code{1} reports final parameters, and \code{2} provides per-iteration updates.}
+\code{1} reports the bound for each parameter, and \code{2} provides per-fit updates.}
 }
 \value{
 A modified \code{"imr_tune_grid"} object where all \code{"auto"} placeholders
 are replaced by the numerically determined maximum values.
 }
 \description{
-Computes the optimal upper bounds for the hyperparameter tuning
-grid when specifications are set to \code{"auto"}. The function identifies the
-minimal regularization parameter required to shrink all corresponding
-coefficients to zero.
+Computes the upper bounds for the hyperparameter tuning grid when
+specifications are set to \code{"auto"}. For each penalty, the function returns
+the smallest value that shrinks the corresponding component exactly to zero.
 }
 \details{
-The procedure isolates each hyperparameter to determine its saturation
-point through a two-stage estimation process:
-\enumerate{
-\item An initial theoretical upper bound is
-derived based on the Karush-Kuhn-Tucker (KKT)  conditions.
-\item The function executes a bisection search over
-\code{bisection_iter} iterations using KKT estimates as initial values. This identifies the minimum
-of the penalty values that result in a zero-solution for the
-targeted parameters.
-}
+For a convex penalty the stationarity condition at the null solution is an
+equivalence, not a bound: \eqn{\hat\theta = 0} minimises
+\eqn{\ell(\theta) + \lambda\,\Omega(\theta)} if and only if
+\eqn{\|\nabla\ell(0)\|_* \le \lambda}, where \eqn{\|\cdot\|_*} is the dual
+norm of \eqn{\Omega}. The maxima are therefore computed in closed form from
+the residuals of a model fitted without the target component:
+\eqn{\sigma_1(P_\Omega^*(r))} for \eqn{\lambda_M}, and a maximum absolute
+entry of \eqn{X^\top P_\Omega^*(r)} or \eqn{P_\Omega^*(r) Z} for the
+covariate penalties. When \code{shared_beta} or \code{shared_gamma} is active the
+gradient is summed across columns or rows before the maximum is taken, since
+every entry contributes to the same coefficient.
 
-During the estimation of the maximum \eqn{\lambda_\beta} or \eqn{\lambda_\Gamma},
-the other covariate penalty is treated as infinite, while the
-low-rank component is set to \code{default_rank} and \code{default_lambda_m}.
-Conversely, estimation of the maximum \eqn{\lambda_M} (nuclear norm penalty)
-assumes the covariate penalties are fixed at \code{default_lambda_beta} and
+\code{verify_iter} and \code{refine_iter} exist as diagnostics. Because the analytic
+value is exact, a refinement that returns a materially smaller number
+indicates that the internal fits are stopping before their coefficients
+reach zero, and is better addressed through a smaller \code{thresh} in
+\code{\link[=imr_convergence]{imr_convergence()}} than by lowering the grid maximum.
+
+Under the Huber loss the gradient involves the clipped residual
+\eqn{\psi_c(r)} rather than \eqn{r}, so all three maxima are smaller, often
+substantially so when the data are contaminated. \code{huber_shift} must
+therefore match the value later passed to \code{\link[=imr_tune]{imr_tune()}}.
+
+During the estimation of the maximum \eqn{\lambda_\beta} or
+\eqn{\lambda_\Gamma}, the other covariate penalty is held at
+\code{default_lambda_gamma} or \code{default_lambda_beta} and the low-rank component
+at \code{default_rank} and \code{default_lambda_m}. Conversely, estimation of
+\eqn{\lambda_M} holds the covariate penalties at \code{default_lambda_beta} and
 \code{default_lambda_gamma}.
 }
 \examples{

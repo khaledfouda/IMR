@@ -54,7 +54,8 @@
 imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
                           gamma = c(0, NA, 20),
                           nuclear = c(0, NA, 20, 2), # min, max, length, streak
-                          rank = c(2, 30, 2, 2) # min, max, step, streak
+                          rank = c(2, 30, 2, 2), # min, max, step, streak
+                          metric = "auto"
 ) {
   parse_param <- function(p, is_rank = FALSE, is_nuclear = FALSE) {
     len <- length(p)
@@ -80,12 +81,17 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
     }
   }
 
+  .imr_check_param(metric, "character", case_insensitive = TRUE, raise_error = TRUE,
+                   choices = c("auto", "rmse", "mae", "mape", "rrmse", "spearman"))
+
+
   structure(
     list(
       beta    = parse_param(beta),
       gamma   = parse_param(gamma),
       rank    = parse_param(rank, is_rank = TRUE),
-      nuclear = parse_param(nuclear, is_nuclear = TRUE)
+      nuclear = parse_param(nuclear, is_nuclear = TRUE),
+      metric  = toupper(metric)
     ),
     class = "imr_tune_grid"
   )
@@ -129,6 +135,8 @@ print.imr_tune_grid <- function(x, ...) {
   cat(sprintf("%-18s %s\n", "Gamma:", fmt_range(x$gamma)))
   cat(sprintf("%-18s %s\n", "Nuclear:", fmt_range(x$nuclear, nuclear=TRUE)))
   cat(sprintf("%-18s %s\n", "Rank:", fmt_range(x$rank, rank=TRUE)))
+  cat(sprintf("%-18s %s\n", "Metric:",
+              if(identical(x$metric, "AUTO")) "Auto (MAE if robust, else RMSE)" else x$metric))
 
   cat("===========================================================\n\n")
 
