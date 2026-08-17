@@ -239,12 +239,12 @@ imr_set_grid_limits <- function(data,
   stopifnot(
     inherits(data, "imr_data"),
     inherits(grid, "imr_tune_grid"),
-    inherits(convergence, "imr_convergence"),
-    .imr_check_param(huber_shift, "numeric", 0),
-    .imr_check_param(training, "bool"),
-    .imr_check_param(verify_iter, "numeric", 0, integer = TRUE),
-    .imr_check_param(refine_iter, "numeric", 0, integer = TRUE)
-  )
+    inherits(convergence, "imr_convergence"))
+  .imr_check_param(huber_shift, "numeric", 0)
+  .imr_check_param(training, "bool")
+  .imr_check_param(verify_iter, "numeric", 0, integer = TRUE)
+  .imr_check_param(refine_iter, "numeric", 0, integer = TRUE)
+
 
   # Back-compatibility for `bisection_iter`. delete after checking the examples and vignette
   # Also make sure the package code is updated

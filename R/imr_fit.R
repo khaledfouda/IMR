@@ -30,11 +30,11 @@ imr_convergence <- function(maxit = 600,
                             ls_initial = TRUE,
                             huber_max_sample = 1e5) {
 
-  stopifnot(.imr_check_param(maxit, "numeric", 1, integer = TRUE))
-  stopifnot(.imr_check_param(thresh, "numeric", 0, min_inclusive = FALSE))
-  stopifnot(.imr_check_param(trace, "bool"))
-  stopifnot(.imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE))
-  stopifnot(.imr_check_param(ls_initial, "bool"))
+  .imr_check_param(maxit, "numeric", 1, integer = TRUE)
+  .imr_check_param(thresh, "numeric", 0, min_inclusive = FALSE)
+  .imr_check_param(trace, "bool")
+  .imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE)
+  .imr_check_param(ls_initial, "bool")
 
   structure(
     list(

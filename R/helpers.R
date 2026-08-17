@@ -382,6 +382,12 @@ svd_opt <- function(mat,
   ifelse(abs(round(x, 1)) >= 0.1 | x == 0, sprintf("%.1f%%", x), "< 0.1%")
 }
 
+#' @noRd
+.imr_fmt_vals <- function(v, n_max = 5L) {
+  trimmed <- length(v) > n_max
+  if (trimmed) v <- v[seq_len(n_max)]
+  paste0(toString(format(v, trim = TRUE)), if (trimmed) ", ...")
+}
 # ---------------------------------------------------------------------------
 # smybols shown by print.imr_fit() and summary.imr_fit().
 # LaTeX equivalents:
@@ -411,63 +417,132 @@ svd_opt <- function(mat,
                              choices = NULL,
                              case_insensitive = TRUE,
                              allow_null = FALSE,
-                             raise_error = FALSE) {
+                             raise_error = TRUE,
+                             arg = deparse(substitute(x))[[1L]]) {
 
+  # checking that the input parameters are correct
   type <- match.arg(type, c("numeric", "numeric_list", "bool", "character"))
-  f <- if(raise_error) stopifnot else return
+  if (type %in% c("numeric", "numeric_list")) {
+    if (!is.numeric(min) || length(min) != 1L || is.na(min)) {
+      stop("`min` must be a single non-missing number.", call. = FALSE)
+    }
+    if (!is.numeric(max) || length(max) != 1L || is.na(max)) {
+      stop("`max` must be a single non-missing number.", call. = FALSE)
+    }
+    if (min > max) {
+      stop("`min` must not exceed `max`.", call. = FALSE)
+    }
+  }
+  if (type == "character" && !is.null(choices) && !is.character(choices)) {
+    stop("`choices` must be a character vector or NULL.", call. = FALSE)
+  }
 
-  if (is.null(x)) f(isTRUE(allow_null))
+  # main function, returns unempty string if everything is ok, otherwise, a string describing the error
+  diagnose <- function() {
 
-  switch(
-    type,
-
-    numeric = ,
-    numeric_list = {
-      if (!is.numeric(min) || length(min) != 1L || is.na(min))
-        stop("`min` must be a single non-missing number.", call. = FALSE)
-      if (!is.numeric(max) || length(max) != 1L || is.na(max))
-        stop("`max` must be a single non-missing number.", call. = FALSE)
-      if (min > max)
-        stop("`min` must not exceed `max`.", call. = FALSE)
-
-
-      if (!is.numeric(x)) f(FALSE)
-      n <- length(x)
-      if (n == 0L) f(FALSE)
-      if (type == "numeric" && n != 1L) f(FALSE)
-      if (anyNA(x)) f(FALSE)
-
-      if (isTRUE(min_inclusive)) {
-        if (!all(x >= min)) f(FALSE)
-      } else if (!all(x > min)) f(FALSE)
-
-      if (isTRUE(max_inclusive)) {
-        if (!all(x <= max)) f(FALSE)
-      } else if (!all(x < max)) f(FALSE)
-
-      if (isTRUE(integer)) {
-        if (!all(is.finite(x))) f(FALSE)
-        if (!all(x == round(x))) f(FALSE)
-      }
-      f(TRUE)
-    },
-
-    bool = {
-      f(is.logical(x) && length(x) == 1L && !is.na(x))
-    },
-
-    character = {
-      if (!is.null(choices) && !is.character(choices))
-        stop("`choices` must be a character vector or NULL.", call. = FALSE)
-
-      if (!is.character(x) || length(x) != 1L || is.na(x)) f(FALSE)
-      if (is.null(choices)) f(TRUE)
-
-      if (isTRUE(case_insensitive)) {
-        f(tolower(x) %in% tolower(choices))
+    describe <- function(v) {
+      if (is.null(v)) {
+        "NULL"
+      } else if (length(v) == 1L && is.na(v)) {
+        "NA"
+      } else if (length(v) != 1L) {
+        sprintf("%s of length %d", class(v)[[1L]], length(v))
       } else {
-        f(x %in% choices)
+        sprintf("%s (%s)", class(v)[[1L]], .imr_fmt_vals(v))
       }
     }
-  )
+
+
+    if (is.null(x)) {
+      if (isTRUE(allow_null)) return(NULL)
+      return(sprintf("`%s` must not be NULL.", arg))
+    }
+    switch(
+      type,
+      numeric = ,
+      numeric_list = {
+        if (!is.numeric(x)) {
+          return(sprintf("`%s` must be numeric, not %s.", arg, class(x)[[1L]]))
+        }
+        if (length(x) == 0L) {
+          return(sprintf("`%s` must have length at least 1.", arg))
+        }
+        if (type == "numeric" && length(x) != 1L) {
+          return(sprintf(
+            "`%s` must be a single number, not a vector of length %d.",
+            arg, length(x)
+          ))
+        }
+        if (anyNA(x)) {
+          return(sprintf("`%s` must not contain missing values.", arg))
+        }
+        ok <- if (isTRUE(min_inclusive)) x >= min else x > min
+        if (!all(ok)) {
+          return(sprintf(
+            "`%s` must be %s %s, not %s.",
+            arg, if (isTRUE(min_inclusive)) ">=" else ">",
+            format(min), .imr_fmt_vals(x[!ok])
+          ))
+        }
+        ok <- if (isTRUE(max_inclusive)) x <= max else x < max
+        if (!all(ok)) {
+          return(sprintf(
+            "`%s` must be %s %s, not %s.",
+            arg, if (isTRUE(max_inclusive)) "<=" else "<",
+            format(max), .imr_fmt_vals(x[!ok])
+          ))
+        }
+        if (isTRUE(integer)) {
+          ok <- is.finite(x)
+          if (!all(ok)) {
+            return(sprintf(
+              "`%s` must be finite, not %s.", arg, .imr_fmt_vals(x[!ok])
+            ))
+          }
+          ok <- x == round(x)
+          if (!all(ok)) {
+            return(sprintf(
+              "`%s` must be a whole number, not %s.", arg, .imr_fmt_vals(x[!ok])
+            ))
+          }
+        }
+        NULL
+      },
+      bool = {
+        if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+          return(sprintf(
+            "`%s` must be `TRUE` or `FALSE`, not %s.", arg, describe(x)
+          ))
+        }
+        NULL
+      },
+      character = {
+        if (!is.character(x) || length(x) != 1L || is.na(x)) {
+          return(sprintf(
+            "`%s` must be a single non-missing string, not %s.",
+            arg, describe(x)
+          ))
+        }
+        if (is.null(choices)) return(NULL)
+        hit <- if (isTRUE(case_insensitive)) {
+          tolower(x) %in% tolower(choices)
+        } else {
+          x %in% choices
+        }
+        if (!hit) {
+          return(sprintf(
+            "`%s` must be one of %s, not %s.",
+            arg, toString(encodeString(choices, quote = "\"")),
+            encodeString(x, quote = "\"")
+          ))
+        }
+        NULL
+      }
+    )
+  }
+
+  msg <- diagnose()
+  if (is.null(msg)) return(TRUE)
+  if (isTRUE(raise_error)) stop(msg, call. = FALSE)
+  FALSE
 }

@@ -1,122 +1,3 @@
-check_param <- function(...) .imr_check_param(..., raise_error = TRUE)
-
-sample_matrix <- function(n, p, dist, mvnorm_means = NULL, mvnorm_vars = NULL) {
-  check_param(dist, "character", choices = c("uniform", "normal", "mvnorm"))
-  check_param(c(n,p), "numeric_list", 0, integer = TRUE, min_inclusive = FALSE)
-  if (p == 0) {
-    return(NULL)
-  }
-  if (dist == "uniform") {
-    return(matrix(stats::runif(n * p), n, p))
-  }else if(dist == "normal"){
-  return(matrix(stats::rnorm(n * p), n, p))
-  }else if(dist == "mvnorm"){
-    check_param(mvnorm_means, "numeric_list")
-    check_param(mvnorm_vars, "numeric_list", 0, min_inclusive = FALSE, max_inclusive = FALSE)
-              stopifnot(length(mvnorm_means) == p &&
-              length(mvnorm_vars) == p)
-    MASS::mvrnorm(
-      n = n,
-      mu = mvnorm_means,
-      Sigma = diag(mvnorm_vars, nrow = p, ncol = p)
-    )
-  }
-}
-
-orthonormal_matrix <- function(n, r, null_of=NULL){
-  A <- sample_matrix(n, r, "normal")
-
-  # if orthogonality required, set A <- A - A * (projection of null_of)
-  if(! is.null(null_of))
-    A <- qr.resid(qr(null_of), A)
-
-  # finally, we want A^TA=I with rank r
-  qr_A <- qr(A)
-  if(qr_A$rank < r) {
-    stop("Rank of A is smaller than r")
-  }
-  return(qr.Q(qr_A))
-}
-
-
-zero_out <- function(A, frac, rowwise = FALSE) {
-  if (frac <= 0) {
-    return(A)
-  }
-  if (rowwise) {
-    rows <- sample.int(nrow(A), size = round(frac * nrow(A)))
-    A[rows, ] <- 0
-  } else {
-    A[sample.int(length(A), size = round(frac * length(A)))] <- 0
-  }
-  A
-}
-
-#' Solve for the logit intercept giving a target mean propensity
-#' @noRd
-calibrate_logit_intercept <- function(lin_pred, target_mean, max_eval = 1e6) {
-  lp <- if (length(lin_pred) > max_eval) sample_vec(lin_pred, max_eval) else lin_pred
-  stats::uniroot(
-    f = function(a) mean(stats::plogis(a + lp)) - target_mean,
-    interval = c(-40, 40),
-    extendInt = "yes",
-    tol = .Machine$double.eps^0.5
-  )$root
-}
-
-
-make_propensity <- function(mechanism, missing_rate, strength,
-                            n, m, x_mat, z_mat, theta, y_full) {
-  target <- 1 - missing_rate
-  if (mechanism == "mcar" || strength == 0) {
-    return(matrix(target, n, m))
-  }
-  lin <- switch(
-    mechanism,
-    mar = {
-      if (is.null(x_mat) && is.null(z_mat)) {
-        stop("`missing_mechanism = \"mar\"` requires p > 0 or q > 0.")
-      }
-      row_part <- if (is.null(x_mat)) rep(0, n) else as.vector(x_mat %*% stats::rnorm(ncol(x_mat)))
-      col_part <- if (is.null(z_mat)) rep(0, m) else as.vector(z_mat %*% stats::rnorm(ncol(z_mat)))
-      outer(row_part, col_part, "+")
-    },
-    mnar_theta = theta,
-    mnar_y     = y_full
-  )
-  lin <- strength * (lin - mean(lin)) / stats::sd(as.vector(lin))
-  matrix(stats::plogis(calibrate_logit_intercept(as.vector(lin), target) + as.vector(lin)), n, m)
-}
-
-select_outlier_cells <- function(mask, prop, structure = c("cellwise", "rowwise", "colwise")) {
-  n <- nrow(mask)
-  obs_idx <- which(mask == 1L)
-
-  if (structure == "cellwise")
-    return(obs_idx[sample.int(length(obs_idx),size =  round(prop * length(obs_idx)))])
-
-  n_lines <- if (structure == "rowwise") nrow(mask) else ncol(mask)
-  n_out <- round(prop * n_lines)
-  lines_out <-  sample.int(n_lines, size = n_out)
-
-  line_of_cell <- if (structure == "rowwise") {
-    (obs_idx - 1L) %% n + 1L
-  } else {
-    (obs_idx - 1L) %/% n + 1L
-  }
-  return(obs_idx[line_of_cell %in% lines_out])
-}
-
-draw_outlier_shifts <- function(n_out, scale_ref, mag, sign) {
-  magnitude <- stats::runif(n_out, min = 0, max = mag * scale_ref)
-  signs <- switch(
-    sign,
-    symmetric = sample(c(-1, 1), size = n_out, replace = TRUE),
-    positive  = rep(1, n_out),
-    negative  = rep(-1, n_out)
-  )
-  signs * magnitude
-}
 
 #
 #
@@ -158,6 +39,128 @@ simulate.d <- function(
     seed = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
+  # --------------------------------------------------------------------------------------------
+  # we begin by defining helper functions inside so they don't clutter the environment
+  check_param <- function(...) .imr_check_param(..., raise_error = TRUE)
+
+  sample_matrix <- function(n, p, dist, mvnorm_means = NULL, mvnorm_vars = NULL) {
+    check_param(dist, "character", choices = c("uniform", "normal", "mvnorm"))
+    check_param(c(n,p), "numeric_list", 0, integer = TRUE, min_inclusive = FALSE)
+    if (p == 0) {
+      return(NULL)
+    }
+    if (dist == "uniform") {
+      return(matrix(stats::runif(n * p), n, p))
+    }else if(dist == "normal"){
+      return(matrix(stats::rnorm(n * p), n, p))
+    }else if(dist == "mvnorm"){
+      check_param(mvnorm_means, "numeric_list")
+      check_param(mvnorm_vars, "numeric_list", 0, min_inclusive = FALSE, max_inclusive = FALSE)
+      stopifnot(length(mvnorm_means) == p &&
+                  length(mvnorm_vars) == p)
+      MASS::mvrnorm(
+        n = n,
+        mu = mvnorm_means,
+        Sigma = diag(mvnorm_vars, nrow = p, ncol = p)
+      )
+    }
+  }
+
+  orthonormal_matrix <- function(n, r, null_of=NULL){
+    A <- sample_matrix(n, r, "normal")
+
+    # if orthogonality required, set A <- A - A * (projection of null_of)
+    if(! is.null(null_of))
+      A <- qr.resid(qr(null_of), A)
+
+    # finally, we want A^TA=I with rank r
+    qr_A <- qr(A)
+    if(qr_A$rank < r) {
+      stop("Rank of A is smaller than r")
+    }
+    return(qr.Q(qr_A))
+  }
+
+
+  zero_out <- function(A, frac, rowwise = FALSE) {
+    if (frac <= 0) {
+      return(A)
+    }
+    if (rowwise) {
+      rows <- sample.int(nrow(A), size = round(frac * nrow(A)))
+      A[rows, ] <- 0
+    } else {
+      A[sample.int(length(A), size = round(frac * length(A)))] <- 0
+    }
+    A
+  }
+
+  #' Solve for the logit intercept giving a target mean propensity
+  #' @noRd
+  calibrate_logit_intercept <- function(lin_pred, target_mean, max_eval = 1e6) {
+    lp <- if (length(lin_pred) > max_eval) sample_vec(lin_pred, max_eval) else lin_pred
+    stats::uniroot(
+      f = function(a) mean(stats::plogis(a + lp)) - target_mean,
+      interval = c(-40, 40),
+      extendInt = "yes",
+      tol = .Machine$double.eps^0.5
+    )$root
+  }
+
+
+  make_propensity <- function(mechanism, missing_rate, strength,
+                              n, m, x_mat, z_mat, theta, y_full) {
+    target <- 1 - missing_rate
+    if (mechanism == "mcar" || strength == 0) {
+      return(matrix(target, n, m))
+    }
+    lin <- switch(
+      mechanism,
+      mar = {
+        if (is.null(x_mat) && is.null(z_mat)) {
+          stop("`missing_mechanism = \"mar\"` requires p > 0 or q > 0.")
+        }
+        row_part <- if (is.null(x_mat)) rep(0, n) else as.vector(x_mat %*% stats::rnorm(ncol(x_mat)))
+        col_part <- if (is.null(z_mat)) rep(0, m) else as.vector(z_mat %*% stats::rnorm(ncol(z_mat)))
+        outer(row_part, col_part, "+")
+      },
+      mnar_theta = theta,
+      mnar_y     = y_full
+    )
+    lin <- strength * (lin - mean(lin)) / stats::sd(as.vector(lin))
+    matrix(stats::plogis(calibrate_logit_intercept(as.vector(lin), target) + as.vector(lin)), n, m)
+  }
+
+  select_outlier_cells <- function(mask, prop, structure = c("cellwise", "rowwise", "colwise")) {
+    n <- nrow(mask)
+    obs_idx <- which(mask == 1L)
+
+    if (structure == "cellwise")
+      return(obs_idx[sample.int(length(obs_idx),size =  round(prop * length(obs_idx)))])
+
+    n_lines <- if (structure == "rowwise") nrow(mask) else ncol(mask)
+    n_out <- round(prop * n_lines)
+    lines_out <-  sample.int(n_lines, size = n_out)
+
+    line_of_cell <- if (structure == "rowwise") {
+      (obs_idx - 1L) %% n + 1L
+    } else {
+      (obs_idx - 1L) %/% n + 1L
+    }
+    return(obs_idx[line_of_cell %in% lines_out])
+  }
+
+  draw_outlier_shifts <- function(n_out, scale_ref, mag, sign) {
+    magnitude <- stats::runif(n_out, min = 0, max = mag * scale_ref)
+    signs <- switch(
+      sign,
+      symmetric = sample(c(-1, 1), size = n_out, replace = TRUE),
+      positive  = rep(1, n_out),
+      negative  = rep(-1, n_out)
+    )
+    signs * magnitude
+  }
+
   #  checks ---------------------------------------------------
   check_param(n, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
   check_param(m, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
@@ -192,6 +195,7 @@ simulate.d <- function(
   check_param(outlier_sign, "character", choices = c("symmetric", "positive", "negative"))
   check_param(outlier_prop,  "numeric", 0, 1)
   check_param(outlier_mag,  "numeric", 0, min_inclusive = FALSE, max_inclusive = FALSE)
+
 
 
   # Covariates X and Z ---------------------------------------------
@@ -365,37 +369,5 @@ simulate.d <- function(
     }
     out
 }
-
-
-
-o = generate_simulated_data(
-    # Dimensions
-  n = 800,
-  m = 900,
-  r = 10,
-  p = 3,
-  q = 2,
-  # settings for beta and gamma
-  shared_beta = F,
-  shared_gamma = F,
-  sparsity_beta = 0,
-  sparsity_gamma = 0.3,
-  sparse_by_variable = TRUE,
-  # settings for orthogonality between M, Xbeta, and Xgamma
-  orthogonalise = TRUE,
-  # signal proportion between the components
-  signal_share = c(M = 4/3, beta = 1/3, gamma=1/3),
-  # noise for Y
-  snr = 1.5, # Reduced from 0.6 / 0.4
-  # missing values in Y
-  missing_mechanism  = "mar",
-  missing_rate = .8,
-  # settings for outliers
-  outlier_prop = 0.7,
-  outlier_mag = 10,
-  outlier_structure = "rowwise", #c("cellwise", "rowwise", "colwise"),
-  outlier_sign = "positive", #c("symmetric", "positive", "negative"),
-  seed = NULL)
-o$diagnostics
 
 
