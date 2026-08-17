@@ -9,7 +9,7 @@
 # outlier_sign = c("symmetric", "positive", "negative"); outlier_within = 1
 # missing_mechanism  = "mar"; missing_rate = .8
 
-simulate.d <- function(
+simulate_data <- function(
     # Dimensions
     n = 300,
     m = 400,
@@ -41,11 +41,10 @@ simulate.d <- function(
   if (!is.null(seed)) set.seed(seed)
   # --------------------------------------------------------------------------------------------
   # we begin by defining helper functions inside so they don't clutter the environment
-  check_param <- function(...) .imr_check_param(..., raise_error = TRUE)
 
   sample_matrix <- function(n, p, dist, mvnorm_means = NULL, mvnorm_vars = NULL) {
-    check_param(dist, "character", choices = c("uniform", "normal", "mvnorm"))
-    check_param(c(n,p), "numeric_list", 0, integer = TRUE, min_inclusive = FALSE)
+    .imr_check_param(dist, "character", choices = c("uniform", "normal", "mvnorm"))
+    .imr_check_param(c(n,p), "numeric_list", 0, integer = TRUE, min_inclusive = FALSE)
     if (p == 0) {
       return(NULL)
     }
@@ -54,8 +53,8 @@ simulate.d <- function(
     }else if(dist == "normal"){
       return(matrix(stats::rnorm(n * p), n, p))
     }else if(dist == "mvnorm"){
-      check_param(mvnorm_means, "numeric_list")
-      check_param(mvnorm_vars, "numeric_list", 0, min_inclusive = FALSE, max_inclusive = FALSE)
+      .imr_check_param(mvnorm_means, "numeric_list")
+      .imr_check_param(mvnorm_vars, "numeric_list", 0, min_inclusive = FALSE, max_inclusive = FALSE)
       stopifnot(length(mvnorm_means) == p &&
                   length(mvnorm_vars) == p)
       MASS::mvrnorm(
@@ -96,9 +95,8 @@ simulate.d <- function(
   }
 
   #' Solve for the logit intercept giving a target mean propensity
-  #' @noRd
   calibrate_logit_intercept <- function(lin_pred, target_mean, max_eval = 1e6) {
-    lp <- if (length(lin_pred) > max_eval) sample_vec(lin_pred, max_eval) else lin_pred
+    lp <- if (length(lin_pred) > max_eval) sample(lin_pred, max_eval) else lin_pred
     stats::uniroot(
       f = function(a) mean(stats::plogis(a + lp)) - target_mean,
       interval = c(-40, 40),
@@ -162,20 +160,20 @@ simulate.d <- function(
   }
 
   #  checks ---------------------------------------------------
-  check_param(n, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
-  check_param(m, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
-  check_param(p, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
-  check_param(q, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
-  check_param(r, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
+  .imr_check_param(n, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
+  .imr_check_param(m, "numeric", 0, integer = TRUE, min_inclusive = FALSE, max_inclusive = FALSE)
+  .imr_check_param(p, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
+  .imr_check_param(q, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
+  .imr_check_param(r, "numeric", 0, min(n,m), integer = TRUE,  max_inclusive = FALSE)
   stopifnot(p>0 || q>0 || r>0)
 
-  check_param(shared_beta, "bool")
-  check_param(shared_gamma, "bool")
-  check_param(sparsity_beta,  "numeric", 0, 1)
-  check_param(sparsity_gamma,  "numeric", 0, 1)
-  check_param(sparse_by_variable, "bool")
+  .imr_check_param(shared_beta, "bool")
+  .imr_check_param(shared_gamma, "bool")
+  .imr_check_param(sparsity_beta,  "numeric", 0, 1)
+  .imr_check_param(sparsity_gamma,  "numeric", 0, 1)
+  .imr_check_param(sparse_by_variable, "bool")
 
-  check_param(orthogonalise, "bool")
+  .imr_check_param(orthogonalise, "bool")
   if(orthogonalise) stopifnot(r <= min(n-p, m-q))
 
   if(! is.null(signal_share)){
@@ -185,16 +183,16 @@ simulate.d <- function(
     if(q > 0) comp <- c(comp, "gamma")
     stopifnot(all(names(signal_share) %in% comp) && all(comp %in% names(signal_share)))
   }
-  check_param(snr,  "numeric", 0, max_inclusive = FALSE, min_inclusive = FALSE)
+  .imr_check_param(snr,  "numeric", 0, max_inclusive = FALSE, min_inclusive = FALSE)
 
 
-  check_param(missing_rate,  "numeric", 0, 1)
-  check_param(missing_mechanism, "character", choices = c("mcar", "mar", "mnar_theta", "mnar_y"))
+  .imr_check_param(missing_rate,  "numeric", 0, 1)
+  .imr_check_param(missing_mechanism, "character", choices = c("mcar", "mar", "mnar_theta", "mnar_y"))
 
-  check_param(outlier_structure, "character", choices =  c("cellwise", "rowwise", "colwise"))
-  check_param(outlier_sign, "character", choices = c("symmetric", "positive", "negative"))
-  check_param(outlier_prop,  "numeric", 0, 1)
-  check_param(outlier_mag,  "numeric", 0, min_inclusive = FALSE, max_inclusive = FALSE)
+  .imr_check_param(outlier_structure, "character", choices =  c("cellwise", "rowwise", "colwise"))
+  .imr_check_param(outlier_sign, "character", choices = c("symmetric", "positive", "negative"))
+  .imr_check_param(outlier_prop,  "numeric", 0, 1)
+  .imr_check_param(outlier_mag,  "numeric", 0, min_inclusive = FALSE, max_inclusive = FALSE)
 
 
 
@@ -204,7 +202,7 @@ simulate.d <- function(
 
   # the following is to fix a signal mismatch. shared_beta requires centered Z and vice-versa.
   if (p>0 && q>0 && shared_gamma) x_mat <- sweep(x_mat, 2, colMeans(x_mat), "-")
-  if (q>0 && q>0 && shared_beta) z_mat <- sweep(z_mat, 2, colMeans(z_mat), "-")
+  if (p>0 && q>0 && shared_beta) z_mat <- sweep(z_mat, 2, colMeans(z_mat), "-")
 
   # Low-rank structure M  ------------------------
   u_mat <- orthonormal_matrix(n, r, if(orthogonalise) x_mat else NULL)
@@ -251,8 +249,10 @@ simulate.d <- function(
   if(! is.null(signal_share)){
 
     signal_share <- signal_share[names(parts)]
+    signal_share[parts_norm < 0] <- 0
     signal_share <- signal_share / sum(signal_share)
     scale_fac <- sqrt(signal_share * n * m) / parts_norm
+    scale_fac <- ifelse(is.infinite(scale_fac), 0, scale_fac)
   } else{
     comp <- c()
     if(r > 0)  comp <- c(comp, "M")
@@ -265,6 +265,7 @@ simulate.d <- function(
   if(r > 0) d_vec <- rep(scale_fac[["M"]], r)
   if(p > 0) beta_mat <- beta_mat * scale_fac[["beta"]]
   if(q > 0) gamma_mat <- gamma_mat * scale_fac[["gamma"]]
+  scale_fac <- scale_fac[names(parts)]
   parts <- Map(`*`, parts, as.list(scale_fac))
   m_mat <- parts$M
   theta <- parts$M
