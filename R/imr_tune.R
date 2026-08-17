@@ -641,6 +641,7 @@ imr_tune <- function(data,
       message(sprintf("\nTotal Tuning Time: %s", format(t_total)))
     }
     out_obj$time_secs <- as.numeric(t_total,"secs")
+    out_obj$metric <- metric_name
     return(out_obj)
   }
   #---------------------------------------------------------------------
@@ -664,6 +665,7 @@ imr_tune <- function(data,
       message(sprintf("\nTotal Tuning Time: %s", format(t_total)))
     }
     out_obj$time_secs <- as.numeric(t_total,"secs")
+    out_obj$metric <- metric_name
     return(out_obj)
   }
   #-----------------------------------------------------------------------
@@ -802,6 +804,7 @@ imr_tune <- function(data,
     history = all_history,
     fit = last_output$fit, # if (final_fit) best_fit else NULL,
     params = last_output$params,
+    metric = metric_name,
     time_secs = as.numeric(t_total,"secs")
   ))
 }
