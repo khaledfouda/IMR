@@ -1,7 +1,7 @@
 require(magrittr)
 require(tidyverse)
 pkgbuild::clean_dll(); Rcpp::compileAttributes(); devtools::document()
-devtools::load_all(recompile = TRUE)
+devtools::load_all()
 devtools::test() # check
 
 set.seed(1)

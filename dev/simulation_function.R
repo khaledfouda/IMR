@@ -1,4 +1,22 @@
 
+s <- simulate_data(
+  n = 600,
+  m = 600,
+  r = 12,
+  p = 0,
+  q = 0,
+  signal_share = c(M=1),
+  snr = 1,
+  missing_mechanism = "mcar",
+  missing_rate = 0.6,
+  outlier_prop = 0.1,
+  outlier_mag = 10,
+  outlier_structure = "cellwise",
+  outlier_sign = "symmetric",
+  seed = 2025
+
+)
+
 #
 #
 # # the following for testing only, remove later.
