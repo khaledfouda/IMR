@@ -148,8 +148,14 @@ simulate_data <- function(
     return(obs_idx[line_of_cell %in% lines_out])
   }
 
-  draw_outlier_shifts <- function(n_out, scale_ref, mag, sign) {
+  draw_outlier_shifts <- function(n_out, scale_ref, mag, sign, dist="normal",
+                                  normal_mean=NA) {
+    if(dist == "normal"){
+      .imr_check_param(normal_mean, "numeric")
+      return(stats::rnorm(n_out, normal_mean, mag * scale_ref))
+    }
     magnitude <- stats::runif(n_out, min = 0, max = mag * scale_ref)
+
     signs <- switch(
       sign,
       symmetric = sample(c(-1, 1), size = n_out, replace = TRUE),
@@ -301,8 +307,13 @@ simulate_data <- function(
     outlier_mask <- NULL
     if (outlier_prop > 0 && outlier_mag > 0) {
       outlier_idx <- select_outlier_cells(mask, outlier_prop, outlier_structure)
+      # gaussian mixture outliers
+      outlier_shift <- draw_outlier_shifts(length(outlier_idx), noise_sd, outlier_mag,
+                                           dist = "normal", normal_mean = max(theta),
+                                           sign = NA)
 
-      outlier_shift <- draw_outlier_shifts(length(outlier_idx), noise_sd, outlier_mag,  outlier_sign)
+      # the one below draws uniform outliers
+      #outlier_shift <- draw_outlier_shifts(length(outlier_idx), noise_sd, outlier_mag,  outlier_sign)
 
       y_mat[outlier_idx] <- y_mat[outlier_idx] + outlier_shift
       outlier_mask <- matrix(0L, n, m)
