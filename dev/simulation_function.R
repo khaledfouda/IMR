@@ -11,8 +11,8 @@
 
 simulate_data <- function(
     # Dimensions
-    n = 300,
-    m = 400,
+    n = 400,
+    m = 300,
     r = 10,
     p = 6,
     q = 6,
