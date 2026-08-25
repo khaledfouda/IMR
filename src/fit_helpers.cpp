@@ -399,16 +399,17 @@ NumericVector huber_loss_cpp(const NumericVector yx, const double huber_c) {
   const double*  p_x  = REAL(yx);
   const R_xlen_t n    = yx.size();
   const double   half = 0.5 * huber_c * huber_c;
-  double         loss    = 0.0, sum_abs = 0, sum_sq = 0;
+  double         loss    = 0.0, sum_abs = 0.0, sum_sq = 0.0;
   R_xlen_t n_clip = 0;
 
   for (R_xlen_t k = 0; k < n; ++k) {
     const double v = p_x[k];
     const double a = std::fabs(v);
-    sum_sq  += v * v;
+    const double vv = v * v;
+    sum_sq  += vv;
     sum_abs += a;
     if (a <= huber_c) {
-      loss += 0.5 * a * a;
+      loss += 0.5 * vv;
     } else {
       loss += huber_c * a - half;
       ++n_clip;

@@ -320,13 +320,13 @@ imr_solver <- function(
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
+  Y@x <- Y@x + 0 # force a copy so the original matrix doesn't get modified by C++
   dims <- dim(Y)
   nr <- dims[1]
   nc <- dims[2]
   nz <- length(Y@x)
   irow <- Y@i
   pcol <- Y@p
-  Y@x <- Y@x + 0 # force a copy so the original matrix doesn't get modified by C++
 
   # Unpack convergence ----------------------------------------------------------
   maxit <- convergence$maxit
@@ -651,7 +651,7 @@ imr_solver <- function(
       cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae=%9.4f%s\n",
                   iter, obj, ratio, rmse, mae,
           if (huber_flag) sprintf(", Huber: [c=%.4g, ratio=%2.3e, clip=%.1f%%]",
-                                  huber_c, huber_ratio, 100*st[3]/nz)
+                                  huber_c, huber_ratio, 100*st[["n_clipped"]]/nz)
           else ""))
     }
     # add huber ratio the total ratio (huber ratio is NaN in the first iteration)
