@@ -152,6 +152,9 @@ imr_fit <- function(
     warm_start = NULL,
     training = FALSE # if training use y_train instead of Y.
 ) {
+  # tracking time
+  start_time <- Sys.time()
+
   # validation
   stopifnot(inherits(data, "imr_data"))
   stopifnot(inherits(convergence, "imr_convergence"))
@@ -293,7 +296,8 @@ imr_fit <- function(
         training = training,
         huber = huber_meta,
         # statistic for print function
-        sum_squares = sum_squares
+        sum_squares = sum_squares,
+        time_secs = round(as.numeric(Sys.time() - start_time, units = "secs"))
       ),
       convergence = convergence,
       model = data$model,

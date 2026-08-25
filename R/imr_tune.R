@@ -135,7 +135,6 @@ imr_tune_nuclear_fast <- function(data,
   # (optional) final fit on full dataset
   if (final_fit) {
     if (verbose > 0) message("Fitting final model on full dataset...")
-    start_time <- Sys.time()
     best_fit_obj <- imr_fit(data,
       rank = best_params$rank_in,
       lambda_m = best_params$lambda_m,
@@ -146,7 +145,6 @@ imr_tune_nuclear_fast <- function(data,
       training = FALSE,
       warm_start = best_fit_obj
     )
-    best_fit_obj$time_secs <- round(as.numeric(difftime(Sys.time(), start_time),"secs"))
   }
   # Clean history of NAs from early stopping
   history <- history[!is.na(history$verror), ]
@@ -326,7 +324,6 @@ imr_tune_nuclear_slow <- function(data,
   # (optional) final fit on full dataset
   if (final_fit) {
     if (verbose > 0) message("Fitting final model on full dataset...")
-    start_time <- Sys.time()
     best_fit_obj_1 <- imr_fit(data,
       rank = best_params_1$rank_in,
       lambda_m = best_params_1$lambda_m,
@@ -337,7 +334,6 @@ imr_tune_nuclear_slow <- function(data,
       training = FALSE,
       warm_start = best_fit_obj_1
     )
-    best_fit_obj_1$time_secs <- round(as.numeric(difftime(Sys.time(), start_time),"secs"))
   }
   # Clean history of NAs from early stopping
   history <- history[!is.na(history$verror), ]
@@ -467,7 +463,6 @@ imr_tune_lasso <- function(data,
     if (use_warm_in_final) {
       warm_start <- results_list[[best_idx]]$fit
     }
-    start_time <- Sys.time()
     best_fit_obj <- imr_fit(data,
       rank = best_params$rank_in,
       lambda_m = best_params$lambda_m,
@@ -477,7 +472,6 @@ imr_tune_lasso <- function(data,
       convergence = convergence,
       warm_start = warm_start
     )
-    best_fit_obj$time_secs <- round(as.numeric(difftime(Sys.time(), start_time),"secs"))
   } else {
     best_fit_obj <- NULL
   }
