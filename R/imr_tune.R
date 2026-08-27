@@ -599,8 +599,8 @@ imr_tune <- function(data,
                      n_cores = 4,
                      seed = NULL,
                      nuclear_log_scale = TRUE,
-                     tune_maxit = 10,
-                     tune_tol = 1e-4) {
+                     tune_maxit = convergence$maxit,
+                     tune_tol = convergence$tol) {
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
   stopifnot(inherits(data, "imr_data"), inherits(grid, "imr_tune_grid"))
   t_start_global <- Sys.time()
