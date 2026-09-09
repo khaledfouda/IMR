@@ -113,6 +113,8 @@ imr_data <- function(Y,
     n_train <- sum(train_mask)
     n_valid <- sum(valid_mask)
 
+    split_data <- TRUE
+
 
   } else if (split_data) {
     # message("Performing train/valid split...")
