@@ -70,6 +70,8 @@ imr_data <- function(Y,
                      Z = NULL,
                      similarity_rows = NULL,
                      similarity_cols = NULL,
+                     train_mask = NULL,
+                     valid_mask = NULL,
                      val_prop = 0.0,
                      seed = NULL) {
   out <- list()
@@ -84,10 +86,35 @@ imr_data <- function(Y,
   n_total_obs <- sum(obs_mask)
 
   # --- Train/Validation Split ---
+  # if a validation mask is provided, it'll be used!
   split_data <- is.numeric(val_prop) && val_prop > 0
+  is_binary_matrix <- function(m) {
+    is.matrix(m) && isTRUE(all(m == 0 | m == 1))
+  }
+
+  if(!is.null(valid_mask)){
+    if (!is_binary_matrix(valid_mask)) {
+      stop("valid_mask must be a matrix of 0s and 1s or NULL")
+    }
+    if (!is_binary_matrix(train_mask)) {
+      stop("If valid_mask provided then train_mask must be a matrix of 0s and 1s.")
+    }
+    if (any(train_mask == 1 & valid_mask == 1)) {
+      stop("train_mask and valid_mask cannot overlap.")
+    }
+    if (any((train_mask == 1 | valid_mask == 1) & obs_mask != 1)) {
+      stop("train_mask or valid_mask has a 1 where obs_mask does not.")
+    }
+
+    out$valid_mask <- as_incomplete(valid_mask)
+    out$y_train <- as_incomplete(Y * train_mask)
+    out$y_valid <- as_incomplete(Y * valid_mask)
+
+    n_train <- sum(train_mask)
+    n_valid <- sum(valid_mask)
 
 
-  if (split_data) {
+  } else if (split_data) {
     # message("Performing train/valid split...")
 
     valid_mask_mat <- mask_train_test_split(obs_mask, val_prop, seed)
@@ -99,7 +126,7 @@ imr_data <- function(Y,
 
     n_train <- sum(train_mask_mat)
     n_valid <- sum(valid_mask_mat)
-  } else {
+  }else {
     n_train <- n_total_obs
     n_valid <- 0
   }
