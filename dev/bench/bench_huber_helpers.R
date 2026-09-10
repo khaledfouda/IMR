@@ -364,3 +364,46 @@ testthat::test_that("update_huber_c_cpp subsamples accurately and deterministica
                          update_huber_c_R(small, 1.345, Inf))
 })
 
+
+
+## Invert the annealing logic to recover the raw dispersion:
+##   huber_shift = 1, c_old = Inf  =>  cand = 1 * d < Inf  =>  return = d
+raw <- function(x, method)
+  update_huber_c_cpp(x, huber_shift = 1, c_old = Inf,
+                           method = method, max_sample = 0L)  # 0 => use all data
+
+set.seed(1)
+cases <- list(
+  rnorm(1000),
+  runif(37),
+  rt(500, df = 3),          # heavy tails: IQR/MAD diverge from sd
+  c(1, 5, 2, 8, 3, 9, 4),   # odd n
+  c(1, 5, 2, 8, 3, 9)       # even n -> exercises the averaging median
+)
+
+for (x in cases) {
+  stopifnot(
+    isTRUE(all.equal(raw(x, "IQR"), IQR(x, type = 7) / 1.349)),
+    isTRUE(all.equal(raw(x, "MAD"), mad(x,constant = 1.483)))
+  )
+}
+cat("dispatch OK: IQR and MAD paths match stats::\n")
+
+## annealing behaviour: monotone non-increasing, and huber_shift scales d
+x <- rt(500, df = 3)
+d_iqr <- IQR(x, type = 7)
+stopifnot(
+  ## candidate below c_old is accepted
+  isTRUE(all.equal(IMR:::update_huber_c_cpp(x, 2, Inf, "IQR", 0L), 2 * d_iqr / 1.349 )),
+  ## candidate above c_old is rejected (monotone clamp)
+  IMR:::update_huber_c_cpp(x, 2, 1e-6, "IQR", 0L) == 1e-6,
+  ## degenerate dispersion (all equal) returns c_old untouched
+  IMR:::update_huber_c_cpp(rep(3, 50), 1, 42, "MAD", 0L) == 42,
+  ## n < 3 guard returns c_old
+  IMR:::update_huber_c_cpp(c(1, 2), 1, 42, "IQR", 0L) == 42
+)
+cat("annealing + guards OK\n")
+
+## bad method errors
+stopifnot(inherits(try(raw(rnorm(10), "foo"), silent = TRUE), "try-error"))
+cat("all tests passed\n")

@@ -10,6 +10,8 @@ imr_data(
   Z = NULL,
   similarity_rows = NULL,
   similarity_cols = NULL,
+  train_mask = NULL,
+  valid_mask = NULL,
   val_prop = 0,
   seed = NULL
 )

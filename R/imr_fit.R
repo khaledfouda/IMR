@@ -28,6 +28,8 @@ imr_convergence <- function(maxit = 600,
                             thresh = 1e-5,
                             trace = FALSE,
                             ls_initial = TRUE,
+                            huber_c_method = "IQR",
+                            huber_c_finetune = TRUE,
                             huber_max_sample = 1e5) {
 
   .imr_check_param(maxit, "numeric", 1, integer = TRUE)
@@ -35,6 +37,8 @@ imr_convergence <- function(maxit = 600,
   .imr_check_param(trace, "bool")
   .imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE)
   .imr_check_param(ls_initial, "bool")
+  .imr_check_param(huber_c_method, "character", choices = c("IQR", "MAD"))
+  .imr_check_param(huber_c_finetune, "bool")
 
   structure(
     list(
@@ -42,6 +46,8 @@ imr_convergence <- function(maxit = 600,
       thresh = thresh,
       trace = trace,
       huber_max_sample = huber_max_sample,
+      huber_c_method = toupper(huber_c_method),
+      huber_c_finetune = huber_c_finetune,
       ls_initial = ls_initial
     ),
     class = "imr_convergence"
@@ -350,6 +356,10 @@ imr_solver <- function(
   #-------------------------------------------------
   if (nuclear_r_flag) dr <- dr * lambda_m
   if (nuclear_c_flag) dc <- dc * lambda_m
+  if(huber_flag) {
+    huber_method <- convergence$huber_c_method
+    cupdate <- if(convergence$huber_c_finetune) max else min
+  }
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL

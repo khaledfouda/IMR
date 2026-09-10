@@ -17,8 +17,8 @@ imr_tune(
   n_cores = 4,
   seed = NULL,
   nuclear_log_scale = TRUE,
-  tune_maxit = 10,
-  tune_tol = 1e-04
+  tune_maxit = convergence$maxit,
+  tune_tol = convergence$thresh
 )
 }
 \arguments{

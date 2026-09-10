@@ -272,16 +272,51 @@ static double iqr_type7_(std::vector<double>&  v) {
 
 }
 
+
+// Median of a mutable vector — matches R's median() (= type-7 median):
+//   odd n  -> central order statistic
+//   even n -> mean of the two central order statistics
+// Reorders v via nth_element; only needs v[mid] (and, for even n, max of the
+// left partition, which is the (mid-1)-th order statistic).
+static double median_inplace_(std::vector<double>& v) {
+  const std::ptrdiff_t n = static_cast<std::ptrdiff_t>(v.size());
+  if (n == 0) return 0;
+  const std::ptrdiff_t mid = n / 2;
+  std::nth_element(v.begin(), v.begin() + mid, v.end());
+  const double hi = v[mid];
+  if (n % 2 == 1) return hi;                                  // odd
+  const double lo = *std::max_element(v.begin(), v.begin() + mid);
+  return 0.5 * (lo + hi);                                     // even
+}
+
+// Median absolute deviation from the median (raw, unscaled).
+// R equivalence: stats::mad(x, constant = 1) = median(abs(x - median(x))).
+// For a normal-consistent scale estimate multiply by 1.4826 = 1/qnorm(3/4).
+static double mad_(std::vector<double>& v) {
+  const std::ptrdiff_t n = static_cast<std::ptrdiff_t>(v.size());
+  if (n < 3) return 0;                                        // mirror iqr_type7_ guard
+
+  const double med = median_inplace_(v);
+  for (double& x : v) x = std::abs(x - med);                 // overwrite in place
+  return median_inplace_(v);
+}
+
 // update Huber c .. fill description later
 
 // [[Rcpp::export]]
 double update_huber_c_cpp(const NumericVector yx,
                           const double huber_shift,
                           const double c_old,
+                          const std::string method = "IQR",
                           const int max_sample = 100000) {
 
   if (ISNAN(huber_shift) || ISNAN(c_old))
     Rcpp::stop("update_huber_c_cpp: `huber_shift` and `c_old` must not be NA/NaN.");
+
+  const bool use_iqr = (method == "IQR");
+  if (!use_iqr && method != "MAD")
+    Rcpp::stop("update_huber_c_cpp: `method` must be \"IQR\" or \"MAD\".");
+
 
   const R_xlen_t n = yx.size();
   const double* p_x = REAL(yx);
@@ -315,7 +350,7 @@ double update_huber_c_cpp(const NumericVector yx,
     }
   }
 
-  const double d = iqr_type7_(v) / 1.349;
+  const double d = use_iqr ? iqr_type7_(v) / 1.349 : mad_(v) * 1.483;
 
   // the purpose of this is that, if we have ferwer than 3 elements, or that all elements are
   // equal then d will be exactly 0. it would be then better to return c_old to avoid problems.
