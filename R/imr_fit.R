@@ -364,7 +364,8 @@ imr_solver <- function(
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
   if(huber_flag){
-    huber_c <- Inf # initial value. accept all observations. needs to be high because it goes down
+    huber_c <- if(huber_direction == "min") Inf else -Inf
+      # initial value. accept all observations. needs to be high because it goes down
     c_old <- 0 # keep it non-Inf to avoid NaN ratio values
     excess <- numeric(length(Y@x)) # to hold the difference after applying huber loss.
   }
