@@ -47,7 +47,7 @@ imr_convergence <- function(maxit = 600,
       trace = trace,
       huber_max_sample = huber_max_sample,
       huber_c_method = toupper(huber_c_method),
-      huber_c_finetune = tolower(huber_c_direction),
+      huber_c_direction = tolower(huber_c_direction),
       ls_initial = ls_initial
     ),
     class = "imr_convergence"
