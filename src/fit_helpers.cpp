@@ -308,6 +308,7 @@ double update_huber_c_cpp(const NumericVector yx,
                           const double huber_shift,
                           const double c_old,
                           const std::string method = "IQR",
+                          const std::string direc = "min",
                           const int max_sample = 100000) {
 
   if (ISNAN(huber_shift) || ISNAN(c_old))
@@ -316,6 +317,10 @@ double update_huber_c_cpp(const NumericVector yx,
   const bool use_iqr = (method == "IQR");
   if (!use_iqr && method != "MAD")
     Rcpp::stop("update_huber_c_cpp: `method` must be \"IQR\" or \"MAD\".");
+
+  const bool use_min = (direc == "min");
+  if (!use_min && direc != "max")
+    Rcpp::stop("update_huber_c_cpp: `direc` must be \"min\" or \"max\".");
 
 
   const R_xlen_t n = yx.size();
@@ -357,7 +362,8 @@ double update_huber_c_cpp(const NumericVector yx,
   if (!(d > 0.0)) return c_old;
 
   const double cand = huber_shift * d;
-  return (cand < c_old) ? cand : c_old;
+
+  return use_min ?  (cand < c_old ? cand : c_old) : (cand > c_old ? cand : c_old);
 }
 
 // clip residual vector to the Huber chosen constant

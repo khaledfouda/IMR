@@ -9,6 +9,8 @@ imr_convergence(
   thresh = 1e-05,
   trace = FALSE,
   ls_initial = TRUE,
+  huber_c_method = "IQR",
+  huber_c_direction = "min",
   huber_max_sample = 1e+05
 )
 }

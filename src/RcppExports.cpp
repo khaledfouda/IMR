@@ -102,8 +102,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // update_huber_c_cpp
-double update_huber_c_cpp(const NumericVector yx, const double huber_shift, const double c_old, const std::string method, const int max_sample);
-RcppExport SEXP _IMR_update_huber_c_cpp(SEXP yxSEXP, SEXP huber_shiftSEXP, SEXP c_oldSEXP, SEXP methodSEXP, SEXP max_sampleSEXP) {
+double update_huber_c_cpp(const NumericVector yx, const double huber_shift, const double c_old, const std::string method, const std::string direc, const int max_sample);
+RcppExport SEXP _IMR_update_huber_c_cpp(SEXP yxSEXP, SEXP huber_shiftSEXP, SEXP c_oldSEXP, SEXP methodSEXP, SEXP direcSEXP, SEXP max_sampleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -111,8 +111,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double >::type huber_shift(huber_shiftSEXP);
     Rcpp::traits::input_parameter< const double >::type c_old(c_oldSEXP);
     Rcpp::traits::input_parameter< const std::string >::type method(methodSEXP);
+    Rcpp::traits::input_parameter< const std::string >::type direc(direcSEXP);
     Rcpp::traits::input_parameter< const int >::type max_sample(max_sampleSEXP);
-    rcpp_result_gen = Rcpp::wrap(update_huber_c_cpp(yx, huber_shift, c_old, method, max_sample));
+    rcpp_result_gen = Rcpp::wrap(update_huber_c_cpp(yx, huber_shift, c_old, method, direc, max_sample));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -248,7 +249,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 3},
     {"_IMR_add_inplace_cpp", (DL_FUNC) &_IMR_add_inplace_cpp, 3},
     {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
-    {"_IMR_update_huber_c_cpp", (DL_FUNC) &_IMR_update_huber_c_cpp, 5},
+    {"_IMR_update_huber_c_cpp", (DL_FUNC) &_IMR_update_huber_c_cpp, 6},
     {"_IMR_huber_clip_inplace_cpp", (DL_FUNC) &_IMR_huber_clip_inplace_cpp, 3},
     {"_IMR_huber_loss_cpp", (DL_FUNC) &_IMR_huber_loss_cpp, 2},
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},

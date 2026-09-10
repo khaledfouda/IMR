@@ -29,7 +29,7 @@ imr_convergence <- function(maxit = 600,
                             trace = FALSE,
                             ls_initial = TRUE,
                             huber_c_method = "IQR",
-                            huber_c_finetune = TRUE,
+                            huber_c_direction = "min",
                             huber_max_sample = 1e5) {
 
   .imr_check_param(maxit, "numeric", 1, integer = TRUE)
@@ -38,7 +38,7 @@ imr_convergence <- function(maxit = 600,
   .imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE)
   .imr_check_param(ls_initial, "bool")
   .imr_check_param(huber_c_method, "character", choices = c("IQR", "MAD"))
-  .imr_check_param(huber_c_finetune, "bool")
+  .imr_check_param(huber_c_direction, "character", choices = c("min", "max"))
 
   structure(
     list(
@@ -47,7 +47,7 @@ imr_convergence <- function(maxit = 600,
       trace = trace,
       huber_max_sample = huber_max_sample,
       huber_c_method = toupper(huber_c_method),
-      huber_c_finetune = huber_c_finetune,
+      huber_c_finetune = tolower(huber_c_direction),
       ls_initial = ls_initial
     ),
     class = "imr_convergence"
@@ -358,7 +358,7 @@ imr_solver <- function(
   if (nuclear_c_flag) dc <- dc * lambda_m
   if(huber_flag) {
     huber_method <- convergence$huber_c_method
-    cupdate <- if(convergence$huber_c_finetune) max else min
+    huber_direction <- convergence$huber_c_direction
   }
   #--------------------------------------------------
   # initial everything to null ------------------------
@@ -512,7 +512,10 @@ imr_solver <- function(
     gamma_old <- gamma
 
     if(huber_flag) {
-      huber_c <- update_huber_c_cpp(Y@x, huber_shift, huber_c, huber_max_samples)
+      huber_c <- update_huber_c_cpp(Y@x, huber_shift, huber_c,
+                                    method = huber_method,
+                                    direc = huber_direction,
+                                    max_sample =  huber_max_samples)
       huber_clip_inplace_cpp(Y@x, huber_c, excess) # updates both Y@x and excess vectors
     }
 
