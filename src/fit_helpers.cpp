@@ -355,7 +355,8 @@ double update_huber_c_cpp(const NumericVector yx,
     }
   }
 
-  const double d = use_iqr ? iqr_type7_(v) / 1.349 : mad_(v) * 1.483;
+  const double d = use_iqr ? iqr_type7_(v)  : mad_(v) ;
+  // const double d = use_iqr ? iqr_type7_(v) / 1.349 : mad_(v) * 1.483;
 
   // the purpose of this is that, if we have ferwer than 3 elements, or that all elements are
   // equal then d will be exactly 0. it would be then better to return c_old to avoid problems.
