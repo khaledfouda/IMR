@@ -608,7 +608,7 @@ imr_tune <- function(data,
                      n_cores = 4,
                      seed = NULL,
                      nuclear_log_scale = TRUE,
-                     project = project,
+                     project = FALSE,
                      tune_maxit = convergence$maxit,
                      tune_tol = convergence$thresh) {
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
