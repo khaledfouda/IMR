@@ -154,6 +154,7 @@ imr_fit <- function(
     lambda_beta = 0,
     lambda_gamma = 0,
     huber_shift = 0,
+    project = FALSE,
     convergence = imr_convergence(),
     warm_start = NULL,
     training = FALSE # if training use y_train instead of Y.
@@ -165,6 +166,7 @@ imr_fit <- function(
   stopifnot(inherits(data, "imr_data"))
   stopifnot(inherits(convergence, "imr_convergence"))
   stopifnot(.imr_check_param(huber_shift, "numeric", 0))
+  stopifnot(.imr_check_param(project, "bool"))
 
   if (inherits(warm_start, "imr_fit")) {
     warm_start <- warm_start$coefficients
@@ -195,7 +197,8 @@ imr_fit <- function(
     shared_gamma = model$shared_gamma,
     convergence = convergence,
     warm_start = warm_start,
-    huber_shift = huber_shift
+    huber_shift = huber_shift,
+    project = project
   )
 
   #  Construct meta data
@@ -301,6 +304,7 @@ imr_fit <- function(
         converged = result_list$n_iter < convergence$maxit,
         training = training,
         huber = huber_meta,
+        orthogonal_components = project,
         # statistic for print function
         sum_squares = sum_squares,
         time_secs = round(as.numeric(Sys.time() - start_time, units = "secs"))
@@ -326,7 +330,8 @@ imr_solver <- function(
     Ur, dr, Uc, dc,
     convergence,
     warm_start,
-    huber_shift
+    huber_shift,
+    project
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
@@ -359,6 +364,12 @@ imr_solver <- function(
   if(huber_flag) {
     huber_method <- convergence$huber_c_method
     huber_direction <- convergence$huber_c_direction
+  }
+  #---------------------------------------------------------
+  if(project){
+    # can't work with similarity matrices, or lasso on column covariates
+    if(nuclear_r_flag || nuclear_c_flag || (lambda_gamma > 0) || (!beta_flag) || (!low_rank_flag) )
+      stop("Can't have simialrity matrices, lasso penalty on Gamma, or no row covariates or low-rank matrix")
   }
   #--------------------------------------------------
   # initial everything to null ------------------------
@@ -418,7 +429,8 @@ imr_solver <- function(
         r = 0, lambda_m = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
         convergence = convergence,
-        warm_start = NULL, huber_shift = 0
+        warm_start = NULL, huber_shift = 0,
+        project = FALSE
       )
 
       if (beta_flag) {
@@ -521,51 +533,6 @@ imr_solver <- function(
     }
 
 
-    if (low_rank_flag) {
-      #  Update (V, Dsq, U) from the "B" side --------------------------------
-      # B_mat = BD
-      if (nuclear_c_flag) {
-        BD <- update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
-      } else {
-        BD <- update_B_cpp(Y, U, V, Dsq, lambda_m)
-      }
-
-      BD <- svd_small_nc_cpp(BD)
-      V <- BD$u
-      #Dsq <- tidyr::replace_na(BD$d, 0)
-      Dsq <- BD$d
-      Dsq[is.na(Dsq)] <- 0
-
-      U <- U %*% BD$v
-
-      # update Y
-      old_val <- M_obs
-      M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
-      Y@x <- Y@x + old_val - M_obs
-
-
-      # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
-      # A_mat <- AD
-      if (nuclear_r_flag) {
-        AD <- update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
-      } else {
-        AD <- update_A_cpp(Y, U, V, Dsq, lambda_m)
-      }
-
-      AD <- svd_small_nc_cpp(AD)
-      U <- AD$u
-      #Dsq <- tidyr::replace_na(AD$d, 0)
-      Dsq <- AD$d
-      Dsq[is.na(Dsq)] <- 0
-
-      V <- V %*% AD$v
-
-      # update Y
-      old_val <- M_obs
-      M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
-      Y@x <- Y@x + old_val - M_obs
-    }
-
     #  Update beta via soft-threshold --------------------------------------
     if (beta_flag) {
       if (shared_beta) {
@@ -601,14 +568,71 @@ imr_solver <- function(
         change <- old_val - gammaz
         add_to_cols_inplace_cpp(Y@x, pcol, change)
       } else {
-        gamma <- soft_threshold_cpp(
-          as.matrix(Y %*% Z + gamma),
-          lambda_gamma
-        )
+        if(project){
+          gamma <- Y %*% Z + gamma
+          gamma <- gamma - X %*% crossprod(X, gamma)
+        }else{
+          gamma <- soft_threshold_cpp(
+            as.matrix(Y %*% Z + gamma),
+            lambda_gamma
+          )
+        }
         old_val <- zg_obs
         zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
         Y@x <- Y@x + old_val - zg_obs
       }
+    }
+
+
+    if (low_rank_flag) {
+      #  Update (V, Dsq, U) from the "B" side --------------------------------
+      # B_mat = BD
+      if (nuclear_c_flag) {
+        BD <- update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
+      } else {
+        BD <- update_B_cpp(Y, U, V, Dsq, lambda_m)
+        if(project){
+          BD <- BD - Z %*% crossprod(Z, BD)
+        }
+      }
+
+      BD <- svd_small_nc_cpp(BD)
+      V <- BD$u
+      #Dsq <- tidyr::replace_na(BD$d, 0)
+      Dsq <- BD$d
+      Dsq[is.na(Dsq)] <- 0
+
+      U <- U %*% BD$v
+
+      # update Y
+      old_val <- M_obs
+      M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
+      Y@x <- Y@x + old_val - M_obs
+
+
+      # 4.6 Update (U, Dsq, V) from the "A" side --------------------------------
+      # A_mat <- AD
+      if (nuclear_r_flag) {
+        AD <- update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
+      } else {
+        AD <- update_A_cpp(Y, U, V, Dsq, lambda_m)
+        if(project){
+          AD <- AD - X %*% crossprod(X, AD)
+        }
+      }
+
+      AD <- svd_small_nc_cpp(AD)
+      U <- AD$u
+      #Dsq <- tidyr::replace_na(AD$d, 0)
+      Dsq <- AD$d
+      Dsq[is.na(Dsq)] <- 0
+
+      V <- V %*% AD$v
+
+      # update Y
+      old_val <- M_obs
+      M_obs <- partial_crossprod(U, t(t(V) * Dsq), irow, pcol, TRUE)
+      Y@x <- Y@x + old_val - M_obs
     }
 
 
