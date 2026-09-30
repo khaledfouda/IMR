@@ -229,6 +229,7 @@ imr_set_grid_limits <- function(data,
                                 default_lambda_beta = 0,
                                 default_lambda_gamma = 0,
                                 huber_shift = 0,
+                                project = FALSE,
                                 convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
                                 training = TRUE,
                                 verify_iter = 1L,
@@ -258,7 +259,7 @@ imr_set_grid_limits <- function(data,
   common <- list(
     data = data, huber_shift = huber_shift, convergence = convergence,
     training = training, verify_iter = verify_iter, refine_iter = refine_iter,
-    verbose = verbose
+    verbose = verbose, project = project
   )
 
   # max for beta
@@ -369,6 +370,7 @@ imr_lambda_max <- function(data,
                            refine_iter = 0L,
                            zero_tol = 1e-4,
                            training = TRUE,
+                           project = FALSE,
                            verbose = 0) {
 
   target <- match.arg(target)
@@ -404,7 +406,7 @@ imr_lambda_max <- function(data,
                                         lambda_beta  = if (target == "beta")    lam else lambda_beta,
                                         lambda_gamma = if (target == "gamma")   lam else lambda_gamma,
                                         huber_shift = huber_shift, convergence = convergence,
-                                        training = training, warm_start = warm
+                                        training = training, warm_start = warm, project = project
   )
 
   # Dense fit helps refine the zero_tol. The reason is in case the values are too large

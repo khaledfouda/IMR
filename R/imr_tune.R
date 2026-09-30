@@ -11,6 +11,7 @@ imr_tune_nuclear_fast <- function(data,
                                   warm_start = NULL,
                                   verbose = 1,
                                   log_grid = TRUE,
+                                  project = FALSE,
                                   seed = NULL) {
   #-----------------------------------------------------
   # input verification
@@ -73,6 +74,7 @@ imr_tune_nuclear_fast <- function(data,
       convergence = convergence,
       training = TRUE,
       huber_shift = huber_shift,
+      project = project,
       warm_start = mfit
     )
     # compute validation error
@@ -143,6 +145,7 @@ imr_tune_nuclear_fast <- function(data,
       convergence = convergence,
       huber_shift = huber_shift,
       training = FALSE,
+      project = project,
       warm_start = best_fit_obj
     )
   }
@@ -165,6 +168,7 @@ imr_tune_nuclear_slow <- function(data,
                                   warm_start = NULL,
                                   log_grid = TRUE,
                                   verbose = 1,
+                                  project = FALSE,
                                   seed = NULL) {
   #-----------------------------------------------------
   # input verification
@@ -241,6 +245,7 @@ imr_tune_nuclear_slow <- function(data,
         lambda_gamma = lambda_gamma,
         convergence = convergence,
         training = TRUE,
+        project = project,
         huber_shift = huber_shift,
         warm_start = mfit
       )
@@ -332,6 +337,7 @@ imr_tune_nuclear_slow <- function(data,
       huber_shift = huber_shift,
       convergence = convergence,
       training = FALSE,
+      project = project,
       warm_start = best_fit_obj_1
     )
   }
@@ -354,6 +360,7 @@ imr_tune_lasso <- function(data,
                            warm_start = NULL,
                            verbose = 1,
                            n_cores = 4,
+                           project = project,
                            fast_nuclear = TRUE,
                            nuclear_log_scale = TRUE,
                            seed = NULL) {
@@ -414,6 +421,7 @@ imr_tune_lasso <- function(data,
       warm_start = warm_start,
       log_grid = nuclear_log_scale,
       verbose = 0,
+      project = project,
       seed = seed
     )
     # return best results
@@ -470,6 +478,7 @@ imr_tune_lasso <- function(data,
       lambda_gamma = best_params$lambda_gamma,
       huber_shift = huber_shift,
       convergence = convergence,
+      project = project,
       warm_start = warm_start
     )
   } else {
@@ -599,6 +608,7 @@ imr_tune <- function(data,
                      n_cores = 4,
                      seed = NULL,
                      nuclear_log_scale = TRUE,
+                     project = project,
                      tune_maxit = convergence$maxit,
                      tune_tol = convergence$thresh) {
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
@@ -633,7 +643,7 @@ imr_tune <- function(data,
       huber_shift = huber_shift,
       final_fit = final_fit, convergence = convergence,
       error_function = error_function, warm_start = warm_start,
-      log_grid = nuclear_log_scale,
+      log_grid = nuclear_log_scale, project = project,
       verbose = verbose, seed = seed
     )
     t_total <- round(difftime(Sys.time(), t_start_global), 2)
@@ -658,7 +668,7 @@ imr_tune <- function(data,
       final_fit = final_fit, use_warm_in_final = use_warm_in_final,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose, fast_nuclear = fast_nuclear,
-      n_cores = n_cores, seed = seed
+      n_cores = n_cores, seed = seed, project = project
     )
     t_total <- difftime(Sys.time(), t_start_global)
     if (verbose > 0) {
@@ -697,7 +707,7 @@ imr_tune <- function(data,
       use_warm_in_final = use_warm_in_final, fast_nuclear = fast_nuclear,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
-      n_cores = n_cores, seed = seed
+      n_cores = n_cores, seed = seed, project = project
     )
     cur_beta <- res_beta$params$lambda_beta
     iter_time_secs <- as.numeric(difftime(Sys.time(), t_start_iter, units = "secs"))
@@ -742,7 +752,7 @@ imr_tune <- function(data,
       use_warm_in_final = use_warm_in_final, fast_nuclear = fast_nuclear,
       convergence = convergence, error_function = error_function,
       warm_start = warm_start, verbose = verbose - 1,
-      n_cores = n_cores, seed = seed
+      n_cores = n_cores, seed = seed, project = project
     )
     cur_gamma <- res_gamma$params$lambda_gamma
     iter_time_secs <- as.numeric(difftime(Sys.time(), t_start_iter, units = "secs"))
