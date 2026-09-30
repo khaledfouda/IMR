@@ -570,7 +570,7 @@ imr_solver <- function(
       } else {
         if(project){
           gamma <- Y %*% Z + gamma
-          gamma <- gamma - X %*% crossprod(X, gamma)
+          gamma <- as.matrix(gamma - X %*% crossprod(X, gamma))
         }else{
           gamma <- soft_threshold_cpp(
             as.matrix(Y %*% Z + gamma),
