@@ -360,7 +360,7 @@ imr_tune_lasso <- function(data,
                            warm_start = NULL,
                            verbose = 1,
                            n_cores = 4,
-                           project = project,
+                           project = FALSE,
                            fast_nuclear = TRUE,
                            nuclear_log_scale = TRUE,
                            seed = NULL) {
