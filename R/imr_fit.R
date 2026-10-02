@@ -307,7 +307,7 @@ imr_fit <- function(
         orthogonal_components = project,
         # statistic for print function
         sum_squares = sum_squares,
-        time_secs = round(as.numeric(Sys.time() - start_time, units = "secs"))
+        time_secs = as.numeric(Sys.time() - start_time, units = "secs")
       ),
       convergence = convergence,
       model = data$model,
