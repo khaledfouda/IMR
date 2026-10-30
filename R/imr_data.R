@@ -146,10 +146,14 @@ imr_data <- function(Y,
     stopifnot(is.matrix(X))
     if(nrow(X) != nrow(Y))
       if(ncol(X) == nrow(Y)) X = t(X) else stop("None of the dimensions of X match the number of rows of Y")
-    xqr <- qr(X)
-    out$Xq <- qr.Q(xqr)
-    colnames(out$Xq) <- colnames(X)
-    out$Xr <- qr.R(xqr)
+    # EDIT  -  we will no longer apply QR decomposition.
+    # also return Lipschitz constant for the Lasso algorithm
+    out$X <- X
+    out$LX <- svd_opt(X, 1)$d[1]^2
+    #xqr <- qr(X)
+    #out$Xq <- qr.Q(xqr)
+    #colnames(out$Xq) <- colnames(X)
+    #out$Xr <- qr.R(xqr)
   }
 
   if (!is.null(Z)) {
@@ -419,12 +423,14 @@ reconstruct <- function(fit, data, trace = TRUE) {
   }
 
   # --- Reconstructing row covariate effects ---
-  if (!is.null(coefs$beta) && !is.null(data$Xq) && !is.null(data$Xr)) {
+  if (!is.null(coefs$beta) && !is.null(data$X)) {
     if (trace) message("Constructing XBeta ...")
 
     # Back-transform beta to original scale
-    out$beta <- solve(data$Xr, coefs$beta)
-    out$xbeta <- data$Xq %*% coefs$beta
+    out$beta <- coefs$beta
+    out$xbeta <- data$X %*% coefs$beta
+    #out$beta <- solve(data$Xr, coefs$beta)
+    #out$xbeta <- data$Xq %*% coefs$beta
 
     if (meta$shared_effects["beta"]) {
       # Shared beta: xbeta is an n x 1 matrix
@@ -520,14 +526,16 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
   }
 
   # --- reconstruct row covariate effects ---
-  if (!is.null(coefs$beta) && !is.null(data$Xq)) {
+  if (!is.null(coefs$beta) && !is.null(data$X)) {
     if (trace) message("Constructing XBeta ...")
 
     if (meta$shared_effects["beta"]) {
-      xbeta_vec <- as.numeric(data$Xq %*% coefs$beta)
+      xbeta_vec <- as.numeric(data$X %*% coefs$beta)
+      # xbeta_vec <- as.numeric(data$Xq %*% coefs$beta)
       add_to_rows_inplace_cpp(target, irow, xbeta_vec)
     } else {
-      target <- target + partial_crossprod(data$Xq, coefs$beta, irow, pcol)
+      target <- target + partial_crossprod(data$X, coefs$beta, irow, pcol)
+      #target <- target + partial_crossprod(data$Xq, coefs$beta, irow, pcol)
     }
   }
 
