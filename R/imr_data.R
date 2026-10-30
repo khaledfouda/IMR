@@ -149,7 +149,7 @@ imr_data <- function(Y,
     # EDIT  -  we will no longer apply QR decomposition.
     # also return Lipschitz constant for the Lasso algorithm
     out$X <- X
-    out$LX <- svd_opt(X, 1)$d[1]^2
+    out$LX <- 1 / svd_opt(X, 1)$d[1]^2
     #xqr <- qr(X)
     #out$Xq <- qr.Q(xqr)
     #colnames(out$Xq) <- colnames(X)
