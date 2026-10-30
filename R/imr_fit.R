@@ -717,7 +717,9 @@ imr_solver <- function(
 
   }
   if (iter == maxit) {
-    message("Did not converge in ", maxit, " iterations.")
+    message(sprintf("Did not converge in %4d iterations with r=%2d and lambdas=(%.4f,%.4f,%.4f).\n",
+                    maxit, r, lambda_m, lambda_beta, lambda_gamma))
+    # message("Did not converge in ", maxit, " iterations.")
   }
 
   # 5) Trim effective rank and return -----------------------------------------
