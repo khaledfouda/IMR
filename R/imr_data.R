@@ -160,10 +160,12 @@ imr_data <- function(Y,
     stopifnot(is.matrix(Z))
     if(nrow(Z) != ncol(Y))
       if(ncol(Z) == ncol(Y)) Z = t(Z) else stop("None of the dimensions of Z match the number of columns of Y")
-    Zqr <- qr(Z)
-    out$Zq <- qr.Q(Zqr)
-    colnames(out$Zq) <- colnames(Z)
-    out$Zr <- qr.R(Zqr)
+    out$Z <- Z
+    out$LZ <- 1 / svd_opt(Z, 1)$d[1]^2
+    #Zqr <- qr(Z)
+    #out$Zq <- qr.Q(Zqr)
+    #colnames(out$Zq) <- colnames(Z)
+    #out$Zr <- qr.R(Zqr)
   }
 
   # ---  Metadata  ---
@@ -442,12 +444,14 @@ reconstruct <- function(fit, data, trace = TRUE) {
   }
 
   # --- Reconstructing column covariate effects ---
-  if (!is.null(coefs$gamma) && !is.null(data$Zq) && !is.null(data$Zr)) {
+  if (!is.null(coefs$gamma) && !is.null(data$Z)) {
     if (trace) message("Constructing GammaZ ...")
 
     # Back-transform gamma to original scale
-    out$gamma <- coefs$gamma %*% solve(t(data$Zr))
-    out$gammaz <- coefs$gamma %*% t(data$Zq)
+    out$gamma <- coefs$gamma
+    out$gammaz <- coefs$gamma %*% t(data$Z)
+    #out$gamma <- coefs$gamma %*% solve(t(data$Zr))
+    #out$gammaz <- coefs$gamma %*% t(data$Zq)
 
     if (meta$shared_effects["gamma"]) {
       # Shared gamma: gammaz is a 1 x m matrix.
@@ -540,14 +544,16 @@ reconstruct_partial <- function(fit, data, irow, pcol, trace = FALSE, return_mat
   }
 
   # ---  Column covariate effects ---
-  if (!is.null(coefs$gamma) && !is.null(data$Zq)) {
+  if (!is.null(coefs$gamma) && !is.null(data$Z)) {
     if (trace) message("Constructing GammaZ ...")
 
     if (meta$shared_effects["gamma"]) {
-      gammaz_vec <- as.numeric(coefs$gamma %*% t(data$Zq))
+      gammaz_vec <- as.numeric(coefs$gamma %*% t(data$Z))
+      # gammaz_vec <- as.numeric(coefs$gamma %*% t(data$Zq))
       add_to_cols_inplace_cpp(target, pcol, gammaz_vec)
     } else {
-      target <- target + partial_crossprod(coefs$gamma, data$Zq, irow, pcol, vtranspose = TRUE)
+      target <- target + partial_crossprod(coefs$gamma, data$Z, irow, pcol, vtranspose = TRUE)
+      # target <- target + partial_crossprod(coefs$gamma, data$Zq, irow, pcol, vtranspose = TRUE)
     }
   }
 

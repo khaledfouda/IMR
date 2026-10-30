@@ -69,7 +69,7 @@ NumericVector row_means_cpp(const NumericVector x,
     if (p_counts[r] > 0) {
       p_means[r] /= p_counts[r];
     } else {
-      p_means[r] = NA_REAL; // Or 0.0, depending on how you want to handle entirely empty rows
+      p_means[r] = NA_REAL; // Or 0.0, 
     }
   }
 

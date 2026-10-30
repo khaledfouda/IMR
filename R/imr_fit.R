@@ -182,7 +182,7 @@ imr_fit <- function(
   result_list <- imr_solver(
     Y = if (training) data$y_train else data$Y,
     X = if (model$row_covariates) data$X else NULL,
-    Z = if (model$col_covariates) data$Zq else NULL,
+    Z = if (model$col_covariates) data$Z else NULL,
     r = if (model$low_rank_component) round(rank) else NULL,
     lambda_m = if (model$low_rank_component) lambda_m else NULL,
     lambda_beta = lambda_beta,
@@ -199,7 +199,8 @@ imr_fit <- function(
     warm_start = warm_start,
     huber_shift = huber_shift,
     project = project,
-    LX = if (model$row_covariates) data$LX else NULL
+    LX = if (model$row_covariates) data$LX else NULL,
+    LZ = if (model$col_covariates) data$LZ else NULL
   )
 
   #  Construct meta data
@@ -229,7 +230,7 @@ imr_fit <- function(
       } else {
         result_list$gamma
       }
-      sum_squares$sscc <- ss(partial_crossprod(coefs, data$Zq, data$Y@i, data$Y@p, TRUE))
+      sum_squares$sscc <- ss(partial_crossprod(coefs, data$Z, data$Y@i, data$Y@p, TRUE))
     } else {
       sum_squares$sscc <- 0
     }
@@ -295,7 +296,7 @@ imr_fit <- function(
       ),
       residuals = result_list$residuals,
       #Xr = if (model$row_covariates) data$Xr else NULL,
-      Zr = if (model$col_covariates) data$Zr else NULL,
+      #Zr = if (model$col_covariates) data$Zr else NULL,
       meta = list(
         rank = rank,
         lambdas = c(M = lambda_m, beta = lambda_beta, gamma = lambda_gamma),
@@ -333,7 +334,8 @@ imr_solver <- function(
     warm_start,
     huber_shift,
     project,
-    LX
+    LX,
+    LZ
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
@@ -357,6 +359,7 @@ imr_solver <- function(
   beta_flag <- !(is.null(X))
   lambda_beta_flag <- beta_flag && (lambda_beta > 0)
   gamma_flag <- !(is.null(Z))
+  lambda_gamma_flag <- gamma_flag && (lambda_gamma > 0)
   nuclear_r_flag <- !(is.null(Ur) || is.null(dr))
   nuclear_c_flag <- !(is.null(Uc) || is.null(dc))
   low_rank_flag <- !(is.null(r) || is.null(lambda_m) || r <= 0)
@@ -365,6 +368,7 @@ imr_solver <- function(
   if (nuclear_r_flag) dr <- dr * lambda_m
   if (nuclear_c_flag) dc <- dc * lambda_m
   penalty_beta <- if(lambda_beta_flag)  lambda_beta * LX else 1
+  penalty_gamma <- if(lambda_gamma_flag) lambda_gamma * LZ else 1
   if(huber_flag) {
     huber_method <- convergence$huber_c_method
     huber_direction <- convergence$huber_c_direction
@@ -435,7 +439,8 @@ imr_solver <- function(
         convergence = convergence,
         warm_start = NULL, huber_shift = 0,
         project = FALSE,
-        LX = LX
+        LX = LX,
+        LZ = LZ
       )
 
       if (beta_flag) {
@@ -580,10 +585,13 @@ imr_solver <- function(
           gamma <- Y %*% Z + gamma
           gamma <- as.matrix(gamma - X %*% crossprod(X, gamma))
         }else{
-          gamma <- soft_threshold_cpp(
-            as.matrix(Y %*% Z + gamma),
-            lambda_gamma
-          )
+          gamma <- as.matrix(gamma + LZ * Y%*% Z)
+          if(lambda_gamma_flag)
+            gamma <- soft_threshold_cpp(gamma, penalty_gamma)
+          # gamma <- soft_threshold_cpp(
+          #   as.matrix(Y %*% Z + gamma),
+          #   lambda_gamma
+          # )
         }
         old_val <- zg_obs
         zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
@@ -988,7 +996,8 @@ summary.imr_fit <- function(object, ...) {
     )
   }
   if (object$model$col_covariates) {
-    gamma <- tcrossprod(object$coefficients$gamma, inv(object$Zr))
+    gamma <- object$coefficients$gamma
+    # gamma <- tcrossprod(object$coefficients$gamma, inv(object$Zr))
     summarize_covariates(
       gamma, object$meta_data$names_Z_vars,
       FALSE,

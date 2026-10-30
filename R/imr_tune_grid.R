@@ -326,9 +326,9 @@ imr_lambda_max_kkt <- function(resid, target, data, huber_c = Inf) {
     },
 
     gamma = if (isTRUE(data$model$shared_gamma)) {
-      max(abs(Matrix::colSums(R) %*% data$Zq))
+      max(abs(Matrix::colSums(R) %*% data$Z))
     } else {
-      max(abs(R %*% data$Zq))
+      max(abs(R %*% data$Z))
     },
 
     stop("unknown target")
