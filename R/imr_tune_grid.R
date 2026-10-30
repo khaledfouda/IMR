@@ -320,9 +320,9 @@ imr_lambda_max_kkt <- function(resid, target, data, huber_c = Inf) {
 
     # Shared effects sum the gradient across columns/rows
     beta = if (isTRUE(data$model$shared_beta)) {
-      max(abs(crossprod(data$Xq, Matrix::rowSums(R))))
+      max(abs(crossprod(data$X, Matrix::rowSums(R))))
     } else {
-      max(abs(crossprod(data$Xq, R)))
+      max(abs(crossprod(data$X, R)))
     },
 
     gamma = if (isTRUE(data$model$shared_gamma)) {
