@@ -56,7 +56,7 @@ Rcpp::List svd_small_nc_cpp(SEXP mS) {
   arma::vec eval;                     // Guaranteed ascending
   arma::mat evec;
   if (!arma::eig_sym(eval, evec, B)) {
-    stop("eig_sym failed on B = t(M) %*% M.");
+    stop("eig_sym failed on B = crossprod(M).");
   }
 
   // 3. Skip the sorting algorithm! Just flip them backward.
@@ -100,7 +100,7 @@ Rcpp::List svd_small_nr_cpp(SEXP mS) {
   arma::vec eval;      // ascending
   arma::mat evec;      // columns = eigenvectors
   if (!arma::eig_sym(eval, evec, A)) {
-    stop("eig_sym failed on M %*% t(M)");
+    stop("eig_sym failed on tcrossprod(M)");
   }
 
   // 3. Skip the sort! Reverse the arrays to get descending order.

@@ -177,3 +177,11 @@ testthat::test_that("C++/Fortran functions", {
 
 })
 
+
+testthat::test_that("thin SVD kernels report an eig_sym failure with a readable message", {
+  # NaN entries make eig_sym fail; the message used to contain `%*%`, which
+  # tinyformat read as a format specifier ("Too many conversion specifiers").
+  bad <- matrix(c(1, NaN, 2, 3, 4, 5, 6, 7), 4, 2)
+  testthat::expect_error(svd_small_nc_cpp(bad), "eig_sym failed")
+  testthat::expect_error(svd_small_nr_cpp(t(bad)), "eig_sym failed")
+})

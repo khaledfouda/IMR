@@ -154,7 +154,6 @@ imr_fit <- function(
     lambda_beta = 0,
     lambda_gamma = 0,
     huber_shift = 0,
-    project = FALSE,
     convergence = imr_convergence(),
     warm_start = NULL,
     training = FALSE # if training use y_train instead of Y.
@@ -166,7 +165,6 @@ imr_fit <- function(
   stopifnot(inherits(data, "imr_data"))
   stopifnot(inherits(convergence, "imr_convergence"))
   stopifnot(.imr_check_param(huber_shift, "numeric", 0))
-  stopifnot(.imr_check_param(project, "bool"))
 
   if (inherits(warm_start, "imr_fit")) {
     warm_start <- warm_start$coefficients
@@ -198,7 +196,6 @@ imr_fit <- function(
     convergence = convergence,
     warm_start = warm_start,
     huber_shift = huber_shift,
-    project = project,
     LX = if (model$row_covariates) data$LX else NULL,
     LZ = if (model$col_covariates) data$LZ else NULL
   )
@@ -306,7 +303,6 @@ imr_fit <- function(
         converged = result_list$n_iter < convergence$maxit,
         training = training,
         huber = huber_meta,
-        orthogonal_components = project,
         # statistic for print function
         sum_squares = sum_squares,
         time_secs = as.numeric(Sys.time() - start_time, units = "secs")
@@ -333,7 +329,6 @@ imr_solver <- function(
     convergence,
     warm_start,
     huber_shift,
-    project,
     LX,
     LZ
 ) {
@@ -372,12 +367,6 @@ imr_solver <- function(
   if(huber_flag) {
     huber_method <- convergence$huber_c_method
     huber_direction <- convergence$huber_c_direction
-  }
-  #---------------------------------------------------------
-  if(project){
-    # can't work with similarity matrices, or lasso on column covariates
-    if(nuclear_r_flag || nuclear_c_flag || (lambda_gamma > 0) || (!beta_flag) || (!low_rank_flag) )
-      stop("Can't have simialrity matrices, lasso penalty on Gamma, or no row covariates or low-rank matrix")
   }
   #--------------------------------------------------
   # initial everything to null ------------------------
@@ -438,7 +427,6 @@ imr_solver <- function(
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
         convergence = convergence,
         warm_start = NULL, huber_shift = 0,
-        project = FALSE,
         LX = LX,
         LZ = LZ
       )
@@ -533,6 +521,8 @@ imr_solver <- function(
     D_old <- Dsq
     beta_old <- beta
     gamma_old <- gamma
+    beta0_old <- beta0
+    gamma0_old <- gamma0
 
     if(huber_flag) {
       huber_c <- update_huber_c_cpp(Y@x, huber_shift, huber_c,
@@ -581,18 +571,13 @@ imr_solver <- function(
         change <- old_val - gammaz
         add_to_cols_inplace_cpp(Y@x, pcol, change)
       } else {
-        if(project){
-          gamma <- Y %*% Z + gamma
-          gamma <- as.matrix(gamma - X %*% crossprod(X, gamma))
-        }else{
-          gamma <- as.matrix(gamma + LZ * Y%*% Z)
-          if(lambda_gamma_flag)
-            gamma <- soft_threshold_cpp(gamma, penalty_gamma)
-          # gamma <- soft_threshold_cpp(
-          #   as.matrix(Y %*% Z + gamma),
-          #   lambda_gamma
-          # )
-        }
+        gamma <- as.matrix(gamma + LZ * Y%*% Z)
+        if(lambda_gamma_flag)
+          gamma <- soft_threshold_cpp(gamma, penalty_gamma)
+        # gamma <- soft_threshold_cpp(
+        #   as.matrix(Y %*% Z + gamma),
+        #   lambda_gamma
+        # )
         old_val <- zg_obs
         zg_obs <- partial_crossprod(gamma, (Z), irow, pcol, TRUE)
         Y@x <- Y@x + old_val - zg_obs
@@ -607,9 +592,6 @@ imr_solver <- function(
         BD <- update_B_sim_cpp(Y, U, V, Dsq, Uc, dc)
       } else {
         BD <- update_B_cpp(Y, U, V, Dsq, lambda_m)
-        if(project){
-          BD <- BD - Z %*% crossprod(Z, BD)
-        }
       }
 
       BD <- svd_small_nc_cpp(BD)
@@ -632,9 +614,6 @@ imr_solver <- function(
         AD <- update_A_sim_cpp(Y, U, V, Dsq, Ur, dr)
       } else {
         AD <- update_A_cpp(Y, U, V, Dsq, lambda_m)
-        if(project){
-          AD <- AD - X %*% crossprod(X, AD)
-        }
       }
 
       AD <- svd_small_nc_cpp(AD)
@@ -678,17 +657,23 @@ imr_solver <- function(
     if (low_rank_flag) {
       ratio <- frob_ratio_cpp(U_old, D_old, V_old, U, Dsq, V)
     }
+    # the floor (as in frob_ratio_cpp) keeps a block that starts at zero from ending the loop
     if (beta_flag) {
-      denom <- sum(beta_old * beta_old)
-      if (denom > 0) {
-        ratio <- ratio + sum((beta_old - beta)^2) / denom
-      }
+      denom <- max(sum(beta_old * beta_old), 1e-9)
+      ratio <- ratio + sum((beta_old - beta)^2) / denom
     }
     if (gamma_flag) {
-      denom <- sum(gamma_old * gamma_old)
-      if (denom > 0) {
-        ratio <- ratio + sum((gamma_old - gamma)^2) / denom
-      }
+      denom <- max(sum(gamma_old * gamma_old), 1e-9)
+      ratio <- ratio + sum((gamma_old - gamma)^2) / denom
+    }
+    # rows/columns without observed entries have NA intercepts
+    if (row_intercept) {
+      denom <- max(sum(beta0_old * beta0_old, na.rm = TRUE), 1e-9)
+      ratio <- ratio + sum((beta0_old - beta0)^2, na.rm = TRUE) / denom
+    }
+    if (col_intercept) {
+      denom <- max(sum(gamma0_old * gamma0_old, na.rm = TRUE), 1e-9)
+      ratio <- ratio + sum((gamma0_old - gamma0)^2, na.rm = TRUE) / denom
     }
     if(huber_flag) {
       huber_ratio <- ((huber_c - c_old)/c_old)^2

@@ -2,6 +2,34 @@ sq_mat <- matrix(c(2, 0.5, 0.5, 2), nrow = 2)
 non_sq_mat <- matrix(1:6, nrow = 2, ncol = 3)
 d_mat <- as.matrix(dist(c(1, 2)))
 
+test_that("imr_data keeps the 1.0.0 positional order: val_prop and seed before the masks", {
+  expect_equal(names(formals(imr_data))[6:9], c("val_prop", "seed", "train_mask", "valid_mask"))
+
+  dat <- generate_simulated_data(20, 30, 2, 1, 1, snr = 0, seed = 1)
+  data <- imr_data(dat$Y, dat$X, dat$Z, NULL, NULL, 0.2, 1)
+  expect_true(data$meta$split_data)
+  expect_false(is.null(data$valid_mask))
+  expect_equal(data$meta$val_prop, 0.2)
+})
+
+test_that("imr_data uses train_mask and valid_mask passed by name as the split", {
+  dat <- generate_simulated_data(10, 12, 2, 0, 0, sparsity = 0.5, snr = 0, seed = 3)
+  obs <- dat$Y != 0
+  set.seed(3)
+  valid <- matrix(0, 10, 12)
+  valid[sample(which(obs), 15)] <- 1
+  train <- obs * 1 - valid
+
+  data <- imr_data(dat$Y, train_mask = train, valid_mask = valid)
+  expect_true(data$meta$split_data)
+  expect_equal(data$meta$n_train, sum(train))
+  expect_equal(data$meta$n_valid, 15)
+  # tolerance = 0: masking multiplies by exact 0/1, so the values must be bit-identical
+  expect_equal(as.matrix(data$y_valid), dat$Y * valid, tolerance = 0)
+  expect_equal(Matrix::which(data$y_valid != 0), which(valid == 1))
+  expect_equal(as.matrix(data$y_train), dat$Y * train, tolerance = 0)
+})
+
 test_that("imr_similarity handles matrix inputs and invalid classes correctly", {
   # Valid square matrix
   res_mat <- imr_similarity(sq_mat)

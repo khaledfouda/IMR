@@ -44,6 +44,25 @@ test_that("imr_fit performs basic fitting and reconstruction", {
   expect_output(print(summary(fit)))
 })
 
+test_that("the project option is removed from the fitting and tuning functions", {
+  funs <- list(imr_fit, imr_solver, imr_tune, imr_tune_lasso, imr_tune_nuclear_fast,
+               imr_tune_nuclear_slow, imr_set_grid_limits, imr_lambda_max)
+  for (f in funs) expect_false("project" %in% names(formals(f)))
+
+  small <- generate_simulated_data(20, 30, 2, 1, 1, snr = 0, seed = 1)
+  small_data <- imr_data(small$Y, small$X, small$Z)
+  expect_error(imr_fit(small_data, 2, project = TRUE), "unused argument")
+  fit <- suppressMessages(imr_fit(small_data, 2, convergence = imr_convergence(maxit = 5)))
+  expect_false("orthogonal_components" %in% names(fit$meta))
+})
+
+test_that("imr_tune and imr_set_grid_limits reject the removed project argument", {
+  # Argument matching fails before any argument is evaluated, so no data are needed
+  # (and no random numbers are drawn that would shift the state for later tests).
+  expect_error(imr_tune(NULL, NULL, project = TRUE), "unused argument")
+  expect_error(imr_set_grid_limits(NULL, NULL, project = TRUE), "unused argument")
+})
+
 test_that("imr_fit handles shared covariates and intercepts", {
   test_data <- imr_data(dat_shared$Y, dat_shared$X, dat_shared$Z, val_prop = 0.3)
 
@@ -113,4 +132,95 @@ test_that("mc_with_means correctly imputes missing values", {
 
   y_out <- as.matrix(mc_with_means(y_input))
   expect_equal(y_out, y_expected)
+})
+
+# The tests below seed the global RNG through generate_simulated_data(seed = ).
+# They stay at the end of the file so that they do not change the random state
+# seen by the earlier tests, which use the unseeded file-level data.
+
+test_that("imr_fit objective never increases with lasso penalties on beta and Gamma", {
+  sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
+                                 sparsity_gamma = 0.5, snr = 2, seed = 11)
+  data <- imr_data(sim$Y, sim$X, sim$Z)
+  obs <- sim$Y != 0
+  lam <- c(m = 1, beta = 0.3, gamma = 0.3)
+  # dense brute-force objective of the 20 x 30 problem
+  objective <- function(fit) {
+    cf <- fit$coefficients
+    theta <- sim$X %*% cf$beta + cf$gamma %*% t(sim$Z) + cf$u %*% (cf$d * t(cf$v))
+    0.5 * sum((obs * (sim$Y - theta))^2) + lam[["m"]] * sum(cf$d) +
+      lam[["beta"]] * sum(abs(cf$beta)) + lam[["gamma"]] * sum(abs(cf$gamma))
+  }
+  # the iterations are deterministic, so the k-th iterate is the fit stopped at maxit = k
+  obj <- vapply(1:20, function(k) {
+    fit <- suppressMessages(imr_fit(
+      data, rank = 4, lambda_m = lam[["m"]], lambda_beta = lam[["beta"]],
+      lambda_gamma = lam[["gamma"]],
+      convergence = imr_convergence(maxit = k, thresh = 1e-300, ls_initial = FALSE)
+    ))
+    objective(fit)
+  }, numeric(1))
+  # tolerance 1e-10 * obj[1] (obj[1] is about 67): room for rounding in the in-place
+  # residual updates only; the observed decrease per iteration is at least 0.08
+  expect_true(all(diff(obj) <= 1e-10 * obj[1]))
+})
+
+test_that("imr_fit residuals equal the brute-force masked residual after lasso Gamma updates", {
+  sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
+                                 sparsity_gamma = 0.5, snr = 2, seed = 11)
+  data <- imr_data(sim$Y, sim$X, sim$Z)
+  obs <- sim$Y != 0
+  fit <- suppressMessages(imr_fit(
+    data, rank = 4, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = 0.3,
+    convergence = imr_convergence(maxit = 10, ls_initial = FALSE)
+  ))
+  cf <- fit$coefficients
+  theta <- sim$X %*% cf$beta + cf$gamma %*% t(sim$Z) + cf$u %*% (cf$d * t(cf$v))
+  expect_length(fit$residuals@x, sum(obs))
+  # tolerance 1e-12 (relative): ten iterations of in-place updates accumulate rounding of
+  # about 1e-14; any missed or doubled update is of the order of the residual itself
+  expect_equal(as.matrix(fit$residuals), obs * (sim$Y - theta), tolerance = 1e-12)
+})
+
+test_that("imr_fit Gamma estimate satisfies the lasso KKT conditions at convergence", {
+  sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
+                                 sparsity_gamma = 0.5, snr = 2, seed = 11)
+  data <- imr_data(sim$Y, sim$X, sim$Z)
+  lam_gamma <- 0.3
+  fit <- suppressMessages(imr_fit(
+    data, rank = 4, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = lam_gamma,
+    convergence = imr_convergence(maxit = 20000, thresh = 1e-10, ls_initial = FALSE)
+  ))
+  expect_true(fit$meta$converged)
+  cf <- fit$coefficients
+  theta <- sim$X %*% cf$beta + cf$gamma %*% t(sim$Z) + cf$u %*% (cf$d * t(cf$v))
+  # negative gradient of the loss in Gamma, from the dense brute-force residual
+  grad <- ((sim$Y != 0) * (sim$Y - theta)) %*% sim$Z
+  active <- cf$gamma != 0
+  # both sets must be non-empty, otherwise one of the conditions below is vacuous
+  expect_true(any(active) && any(!active))
+  # tolerance 1e-3: stopping at a relative change of 1e-10 leaves a stationarity residual
+  # of about 6e-5; a penalty on the wrong scale (e.g. lambda * LZ) would leave about 0.3
+  expect_lt(max(abs(grad[active] - lam_gamma * sign(cf$gamma[active]))), 1e-3)
+  # no tolerance: the observed margin, lambda - max |grad| = 0.02, is far above the
+  # convergence error
+  expect_true(all(abs(grad[!active]) <= lam_gamma))
+})
+
+test_that("with lambda_gamma = 0 the Gamma estimate solves the least-squares normal equations", {
+  sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
+                                 sparsity_gamma = 0.5, snr = 2, seed = 11)
+  data <- imr_data(sim$Y, sim$X, sim$Z)
+  fit <- suppressMessages(imr_fit(
+    data, rank = 4, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = 0,
+    convergence = imr_convergence(maxit = 20000, thresh = 1e-10, ls_initial = FALSE)
+  ))
+  expect_true(fit$meta$converged)
+  cf <- fit$coefficients
+  # no soft-thresholding: the step reduces to a plain gradient step, so no entry is zeroed
+  expect_true(all(cf$gamma != 0))
+  theta <- sim$X %*% cf$beta + cf$gamma %*% t(sim$Z) + cf$u %*% (cf$d * t(cf$v))
+  grad <- ((sim$Y != 0) * (sim$Y - theta)) %*% sim$Z
+  # tolerance 1e-3: the observed stationarity residual at a relative change of 1e-10 is about 2e-5
+  expect_lt(max(abs(grad)), 1e-3)
 })

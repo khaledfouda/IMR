@@ -70,10 +70,10 @@ imr_data <- function(Y,
                      Z = NULL,
                      similarity_rows = NULL,
                      similarity_cols = NULL,
-                     train_mask = NULL,
-                     valid_mask = NULL,
                      val_prop = 0.0,
-                     seed = NULL) {
+                     seed = NULL,
+                     train_mask = NULL,
+                     valid_mask = NULL) {
   out <- list()
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
