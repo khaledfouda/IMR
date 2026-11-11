@@ -1,5 +1,12 @@
 # IMR (development version)
 
+* New `imr_identify()`: an optional step after `imr_fit()` that returns the
+  decomposition of the same fitted matrix in which the low-rank component is
+  orthogonal to the row and column covariates (and to the intercepts), and the
+  column-covariate effects are orthogonal to the row covariates. The result is
+  an `imr_fit` object, so `coef()`, `summary()`, `reconstruct()` and
+  `reconstruct_partial()` apply to it. Models with shared effects are not
+  supported.
 * `imr_data()` gains `center` and `scale` (both `TRUE`). The covariates are
   centered and scaled to unit standard deviation instead of being orthonormalized
   by QR, and the covariate blocks are updated by a proximal-gradient step with

@@ -198,63 +198,7 @@ imr_fit <- function(
 
   # compute the sum of squares only when fitting on the full data (to avoid unnecessary computations
   # during cross-validation)
-  if (!training) {
-    ss <- function(x) sum((x - mean(x))^2)
-    sum_squares <- list(
-      sst = ss(data$Y@x),                          # centered total SS
-      sse = ss(result_list$residuals@x),           # centered residual SS
-      rss = sum(result_list$residuals@x^2)         # uncentered residual SS (for RMSE / R^2)
-    )
-    if (data$model$row_covariates) {
-      coefs <- if (data$model$shared_beta) {
-        matrix(result_list$beta, data$meta$num_X_vars, data$meta$dimensions[2])
-      } else {
-        result_list$beta
-      }
-      sum_squares$ssrc <- ss(partial_crossprod(data$X, coefs, data$Y@i, data$Y@p))
-    } else {
-      sum_squares$ssrc <- 0
-    }
-    if (data$model$col_covariates) {
-      coefs <- if (data$model$shared_gamma) {
-        matrix(result_list$gamma, data$meta$dimensions[1], data$meta$num_Z_vars, TRUE)
-      } else {
-        result_list$gamma
-      }
-      sum_squares$sscc <- ss(partial_crossprod(coefs, data$Z, data$Y@i, data$Y@p, TRUE))
-    } else {
-      sum_squares$sscc <- 0
-    }
-    if (data$model$row_intercept) {
-      sum_squares$ssri <- ss(partial_crossprod(
-        as.matrix(result_list$beta0),
-        diag(1, 1, data$meta$dimensions[2]),
-        data$Y@i, data$Y@p
-      ))
-    } else {
-      sum_squares$ssri <- 0
-    }
-    if (data$model$col_intercept) {
-      sum_squares$ssci <- ss(partial_crossprod(
-        diag(1, data$meta$dimensions[1], 1),
-        t(as.matrix(result_list$gamma0)),
-        data$Y@i, data$Y@p
-      ))
-    } else {
-      sum_squares$ssci <- 0
-    }
-    if (data$model$low_rank_component) {
-      sum_squares$ssm <- ss(partial_crossprod(
-        result_list$u,
-        t(t(result_list$v) * result_list$d),
-        data$Y@i, data$Y@p, TRUE
-      ))
-    } else {
-      sum_squares$ssm <- 0
-    }
-  } else {
-    sum_squares <- NULL
-  }
+  sum_squares <- if (!training) .imr_sum_squares(result_list, data)
   # -- return results and meta data
   structure(
     list(
@@ -296,6 +240,66 @@ imr_fit <- function(
     ),
     class = "imr_fit"
   )
+}
+
+# Sums of squares at the observed entries of data$Y, for print() and summary().
+# `est` holds residuals, u, d, v, beta, gamma, beta0 and gamma0 on the scale of
+# the stored designs. Also used by imr_identify().
+.imr_sum_squares <- function(est, data) {
+  ss <- function(x) sum((x - mean(x))^2)
+  sum_squares <- list(
+    sst = ss(data$Y@x),                          # centered total SS
+    sse = ss(est$residuals@x),                   # centered residual SS
+    rss = sum(est$residuals@x^2)                 # uncentered residual SS (for RMSE / R^2)
+  )
+  if (data$model$row_covariates) {
+    coefs <- if (data$model$shared_beta) {
+      matrix(est$beta, data$meta$num_X_vars, data$meta$dimensions[2])
+    } else {
+      est$beta
+    }
+    sum_squares$ssrc <- ss(partial_crossprod(data$X, coefs, data$Y@i, data$Y@p))
+  } else {
+    sum_squares$ssrc <- 0
+  }
+  if (data$model$col_covariates) {
+    coefs <- if (data$model$shared_gamma) {
+      matrix(est$gamma, data$meta$dimensions[1], data$meta$num_Z_vars, TRUE)
+    } else {
+      est$gamma
+    }
+    sum_squares$sscc <- ss(partial_crossprod(coefs, data$Z, data$Y@i, data$Y@p, TRUE))
+  } else {
+    sum_squares$sscc <- 0
+  }
+  if (data$model$row_intercept) {
+    sum_squares$ssri <- ss(partial_crossprod(
+      as.matrix(est$beta0),
+      diag(1, 1, data$meta$dimensions[2]),
+      data$Y@i, data$Y@p
+    ))
+  } else {
+    sum_squares$ssri <- 0
+  }
+  if (data$model$col_intercept) {
+    sum_squares$ssci <- ss(partial_crossprod(
+      diag(1, data$meta$dimensions[1], 1),
+      t(as.matrix(est$gamma0)),
+      data$Y@i, data$Y@p
+    ))
+  } else {
+    sum_squares$ssci <- 0
+  }
+  if (data$model$low_rank_component) {
+    sum_squares$ssm <- ss(partial_crossprod(
+      est$u,
+      t(t(est$v) * est$d),
+      data$Y@i, data$Y@p, TRUE
+    ))
+  } else {
+    sum_squares$ssm <- 0
+  }
+  return(sum_squares)
 }
 
 
