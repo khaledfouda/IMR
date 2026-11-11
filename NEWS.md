@@ -27,6 +27,10 @@
 * `imr_tune()` now passes `nuclear_log_scale` on when it also tunes
   `lambda_beta` or `lambda_gamma`.
 * Clearer error message when an internal eigendecomposition fails.
+* `imr_convergence(ls_initial = FALSE)` was documented and printed as a random
+  initialization. It is not random: the coefficients and intercepts start at
+  zero and the low-rank component at the truncated SVD of `Y`. The help page
+  and `print()` now say so; the fits are unchanged.
 
 # IMR 0.1.2
 I added a 'src/Makevars' file to link the BLAS, LAPACK, and Fortran libraries.

@@ -17,9 +17,14 @@ this value. Defaults to \code{1e-5}.}
 \item{trace}{Logical. If \code{TRUE}, prints the Frobenius ratio and the loss
 function value at each iteration. Defaults to \code{FALSE}.}
 
-\item{ls_initial}{Logical. If \code{TRUE} (the default), least-squares initial
-values are used. If \code{FALSE}, random initialization is used. It is
-recommended to leave this as \code{TRUE} to speed up convergence.}
+\item{ls_initial}{Logical. Sets the starting values when no \code{warm_start} is
+given. If \code{TRUE} (the default), the model without the low-rank term is
+fitted first: the coefficients and intercepts start at that fit, and
+\eqn{M} at the rank-\code{rank} truncated SVD of its residuals. If \code{FALSE},
+the coefficients and intercepts start at zero and \eqn{M} at the
+truncated SVD of the zero-filled \code{Y}. Neither start is random. \code{TRUE}
+usually needs fewer iterations. Ignored for models without a low-rank
+term, which start at zero.}
 }
 \value{
 An object of class \code{"imr_convergence"}, which is a list containing

@@ -277,3 +277,44 @@ test_that("imr_fit runs from a random orthonormal warm start given as a plain li
   # tolerance 1e-10 * objective[1]: room for rounding only, as in the tests above
   expect_true(all(diff(fit$objective) <= 1e-10 * fit$objective[1]))
 })
+
+test_that("print.imr_convergence names the ls_initial = FALSE start", {
+  out <- capture.output(print(imr_convergence(ls_initial = FALSE)))
+  expect_true(any(grepl("Zero coefs, trunc svd", out, fixed = TRUE)))
+  expect_false(any(grepl("random", out, ignore.case = TRUE)))
+})
+
+test_that("ls_initial = FALSE starts at zero coefficients and the SVD of Y", {
+  sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5,
+                                 sparsity_beta = 0.5, sparsity_gamma = 0.5,
+                                 snr = 2, seed = 11)
+  data <- imr_data(sim$Y, sim$X, sim$Z, center = FALSE, scale = FALSE)
+  data <- update(data, row_intercept = TRUE, col_intercept = TRUE)
+  n <- nrow(sim$Y)
+  m <- ncol(sim$Y)
+  r <- 4
+  # one iteration, so that the fit still depends on its start
+  one_iteration <- function(warm_start = NULL) {
+    suppressMessages(imr_fit(
+      data, rank = r, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = 0.3,
+      convergence = imr_convergence(maxit = 1, thresh = 1e-300,
+                                    ls_initial = FALSE),
+      warm_start = warm_start
+    ))
+  }
+  # reference start: dense SVD of the zero-filled Y, all other blocks at zero
+  dec <- svd(as.matrix(sim$Y), nu = r, nv = r)
+  ws <- list(
+    u = dec$u, d = dec$d[seq_len(r)], v = dec$v,
+    beta = matrix(0, ncol(sim$X), m),
+    gamma = matrix(0, n, ncol(sim$Z)),
+    beta0 = numeric(n),
+    gamma0 = numeric(m)
+  )
+  fit <- one_iteration()
+  ref <- one_iteration(ws)
+  # the residual does not depend on the joint signs of the singular vectors.
+  # tolerance 1e-10 (absolute): the observed difference is 3e-15, while a random
+  # orthonormal start with the same d moves the residual by about 1.8
+  expect_lt(max(abs(fit$residuals@x - ref$residuals@x)), 1e-10)
+})

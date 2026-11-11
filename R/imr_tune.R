@@ -428,7 +428,7 @@ imr_tune_lasso <- function(data,
   },
   mc.cores = n_cores,
   mc.preschedule = FALSE,
-  mc.set.seed = FALSE, # so that when ls_initial=FALSE, each worker gets a different initialization
+  mc.set.seed = FALSE, # workers inherit the parent's RNG state
   mc.silent = if (n_cores > 1) TRUE else FALSE,
   mc.cleanup = TRUE
   )

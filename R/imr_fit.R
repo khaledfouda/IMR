@@ -11,9 +11,14 @@
 #'   this value. Defaults to `1e-5`.
 #' @param trace Logical. If `TRUE`, prints the Frobenius ratio and the loss
 #'   function value at each iteration. Defaults to `FALSE`.
-#' @param ls_initial Logical. If `TRUE` (the default), least-squares initial
-#'   values are used. If `FALSE`, random initialization is used. It is
-#'   recommended to leave this as `TRUE` to speed up convergence.
+#' @param ls_initial Logical. Sets the starting values when no `warm_start` is
+#'   given. If `TRUE` (the default), the model without the low-rank term is
+#'   fitted first: the coefficients and intercepts start at that fit, and
+#'   \eqn{M} at the rank-`rank` truncated SVD of its residuals. If `FALSE`,
+#'   the coefficients and intercepts start at zero and \eqn{M} at the
+#'   truncated SVD of the zero-filled `Y`. Neither start is random. `TRUE`
+#'   usually needs fewer iterations. Ignored for models without a low-rank
+#'   term, which start at zero.
 #'
 #' @return An object of class `"imr_convergence"`, which is a list containing
 #'   the specified control parameters.
@@ -961,7 +966,7 @@ print.imr_convergence <- function(x, ...) {
   cat(sprintf("Max Iterations: %d\n", x$maxit))
   cat(sprintf("Threshold:      %g\n", x$thresh))
 
-  init_method <- if (x$ls_initial) "Least Squares" else "Randomized"
+  init_method <- if (x$ls_initial) "Least Squares" else "Zero coefs, trunc svd"
   cat(sprintf("Initialization: %s\n", init_method))
 
   # 3. Trace/Verbosity
