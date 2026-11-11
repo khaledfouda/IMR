@@ -21,24 +21,8 @@ add_to_cols_inplace_cpp <- function(yx, p, add_per_col) {
     invisible(.Call(`_IMR_add_to_cols_inplace_cpp`, yx, p, add_per_col))
 }
 
-add_inplace_cpp <- function(y, alpha, delta) {
-    invisible(.Call(`_IMR_add_inplace_cpp`, y, alpha, delta))
-}
-
 frob_ratio_cpp <- function(Uold, Dsqold, Vold, U, Dsq, V) {
     .Call(`_IMR_frob_ratio_cpp`, Uold, Dsqold, Vold, U, Dsq, V)
-}
-
-update_huber_c_cpp <- function(yx, huber_shift, c_old, method = "IQR", direc = "min", max_sample = 100000L) {
-    .Call(`_IMR_update_huber_c_cpp`, yx, huber_shift, c_old, method, direc, max_sample)
-}
-
-huber_clip_inplace_cpp <- function(y, huber_c, excess) {
-    invisible(.Call(`_IMR_huber_clip_inplace_cpp`, y, huber_c, excess))
-}
-
-huber_loss_cpp <- function(yx, huber_c) {
-    .Call(`_IMR_huber_loss_cpp`, yx, huber_c)
 }
 
 update_A_cpp <- function(yS4, U, V, Dsq, lambda_M) {

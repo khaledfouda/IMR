@@ -73,18 +73,6 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// add_inplace_cpp
-void add_inplace_cpp(NumericVector y, const double alpha, const NumericVector delta);
-RcppExport SEXP _IMR_add_inplace_cpp(SEXP ySEXP, SEXP alphaSEXP, SEXP deltaSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< const double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< const NumericVector >::type delta(deltaSEXP);
-    add_inplace_cpp(y, alpha, delta);
-    return R_NilValue;
-END_RCPP
-}
 // frob_ratio_cpp
 double frob_ratio_cpp(const arma::mat& Uold, const arma::vec& Dsqold, const arma::mat& Vold, const arma::mat& U, const arma::vec& Dsq, const arma::mat& V);
 RcppExport SEXP _IMR_frob_ratio_cpp(SEXP UoldSEXP, SEXP DsqoldSEXP, SEXP VoldSEXP, SEXP USEXP, SEXP DsqSEXP, SEXP VSEXP) {
@@ -98,46 +86,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type Dsq(DsqSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type V(VSEXP);
     rcpp_result_gen = Rcpp::wrap(frob_ratio_cpp(Uold, Dsqold, Vold, U, Dsq, V));
-    return rcpp_result_gen;
-END_RCPP
-}
-// update_huber_c_cpp
-double update_huber_c_cpp(const NumericVector yx, const double huber_shift, const double c_old, const std::string method, const std::string direc, const int max_sample);
-RcppExport SEXP _IMR_update_huber_c_cpp(SEXP yxSEXP, SEXP huber_shiftSEXP, SEXP c_oldSEXP, SEXP methodSEXP, SEXP direcSEXP, SEXP max_sampleSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericVector >::type yx(yxSEXP);
-    Rcpp::traits::input_parameter< const double >::type huber_shift(huber_shiftSEXP);
-    Rcpp::traits::input_parameter< const double >::type c_old(c_oldSEXP);
-    Rcpp::traits::input_parameter< const std::string >::type method(methodSEXP);
-    Rcpp::traits::input_parameter< const std::string >::type direc(direcSEXP);
-    Rcpp::traits::input_parameter< const int >::type max_sample(max_sampleSEXP);
-    rcpp_result_gen = Rcpp::wrap(update_huber_c_cpp(yx, huber_shift, c_old, method, direc, max_sample));
-    return rcpp_result_gen;
-END_RCPP
-}
-// huber_clip_inplace_cpp
-void huber_clip_inplace_cpp(NumericVector y, const double huber_c, NumericVector excess);
-RcppExport SEXP _IMR_huber_clip_inplace_cpp(SEXP ySEXP, SEXP huber_cSEXP, SEXP excessSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type excess(excessSEXP);
-    huber_clip_inplace_cpp(y, huber_c, excess);
-    return R_NilValue;
-END_RCPP
-}
-// huber_loss_cpp
-NumericVector huber_loss_cpp(const NumericVector yx, const double huber_c);
-RcppExport SEXP _IMR_huber_loss_cpp(SEXP yxSEXP, SEXP huber_cSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericVector >::type yx(yxSEXP);
-    Rcpp::traits::input_parameter< const double >::type huber_c(huber_cSEXP);
-    rcpp_result_gen = Rcpp::wrap(huber_loss_cpp(yx, huber_c));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -247,11 +195,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_IMR_col_means_cpp", (DL_FUNC) &_IMR_col_means_cpp, 3},
     {"_IMR_add_to_rows_inplace_cpp", (DL_FUNC) &_IMR_add_to_rows_inplace_cpp, 3},
     {"_IMR_add_to_cols_inplace_cpp", (DL_FUNC) &_IMR_add_to_cols_inplace_cpp, 3},
-    {"_IMR_add_inplace_cpp", (DL_FUNC) &_IMR_add_inplace_cpp, 3},
     {"_IMR_frob_ratio_cpp", (DL_FUNC) &_IMR_frob_ratio_cpp, 6},
-    {"_IMR_update_huber_c_cpp", (DL_FUNC) &_IMR_update_huber_c_cpp, 6},
-    {"_IMR_huber_clip_inplace_cpp", (DL_FUNC) &_IMR_huber_clip_inplace_cpp, 3},
-    {"_IMR_huber_loss_cpp", (DL_FUNC) &_IMR_huber_loss_cpp, 2},
     {"_IMR_update_A_cpp", (DL_FUNC) &_IMR_update_A_cpp, 5},
     {"_IMR_update_A_sim_cpp", (DL_FUNC) &_IMR_update_A_sim_cpp, 6},
     {"_IMR_update_B_cpp", (DL_FUNC) &_IMR_update_B_cpp, 5},

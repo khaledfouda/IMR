@@ -27,27 +27,18 @@
 imr_convergence <- function(maxit = 600,
                             thresh = 1e-5,
                             trace = FALSE,
-                            ls_initial = TRUE,
-                            huber_c_method = "IQR",
-                            huber_c_direction = "min",
-                            huber_max_sample = 1e5) {
+                            ls_initial = TRUE) {
 
   .imr_check_param(maxit, "numeric", 1, integer = TRUE)
   .imr_check_param(thresh, "numeric", 0, min_inclusive = FALSE)
   .imr_check_param(trace, "bool")
-  .imr_check_param(huber_max_sample, "numeric", 5,integer = TRUE)
   .imr_check_param(ls_initial, "bool")
-  .imr_check_param(huber_c_method, "character", choices = c("IQR", "MAD"))
-  .imr_check_param(huber_c_direction, "character", choices = c("min", "max"))
 
   structure(
     list(
       maxit = maxit,
       thresh = thresh,
       trace = trace,
-      huber_max_sample = huber_max_sample,
-      huber_c_method = toupper(huber_c_method),
-      huber_c_direction = tolower(huber_c_direction),
       ls_initial = ls_initial
     ),
     class = "imr_convergence"
@@ -153,10 +144,10 @@ imr_fit <- function(
     lambda_m = 0,
     lambda_beta = 0,
     lambda_gamma = 0,
-    huber_shift = 0,
     convergence = imr_convergence(),
     warm_start = NULL,
-    training = FALSE # if training use y_train instead of Y.
+    training = FALSE, # if training use y_train instead of Y.
+    return_objective = FALSE
 ) {
   # tracking time
   start_time <- Sys.time()
@@ -164,7 +155,6 @@ imr_fit <- function(
   # validation
   stopifnot(inherits(data, "imr_data"))
   stopifnot(inherits(convergence, "imr_convergence"))
-  stopifnot(.imr_check_param(huber_shift, "numeric", 0))
 
   if (inherits(warm_start, "imr_fit")) {
     warm_start <- warm_start$coefficients
@@ -176,12 +166,6 @@ imr_fit <- function(
     stopifnot(is.numeric(lambda_gamma) && lambda_gamma >= 0)
   if(model$low_rank_component)
     stopifnot(is.numeric(rank) && rank > 0 && is.numeric(lambda_m) && lambda_m >= 0)
-  # the designs are centered only while the matching intercepts are in the model;
-  # update() keeps the two in step
-  if ((model$row_covariates && data$meta$x_centered != (data$meta$center && model$col_intercept)) ||
-      (model$col_covariates && data$meta$z_centered != (data$meta$center && model$row_intercept)))
-    stop("The centering of X or Z does not match the intercepts in data$model; change the model with update().",
-         call. = FALSE)
 
   result_list <- imr_solver(
     Y = if (training) data$y_train else data$Y,
@@ -201,9 +185,9 @@ imr_fit <- function(
     shared_gamma = model$shared_gamma,
     convergence = convergence,
     warm_start = warm_start,
-    huber_shift = huber_shift,
     LX = if (model$row_covariates) data$LX else NULL,
-    LZ = if (model$col_covariates) data$LZ else NULL
+    LZ = if (model$col_covariates) data$LZ else NULL,
+    return_objective = return_objective
   )
 
   #  Construct meta data
@@ -267,24 +251,6 @@ imr_fit <- function(
   } else {
     sum_squares <- NULL
   }
-  # robustness information
-  if(huber_shift > 0){
-    if(!training){
-
-    robs <- result_list$residuals@x
-    huber_c <- result_list$huber_c
-    nobs <- length(robs)
-    n_clip <- sum(abs(robs) > huber_c)
-    huber_meta <- list(
-      shift        = huber_shift,
-      huber_c      = huber_c,
-      n_clipped    = n_clip,
-      prop_clipped = n_clip / nobs,
-      max_sample   = convergence$huber_max_sample
-    )
-    }
-   else   huber_meta <- list(huber_c = result_list$huber_c)
-} else huber_meta <- NULL
   # -- return results and meta data
   structure(
     list(
@@ -298,12 +264,14 @@ imr_fit <- function(
         gamma0 = result_list$gamma0
       ),
       residuals = result_list$residuals,
-      # the coefficients above are on the scale of the designs; coef() uses these
-      # to return them on the original scale (centers are NULL when not applied)
+      # objective after each iteration, when return_objective = TRUE
+      objective = result_list$objective,
+      # the coefficients above are on the scale of the stored designs; coef() uses
+      # these to return them on the original scale (NULL when not applied)
       scaling = list(
-        x_center = if (model$row_covariates && data$meta$x_centered) data$x_center,
+        x_center = if (model$row_covariates) data$x_center,
         x_scale = if (model$row_covariates) data$x_scale,
-        z_center = if (model$col_covariates && data$meta$z_centered) data$z_center,
+        z_center = if (model$col_covariates) data$z_center,
         z_scale = if (model$col_covariates) data$z_scale
       ),
       meta = list(
@@ -314,7 +282,6 @@ imr_fit <- function(
         n_iter = result_list$n_iter,
         converged = result_list$n_iter < convergence$maxit,
         training = training,
-        huber = huber_meta,
         # statistic for print function
         sum_squares = sum_squares,
         time_secs = as.numeric(Sys.time() - start_time, units = "secs")
@@ -340,9 +307,9 @@ imr_solver <- function(
     Ur, dr, Uc, dc,
     convergence,
     warm_start,
-    huber_shift,
     LX,
-    LZ
+    LZ,
+    return_objective = FALSE
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
@@ -359,10 +326,8 @@ imr_solver <- function(
   thresh <- convergence$thresh
   trace <- convergence$trace
   ls_initial <- convergence$ls_initial
-  huber_max_samples <- convergence$huber_max_sample
 
   # flags -------------------
-  huber_flag <- huber_shift > 0
   beta_flag <- !(is.null(X))
   lambda_beta_flag <- beta_flag && (lambda_beta > 0)
   gamma_flag <- !(is.null(Z))
@@ -376,20 +341,9 @@ imr_solver <- function(
   if (nuclear_c_flag) dc <- dc * lambda_m
   penalty_beta <- if(lambda_beta_flag)  lambda_beta * LX else 1
   penalty_gamma <- if(lambda_gamma_flag) lambda_gamma * LZ else 1
-  if(huber_flag) {
-    huber_method <- convergence$huber_c_method
-    huber_direction <- convergence$huber_c_direction
-  }
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
-  if(huber_flag){
-    huber_c <- if(huber_direction == "min") Inf else -Inf
-      # initial value. accept all observations. needs to be high because it goes down
-    c_old <- 0 # keep it non-Inf to avoid NaN ratio values
-    excess <- numeric(length(Y@x)) # to hold the difference after applying huber loss.
-  }
-
 
   # 3) Warm-start or initialize ------------------------------------------------
   if (!is.null(warm_start)) {
@@ -438,7 +392,7 @@ imr_solver <- function(
         r = 0, lambda_m = NULL, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
         Ur = NULL, dr = NULL, Uc = NULL, dc = NULL,
         convergence = convergence,
-        warm_start = NULL, huber_shift = 0,
+        warm_start = NULL,
         LX = LX,
         LZ = LZ
       )
@@ -523,6 +477,7 @@ imr_solver <- function(
   }
 
   #  Main loop ---------------------------------------------------------------
+  if (return_objective) objective <- numeric(maxit)
   ratio <- Inf
   iter <- 0
   while (ratio > thresh && iter < maxit) {
@@ -535,15 +490,6 @@ imr_solver <- function(
     gamma_old <- gamma
     beta0_old <- beta0
     gamma0_old <- gamma0
-
-    if(huber_flag) {
-      huber_c <- update_huber_c_cpp(Y@x, huber_shift, huber_c,
-                                    method = huber_method,
-                                    direc = huber_direction,
-                                    max_sample =  huber_max_samples)
-      huber_clip_inplace_cpp(Y@x, huber_c, excess) # updates both Y@x and excess vectors
-    }
-
 
     #  Update beta via soft-threshold --------------------------------------
     if (beta_flag) {
@@ -660,10 +606,6 @@ imr_solver <- function(
       add_to_cols_inplace_cpp(Y@x, pcol, change)
     }
 
-    #---------------------------------------------------------------------------
-    # undo the changes to the huber vector.
-    if(huber_flag) add_inplace_cpp(Y@x, 1, excess)
-
     # 4.7 Convergence check ----------------------------------------------------
     ratio <- 0
     if (low_rank_flag) {
@@ -686,31 +628,24 @@ imr_solver <- function(
       denom <- max(sum(gamma0_old * gamma0_old), 1e-9)
       ratio <- ratio + sum((gamma0_old - gamma0)^2) / denom
     }
-    if(huber_flag) {
-      huber_ratio <- ((huber_c - c_old)/c_old)^2
-      c_old <- huber_c
+    # objective: 1/2 ||E||_F^2 on the observed entries plus the penalties
+    if (trace || return_objective) {
+      sse <- sum(Y@x^2)
+      obj <- 0.5 * sse
+      if (beta_flag) obj <- obj + lambda_beta * sum(abs(beta))
+      if (gamma_flag) obj <- obj + lambda_gamma * sum(abs(gamma))
+      if (low_rank_flag) {
+        # lambda_m / 2 (tr(A'S_r A) + tr(B'S_c B)) with A = U D, B = V D, Dsq = D^2,
+        # and S = I without similarity; dr and dc already include lambda_m
+        pen_a <- if (nuclear_r_flag) sum(crossprod(dr, crossprod(Ur, U)^2) * Dsq) else lambda_m * sum(Dsq)
+        pen_b <- if (nuclear_c_flag) sum(crossprod(dc, crossprod(Uc, V)^2) * Dsq) else lambda_m * sum(Dsq)
+        obj <- obj + 0.5 * (pen_a + pen_b)
+      }
+      if (return_objective) objective[iter] <- obj
+      if (trace)
+        cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae=%9.4f\n",
+                    iter, obj / nz, ratio, sqrt(sse / nz), mean(abs(Y@x))))
     }
-    if (trace) {
-      st <- huber_loss_cpp(Y@x, if(huber_flag) huber_c else Inf) # works for both huber and frob
-      loss <- st[["loss"]]
-      sae <- st[["sum_abs"]]
-      rmse <- sqrt(2 * st[["sum_sq"]] / nz)
-      mae <- sae / nz
-      obj <- (loss +
-                ifelse(low_rank_flag, lambda_m * sum(Dsq), 0) +
-                ifelse(beta_flag, lambda_beta * sum(abs(beta)), 0) +
-                ifelse(gamma_flag, lambda_gamma * sum(abs(gamma)), 0)
-      ) / nz
-
-      cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae=%9.4f%s\n",
-                  iter, obj, ratio, rmse, mae,
-          if (huber_flag) sprintf(", Huber: [c=%.4g, ratio=%2.3e, clip=%.1f%%]",
-                                  huber_c, huber_ratio, 100*st[["n_clipped"]]/nz)
-          else ""))
-    }
-    # add huber ratio the total ratio (huber ratio is NaN in the first iteration)
-    if(huber_flag && iter != 1) ratio <- ratio + huber_ratio
-
   }
   if (iter == maxit) {
     message(sprintf("Did not converge in %4d iterations with r=%2d and lambdas=(%.4f,%.4f,%.4f).\n",
@@ -731,7 +666,7 @@ imr_solver <- function(
     u = U,
     d = Dsq,
     v = V,
-    huber_c = if(huber_flag)  huber_c else NULL,
+    objective = if (return_objective) objective[seq_len(iter)],
     beta = beta,
     gamma = gamma,
     beta0 = beta0,
@@ -828,8 +763,6 @@ print.imr_fit <- function(x, ...) {
     cat("\n-- Fit (in-sample, on observed entries) --\n")
     cat(sprintf("RMSE       : %s\n", .imr_fmt_num(rmse)))
     cat(sprintf("Pseudo R2  : %s\n", r2_str))
-    if (!is.null(x$meta$huber))
-      cat("(The Huber objective was minimised)\n")
   }
 
   # --- 4. Hyperparameters ---
@@ -847,15 +780,6 @@ print.imr_fit <- function(x, ...) {
   if (has_low_rank) {
     cat(sprintf("Row Similarity    : %s\n", ifelse(x$model$row_similarity, "Active", "None")))
     cat(sprintf("Column Similarity : %s\n", ifelse(x$model$col_similarity, "Active", "None")))
-  }
-  if (!is.null(x$meta$huber)) {
-    hb <- x$meta$huber
-    cat("Loss              : Huber (robust)\n")
-    cat(sprintf("Huber shift       : %s\n", .imr_fmt_num(hb$shift)))
-    cat(sprintf("Huber c (final)   : %s\n", .imr_fmt_num(hb$huber_c)))
-    cat(sprintf("Clipped residuals : %s obs (%s)\n",
-                format(hb$n_clipped, big.mark = ",", scientific = FALSE),
-                .imr_fmt_pct(100 * hb$prop_clipped)))
   }
 
   cat("\n====================================================\n")
@@ -904,22 +828,6 @@ summary.imr_fit <- function(object, ...) {
   cat(sprintf("MSE                     : %s\n", .imr_fmt_num(rss / n)))
   r2_str <- if (r2 < 0) "< 0 (Poor Fit)" else .imr_fmt_pct(100 * r2)
   cat(sprintf("Pseudo R2 (1 - RSS/SST) : %s\n", r2_str))
-
-  if (!is.null(object$meta$huber)) {
-    hb <- object$meta$huber
-    r  <- object$residuals@x
-    cat(sprintf("Median abs. residual    : %s\n",
-                .imr_fmt_num(stats::median(abs(r)))))
-    cat(sprintf("Robust scale (IQR/1.349): %s\n",
-                .imr_fmt_num(stats::IQR(r) / 1.349)))
-    cat(sprintf("Clipped residuals       : %s (%s)\n",
-                format(hb$n_clipped, big.mark = ", ", scientific = FALSE),
-                .imr_fmt_pct(100 * hb$prop_clipped)))
-    cat("\nFitted with the Huber loss (shift = ",
-        .imr_fmt_num(hb$shift), ", final c = ", .imr_fmt_num(hb$huber_c), ").\n",
-        sep = "")
-  }
-
 
   cat("\nVariance Decomposition (share of explained variance)")
   cat("\n-------------------------------------------------------------\n")
@@ -1052,10 +960,6 @@ print.imr_convergence <- function(x, ...) {
   trace_status <- if (x$trace) "Enabled" else "Disabled"
   cat(sprintf("Trace Progress: %s\n", trace_status))
 
-  # 4. Huber max sample
-  huber_str <- format(x$huber_max_sample, big.mark = ",", scientific = FALSE)
-  cat(sprintf("Huber Subsample: %s\n", huber_str))
-
   cat("================================\n")
   invisible(x)
 }
@@ -1071,20 +975,21 @@ print.imr_convergence <- function(x, ...) {
 #' @importFrom stats coef coefficients
 #' @method coef imr_fit
 coef.imr_fit <- function(object, ...) {
-  # object$coefficients are on the scale of the designs: X_s = (X - 1 xbar') S_x^{-1}
-  # and Z_s = (Z - 1 zbar') S_z^{-1}. On the original scale,
-  # beta = S_x^{-1} beta_s, gamma0 = gamma0_s - beta' xbar,
-  # Gamma = Gamma_s S_z^{-1} and beta0 = beta0_s - Gamma zbar.
+  # object$coefficients are on the scale of the stored designs X_s = (X - 1 xbar') S_x^{-1}
+  # and Z_s = (Z - 1 zbar') S_z^{-1} (S = I, xbar = 0 when not applied). On the original
+  # scale, beta = S_x^{-1} beta_s and Gamma = Gamma_s S_z^{-1}. The shifts move into the
+  # intercepts when these are in the model: gamma0 = gamma0_s - beta' xbar and
+  # beta0 = beta0_s - Gamma zbar.
   coefs <- object$coefficients
   sc <- object$scaling
-  if (!is.null(coefs$beta) && !is.null(sc$x_scale)) {
-    coefs$beta <- coefs$beta / sc$x_scale
-    if (!is.null(sc$x_center))
+  if (!is.null(coefs$beta)) {
+    if (!is.null(sc$x_scale)) coefs$beta <- coefs$beta / sc$x_scale
+    if (!is.null(sc$x_center) && !is.null(coefs$gamma0))
       coefs$gamma0 <- coefs$gamma0 - as.vector(crossprod(coefs$beta, sc$x_center))
   }
-  if (!is.null(coefs$gamma) && !is.null(sc$z_scale)) {
-    coefs$gamma <- sweep(coefs$gamma, 2, sc$z_scale, "/")
-    if (!is.null(sc$z_center))
+  if (!is.null(coefs$gamma)) {
+    if (!is.null(sc$z_scale)) coefs$gamma <- sweep(coefs$gamma, 2, sc$z_scale, "/")
+    if (!is.null(sc$z_center) && !is.null(coefs$beta0))
       coefs$beta0 <- coefs$beta0 - as.vector(coefs$gamma %*% sc$z_center)
   }
   return(coefs)

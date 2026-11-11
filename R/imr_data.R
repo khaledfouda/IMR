@@ -168,33 +168,20 @@ imr_data <- function(Y,
   out$similarity_cols <- similarity_cols
 
   # ---  Covariates ---
-  # The raw matrices, column means and sds are kept here. The designs actually used
-  # (data$X, data$Z and their step sizes data$LX, data$LZ) are built by update.imr_data().
-  constant_columns <- function(m) {
-    which(apply(m, 2, function(x) all(x == x[1])))
-  }
+  # One copy of each matrix is kept. update.imr_data() below centers and scales it
+  # in place and computes its step size (data$LX, data$LZ).
   if (!is.null(X)) {
     stopifnot(is.matrix(X))
     if(nrow(X) != nrow(Y))
       if(ncol(X) == nrow(Y)) X = t(X) else stop("None of the dimensions of X match the number of rows of Y")
-    if (scale && length(constant_columns(X)) > 0)
-      stop(sprintf("Constant columns of X cannot be scaled: %s.",
-                   toString(constant_columns(X))), call. = FALSE)
-    out$X_raw <- X
-    out$x_center <- colMeans(X)
-    out$x_scale <- if (scale) apply(X, 2, sd) else rep(1, ncol(X))
+    out$X <- X
   }
 
   if (!is.null(Z)) {
     stopifnot(is.matrix(Z))
     if(nrow(Z) != ncol(Y))
       if(ncol(Z) == ncol(Y)) Z = t(Z) else stop("None of the dimensions of Z match the number of columns of Y")
-    if (scale && length(constant_columns(Z)) > 0)
-      stop(sprintf("Constant columns of Z cannot be scaled: %s.",
-                   toString(constant_columns(Z))), call. = FALSE)
-    out$Z_raw <- Z
-    out$z_center <- colMeans(Z)
-    out$z_scale <- if (scale) apply(Z, 2, sd) else rep(1, ncol(Z))
+    out$Z <- Z
   }
 
   # ---  Metadata  ---
@@ -213,11 +200,7 @@ imr_data <- function(Y,
     num_Z_vars = if (!is.null(Z)) ncol(Z) else 0,
     names_Z_vars = if (!is.null(Z)) colnames(Z) else NULL,
     has_sim_row = !is.null(out$similarity_rows),
-    has_sim_col = !is.null(out$similarity_cols),
-    center = center,
-    scale = scale,
-    x_centered = FALSE,
-    z_centered = FALSE
+    has_sim_col = !is.null(out$similarity_cols)
   )
   # --- Model Structure ----
   out$model <- list(
@@ -232,8 +215,8 @@ imr_data <- function(Y,
     shared_gamma = FALSE
   )
 
-  # builds the designs for the model structure above
-  update.imr_data(structure(out, class = "imr_data"))
+  # centers and scales X and Z, and computes their step sizes
+  update.imr_data(structure(out, class = "imr_data"), center = center, scale = scale)
 }
 #----------------------------------------
 #' Update IMR Model Structure
@@ -279,6 +262,8 @@ update.imr_data <- function(object,
                             col_intercept = NULL,
                             shared_beta = NULL,
                             shared_gamma = NULL,
+                            center = NULL,
+                            scale = NULL,
                             ...) {
   update_flag <- function(obj, flag_val, flag_name, dependency_name) {
     if (!is.null(flag_val)) {
@@ -324,24 +309,50 @@ update.imr_data <- function(object,
     object$model$shared_gamma <- as.logical(shared_gamma[1])
   }
 
-  # --- Designs actually used ---
-  # Columns are divided by their sds. X is centered while gamma0 (column intercepts)
-  # is in the model, Z while beta0 (row intercepts) is, as those absorb the means.
-  # The step sizes 1 / ||X||_op^2 and 1 / ||Z||_op^2 are computed on these designs.
-  if (object$meta$has_X) {
-    object$meta$x_centered <- object$meta$center && object$model$col_intercept
-    X <- object$X_raw
-    if (object$meta$x_centered) X <- sweep(X, 2, object$x_center)
-    object$X <- sweep(X, 2, object$x_scale, "/")
-    object$LX <- 1 / svd(object$X, nu = 0, nv = 0)$d[1]^2
+  # --- Centering and scaling of X and Z ---
+  # One copy of each matrix is stored. With its column centers c and scales s
+  # (data$x_center, data$x_scale; NULL when not applied), the original matrix is
+  # stored * s + c, by column. A change is applied to the stored copy, and only
+  # then are the moments and the step size 1 / ||X||_op^2 computed.
+  if (!is.null(center)) center <- as.logical(center[1])
+  if (!is.null(scale)) scale <- as.logical(scale[1])
+  rescale <- function(obj, name) {
+    key <- tolower(name)
+    c_old <- obj[[paste0(key, "_center")]]
+    s_old <- obj[[paste0(key, "_scale")]]
+    to_center <- if (is.null(center)) !is.null(c_old) else center
+    to_scale <- if (is.null(scale)) !is.null(s_old) else scale
+    step <- paste0("L", name)
+    if (to_center == !is.null(c_old) && to_scale == !is.null(s_old) && !is.null(obj[[step]]))
+      return(obj)
+
+    mat <- obj[[name]]
+    s <- if (is.null(s_old)) 1 else s_old
+    shift <- if (is.null(c_old)) 0 else c_old
+    # centers and scales of the original matrix
+    c_new <- if (!to_center) NULL else if (!is.null(c_old)) c_old else s * colMeans(mat)
+    s_new <- if (!to_scale) NULL else if (!is.null(s_old)) s_old else {
+      constant <- which(apply(mat, 2, function(x) all(x == x[1])))
+      if (length(constant) > 0)
+        stop(sprintf("Constant columns of %s cannot be scaled: %s.", name, toString(constant)),
+             call. = FALSE)
+      apply(mat, 2, sd)
+    }
+    # new stored copy: (mat * s + shift - c_new) / s_new
+    divisor <- if (is.null(s_new)) 1 else s_new
+    a <- s / divisor
+    b <- (shift - if (is.null(c_new)) 0 else c_new) / divisor
+    if (any(a != 1)) mat <- sweep(mat, 2, a, "*")
+    if (any(b != 0)) mat <- sweep(mat, 2, b, "+")
+
+    obj[[name]] <- mat
+    obj[[paste0(key, "_center")]] <- c_new
+    obj[[paste0(key, "_scale")]] <- s_new
+    obj[[step]] <- 1 / max(eigen(crossprod(mat), symmetric = TRUE, only.values = TRUE)$values)
+    obj
   }
-  if (object$meta$has_Z) {
-    object$meta$z_centered <- object$meta$center && object$model$row_intercept
-    Z <- object$Z_raw
-    if (object$meta$z_centered) Z <- sweep(Z, 2, object$z_center)
-    object$Z <- sweep(Z, 2, object$z_scale, "/")
-    object$LZ <- 1 / svd(object$Z, nu = 0, nv = 0)$d[1]^2
-  }
+  if (object$meta$has_X) object <- rescale(object, "X")
+  if (object$meta$has_Z) object <- rescale(object, "Z")
 
   return(object)
 }
@@ -462,8 +473,10 @@ reconstruct <- function(fit, data, trace = TRUE) {
     xbeta = NULL, gammaz = NULL, estimates = 0
   )
 
-  # coefficients on the original scale of the covariates (see coef.imr_fit())
+  # coefficients on the original scale of the covariates (see coef.imr_fit()), and on
+  # the scale of the stored designs data$X and data$Z
   coefs <- coef(fit)
+  fitted <- fit$coefficients
   meta <- fit$meta
 
   # Get dimensions to safely initialize estimates if M is absent
@@ -479,11 +492,15 @@ reconstruct <- function(fit, data, trace = TRUE) {
   }
 
   # --- Reconstructing row covariate effects ---
-  if (!is.null(coefs$beta) && !is.null(data$X_raw)) {
+  if (!is.null(coefs$beta) && !is.null(data$X)) {
     if (trace) message("Constructing XBeta ...")
 
     out$beta <- coefs$beta
-    out$xbeta <- data$X_raw %*% coefs$beta
+    # the stored design gives (X - 1 xbar') beta when X is centered; the shift
+    # beta' xbar is added back when gamma0 absorbs it (see coef.imr_fit())
+    out$xbeta <- data$X %*% fitted$beta
+    if (!is.null(fit$scaling$x_center) && !is.null(coefs$gamma0))
+      out$xbeta <- sweep(out$xbeta, 2, as.vector(crossprod(coefs$beta, fit$scaling$x_center)), "+")
 
     if (meta$shared_effects["beta"]) {
       # Shared beta: xbeta is an n x 1 matrix
@@ -495,11 +512,14 @@ reconstruct <- function(fit, data, trace = TRUE) {
   }
 
   # --- Reconstructing column covariate effects ---
-  if (!is.null(coefs$gamma) && !is.null(data$Z_raw)) {
+  if (!is.null(coefs$gamma) && !is.null(data$Z)) {
     if (trace) message("Constructing GammaZ ...")
 
     out$gamma <- coefs$gamma
-    out$gammaz <- coefs$gamma %*% t(data$Z_raw)
+    # as above, with the shift Gamma zbar absorbed by beta0
+    out$gammaz <- fitted$gamma %*% t(data$Z)
+    if (!is.null(fit$scaling$z_center) && !is.null(coefs$beta0))
+      out$gammaz <- sweep(out$gammaz, 1, as.vector(coefs$gamma %*% fit$scaling$z_center), "+")
 
     if (meta$shared_effects["gamma"]) {
       # Shared gamma: gammaz is a 1 x m matrix.

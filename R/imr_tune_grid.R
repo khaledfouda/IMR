@@ -55,7 +55,7 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
                           gamma = c(0, NA, 20),
                           nuclear = c(0, NA, 20, 2), # min, max, length, streak
                           rank = c(2, 30, 2, 2), # min, max, step, streak
-                          metric = "auto"
+                          metric = "rmse"
 ) {
   parse_param <- function(p, is_rank = FALSE, is_nuclear = FALSE) {
     len <- length(p)
@@ -82,7 +82,7 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
   }
 
   .imr_check_param(metric, "character", case_insensitive = TRUE, raise_error = TRUE,
-                   choices = c("auto", "rmse", "mae", "mape", "rrmse", "spearman"))
+                   choices = c("rmse", "mae", "mape", "rrmse", "spearman"))
 
 
   structure(
@@ -135,8 +135,7 @@ print.imr_tune_grid <- function(x, ...) {
   cat(sprintf("%-18s %s\n", "Gamma:", fmt_range(x$gamma)))
   cat(sprintf("%-18s %s\n", "Nuclear:", fmt_range(x$nuclear, nuclear=TRUE)))
   cat(sprintf("%-18s %s\n", "Rank:", fmt_range(x$rank, rank=TRUE)))
-  cat(sprintf("%-18s %s\n", "Metric:",
-              if(identical(x$metric, "AUTO")) "Auto (MAE if robust, else RMSE)" else x$metric))
+  cat(sprintf("%-18s %s\n", "Metric:", x$metric))
 
   cat("===========================================================\n\n")
 
@@ -163,9 +162,6 @@ print.imr_tune_grid <- function(x, ...) {
 #' @param default_lambda_beta,default_lambda_gamma Numeric. The row and column
 #'   covariate penalties used as a reference when estimating the maximum
 #'   \eqn{\lambda_M}. Defaults to `0`.
-#' @param huber_shift Numeric. Passed to [imr_fit()] for every internal fit. A
-#'   grid computed under least squares is the wrong grid for a robust fit; see
-#'   Details. Defaults to `0`.
 #' @param convergence An `"imr_convergence"` object specifying the numerical
 #'   tolerances and optimization parameters for internal model fits. Defaults
 #'   to `imr_convergence(trace = FALSE, ls_initial = FALSE)`.
@@ -203,11 +199,6 @@ print.imr_tune_grid <- function(x, ...) {
 #' reach zero, and is better addressed through a smaller `thresh` in
 #' [imr_convergence()] than by lowering the grid maximum.
 #'
-#' Under the Huber loss the gradient involves the clipped residual
-#' \eqn{\psi_c(r)} rather than \eqn{r}, so all three maxima are smaller, often
-#' substantially so when the data are contaminated. `huber_shift` must
-#' therefore match the value later passed to [imr_tune()].
-#'
 #' During the estimation of the maximum \eqn{\lambda_\beta} or
 #' \eqn{\lambda_\Gamma}, the other covariate penalty is held at
 #' `default_lambda_gamma` or `default_lambda_beta` and the low-rank component
@@ -228,7 +219,6 @@ imr_set_grid_limits <- function(data,
                                 default_lambda_m = 0,
                                 default_lambda_beta = 0,
                                 default_lambda_gamma = 0,
-                                huber_shift = 0,
                                 convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
                                 training = TRUE,
                                 verify_iter = 1L,
@@ -240,7 +230,6 @@ imr_set_grid_limits <- function(data,
     inherits(data, "imr_data"),
     inherits(grid, "imr_tune_grid"),
     inherits(convergence, "imr_convergence"))
-  .imr_check_param(huber_shift, "numeric", 0)
   .imr_check_param(training, "bool")
   .imr_check_param(verify_iter, "numeric", 0, integer = TRUE)
   .imr_check_param(refine_iter, "numeric", 0, integer = TRUE)
@@ -256,7 +245,7 @@ imr_set_grid_limits <- function(data,
   }
 
   common <- list(
-    data = data, huber_shift = huber_shift, convergence = convergence,
+    data = data, convergence = convergence,
     training = training, verify_iter = verify_iter, refine_iter = refine_iter,
     verbose = verbose
   )
@@ -303,18 +292,15 @@ imr_set_grid_limits <- function(data,
 #' @param resid An `Incomplete` residual matrix from the model fitted WITHOUT
 #'   the target component, all other parameters at their conditional optimum.
 #' @param target One of "nuclear", "beta", "gamma".
-#' @param data The `imr_data` object (for `Xq`, `Zq`, and the shared flags).
-#' @param huber_c Transition point of the Huber loss, or `Inf` for least
-#'   squares. The gradient involves psi_c(r), not r.
+#' @param data The `imr_data` object (for the designs `X`, `Z` and the shared flags).
 #' @noRd
-imr_lambda_max_kkt <- function(resid, target, data, huber_c = Inf) {
+imr_lambda_max_kkt <- function(resid, target, data) {
 
   R <- resid
-  if (is.finite(huber_c)) R@x <- pmin(pmax(R@x, -huber_c), huber_c)
 
   switch(
     target,
-    # grad = -P_Omega*(psi_c(r)); dual of the nuclear norm is the operator norm
+    # grad = -P_Omega*(r); dual of the nuclear norm is the operator norm
     nuclear = svd_opt(R, 1)$d[1],
 
     # Shared effects sum the gradient across columns/rows
@@ -363,7 +349,6 @@ imr_lambda_max <- function(data,
                            lambda_m = 0,
                            lambda_beta = 0,
                            lambda_gamma = 0,
-                           huber_shift = 0,
                            convergence = imr_convergence(trace = FALSE),
                            verify_iter = 1L,
                            refine_iter = 0L,
@@ -384,11 +369,10 @@ imr_lambda_max <- function(data,
   null_fit <- imr_fit(null_data,
                       rank = if (target == "nuclear") 0 else rank,
                       lambda_m = lambda_m, lambda_beta = lambda_beta, lambda_gamma = lambda_gamma,
-                      huber_shift = huber_shift, convergence = convergence, training = training
+                      convergence = convergence, training = training
   )
 
-  huber_c <- if (huber_shift > 0) null_fit$meta$huber$huber_c else Inf
-  lambda_kkt <- imr_lambda_max_kkt(null_fit$residuals, target, data, huber_c)
+  lambda_kkt <- imr_lambda_max_kkt(null_fit$residuals, target, data)
 
   if (verify_iter <= 0L && refine_iter <= 0L) return(lambda_kkt)
 
@@ -403,7 +387,7 @@ imr_lambda_max <- function(data,
                                         lambda_m     = if (target == "nuclear") lam else lambda_m,
                                         lambda_beta  = if (target == "beta")    lam else lambda_beta,
                                         lambda_gamma = if (target == "gamma")   lam else lambda_gamma,
-                                        huber_shift = huber_shift, convergence = convergence,
+                                        convergence = convergence,
                                         training = training, warm_start = warm
   )
 
@@ -449,9 +433,8 @@ imr_lambda_max <- function(data,
   }
 
   if (verbose > 0)
-    message(sprintf("Target: %-7s | KKT: %.5g | returned: %.5g (%.1f%% of KKT)%s",
-                    target, lambda_kkt, upper, 100 * upper / lambda_kkt,
-                    if (huber_shift > 0) sprintf(" | Huber c = %.4g", huber_c) else ""))
+    message(sprintf("Target: %-7s | KKT: %.5g | returned: %.5g (%.1f%% of KKT)",
+                    target, lambda_kkt, upper, 100 * upper / lambda_kkt))
   upper
 }
 

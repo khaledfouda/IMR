@@ -137,13 +137,13 @@ test_that("mc_with_means correctly imputes missing values", {
 # The tests below seed the global RNG through generate_simulated_data(seed = ).
 # They stay at the end of the file so that they do not change the random state
 # seen by the earlier tests, which use the unseeded file-level data.
-# They check the solver on a given design, so they turn scaling off: without
-# intercepts, data$X and data$Z are then sim$X and sim$Z.
+# They check the solver on a given design, so they turn centering and scaling off:
+# data$X and data$Z are then sim$X and sim$Z.
 
 test_that("imr_fit objective never increases with lasso penalties on beta and Gamma", {
   sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
                                  sparsity_gamma = 0.5, snr = 2, seed = 11)
-  data <- imr_data(sim$Y, sim$X, sim$Z, scale = FALSE)
+  data <- imr_data(sim$Y, sim$X, sim$Z, center = FALSE, scale = FALSE)
   obs <- sim$Y != 0
   lam <- c(m = 1, beta = 0.3, gamma = 0.3)
   # dense brute-force objective of the 20 x 30 problem
@@ -170,7 +170,7 @@ test_that("imr_fit objective never increases with lasso penalties on beta and Ga
 test_that("imr_fit residuals equal the brute-force masked residual after lasso Gamma updates", {
   sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
                                  sparsity_gamma = 0.5, snr = 2, seed = 11)
-  data <- imr_data(sim$Y, sim$X, sim$Z, scale = FALSE)
+  data <- imr_data(sim$Y, sim$X, sim$Z, center = FALSE, scale = FALSE)
   obs <- sim$Y != 0
   fit <- suppressMessages(imr_fit(
     data, rank = 4, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = 0.3,
@@ -187,7 +187,7 @@ test_that("imr_fit residuals equal the brute-force masked residual after lasso G
 test_that("imr_fit Gamma estimate satisfies the lasso KKT conditions at convergence", {
   sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
                                  sparsity_gamma = 0.5, snr = 2, seed = 11)
-  data <- imr_data(sim$Y, sim$X, sim$Z, scale = FALSE)
+  data <- imr_data(sim$Y, sim$X, sim$Z, center = FALSE, scale = FALSE)
   lam_gamma <- 0.3
   fit <- suppressMessages(imr_fit(
     data, rank = 4, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = lam_gamma,
@@ -212,7 +212,7 @@ test_that("imr_fit Gamma estimate satisfies the lasso KKT conditions at converge
 test_that("with lambda_gamma = 0 the Gamma estimate solves the least-squares normal equations", {
   sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5, sparsity_beta = 0.5,
                                  sparsity_gamma = 0.5, snr = 2, seed = 11)
-  data <- imr_data(sim$Y, sim$X, sim$Z, scale = FALSE)
+  data <- imr_data(sim$Y, sim$X, sim$Z, center = FALSE, scale = FALSE)
   fit <- suppressMessages(imr_fit(
     data, rank = 4, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = 0,
     convergence = imr_convergence(maxit = 20000, thresh = 1e-10, ls_initial = FALSE)
