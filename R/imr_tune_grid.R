@@ -20,6 +20,10 @@
 #'   low-rank component. Expected format: `c(min, max, step, streaks)`, where
 #'   `streaks` specifies the patience threshold for early stopping.
 #'   Defaults to `c(2, 30, 2, 2)`.
+#' @param metric Character. The error metric computed on the validation set and
+#'   used by `imr_tune()` to compare hyperparameter values: one of `"rmse"`,
+#'   `"mae"`, `"mape"`, `"rrmse"` or `"spearman"` (case-insensitive; see
+#'   [get_metric()]). Defaults to `"rmse"`.
 #'
 #' @details
 #' Specifications for `beta`, `gamma`, and `nuclear` parameters are subject to the

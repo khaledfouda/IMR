@@ -23,7 +23,7 @@ Extract the fitted model's coefficients
 Y <- matrix(
   c(2, NA, 3,
   4, .5, NA,
-  NA, NA, 5), 3, byrow= TRUE
+  NA, 1, 5), 3, byrow= TRUE
 )
 
 # create covariate matrix of 2 variables

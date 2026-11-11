@@ -7,7 +7,6 @@
 imr_tune(
   data,
   grid,
-  huber_shift = 0,
   final_fit = TRUE,
   use_warm_in_final = TRUE,
   fast_nuclear = TRUE,
@@ -69,10 +68,6 @@ Defaults to \code{10}.}
 \item{tune_tol}{Numeric. Relative tolerance threshold for early stopping during
 alternating optimization. Optimization terminates if the absolute relative
 change in validation error falls below this limit. Defaults to \code{1e-4}.}
-
-\item{error_function}{A function used to evaluate prediction error on the
-validation set. Must accept two arguments, \verb{(predicted, actual)}.
-Defaults to \code{get_metric("rmse")}.}
 }
 \value{
 A list comprising:
@@ -126,11 +121,13 @@ mapping of the parameter space.
 }
 }
 \examples{
-# create sample data
+# create sample data: three observed entries in every row and column, so
+# that each keeps at least one in the training split
 Y <- matrix(
-  c(2, NA, 3, 4,
-    4, .5, NA, 4,
-    NA, NA, 5, 3), 3, byrow= TRUE
+  c(NA, 1, 3, 4,
+    4, NA, 2, 4,
+    2, 1, NA, 3,
+    5, 2, 4, NA), 4, byrow= TRUE
 )
 # create a data object
 data <- imr_data(Y =  Y, val_prop = 0.2)
@@ -139,7 +136,7 @@ grid <- imr_tune_grid(nuclear = c(0, NA, 5, 2),
                      rank = c(2, 5, 1, 2))
 
 # get the KKT max value for the nuclear parameter
-grid <- imr_set_grid_limits(data, grid, bisection_iter=0)
+grid <- imr_set_grid_limits(data, grid)
 
 # tune the parameters lambda_m and r on the model Y = M
 cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, n_cores = 1)

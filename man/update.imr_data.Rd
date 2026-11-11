@@ -15,6 +15,8 @@
   col_intercept = NULL,
   shared_beta = NULL,
   shared_gamma = NULL,
+  center = NULL,
+  scale = NULL,
   ...
 )
 }
@@ -45,6 +47,11 @@ across all columns?}
 \item{shared_gamma}{Logical. Should column covariate effects (\code{gamma}) be shared
 across all rows?}
 
+\item{center, scale}{Logical or \code{NULL}. \code{NULL} (the default) keeps the current
+centering or scaling of \code{X} and \code{Z}. \code{TRUE} or \code{FALSE} applies or removes it
+on the stored copy of each matrix, and the step sizes are recomputed. See
+\code{\link[=imr_data]{imr_data()}}.}
+
 \item{...}{Additional arguments (ignored).}
 }
 \value{
@@ -61,7 +68,7 @@ on or off without needing to re-process the underlying data matrices.
 Y <- matrix(
   c(2, NA, 3,
   4, .5, NA,
-  NA, NA, 5), 3, byrow= TRUE
+  NA, 1, 5), 3, byrow= TRUE
 )
 
 # create covariate matrix of 2 variables

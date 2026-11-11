@@ -492,9 +492,6 @@ imr_tune_lasso <- function(data,
 #'   low-rank component (nuclear norm penalty). Defaults to `TRUE`.
 #' @param convergence An `"imr_convergence"` object specifying numerical tolerances
 #'   for internal model estimation.
-#' @param error_function A function used to evaluate prediction error on the
-#'   validation set. Must accept two arguments, `(predicted, actual)`.
-#'   Defaults to `get_metric("rmse")`.
 #' @param verbose Integer. Controls the level of diagnostic progress output.
 #'   Defaults to `1`.
 #' @param n_cores Integer. Number of CPU cores allocated for parallel execution
@@ -558,11 +555,13 @@ imr_tune_lasso <- function(data,
 #' }
 #' @seealso [imr_tune_grid()], [imr_set_grid_limits()], [imr_data()]
 #' @examples
-#' # create sample data
+#' # create sample data: three observed entries in every row and column, so
+#' # that each keeps at least one in the training split
 #' Y <- matrix(
-#'   c(2, NA, 3, 4,
-#'     4, .5, NA, 4,
-#'     NA, NA, 5, 3), 3, byrow= TRUE
+#'   c(NA, 1, 3, 4,
+#'     4, NA, 2, 4,
+#'     2, 1, NA, 3,
+#'     5, 2, 4, NA), 4, byrow= TRUE
 #' )
 #' # create a data object
 #' data <- imr_data(Y =  Y, val_prop = 0.2)
@@ -571,7 +570,7 @@ imr_tune_lasso <- function(data,
 #'                      rank = c(2, 5, 1, 2))
 #'
 #' # get the KKT max value for the nuclear parameter
-#' grid <- imr_set_grid_limits(data, grid, bisection_iter=0)
+#' grid <- imr_set_grid_limits(data, grid)
 #'
 #' # tune the parameters lambda_m and r on the model Y = M
 #' cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, n_cores = 1)

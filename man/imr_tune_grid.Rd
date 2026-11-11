@@ -9,7 +9,7 @@ imr_tune_grid(
   gamma = c(0, NA, 20),
   nuclear = c(0, NA, 20, 2),
   rank = c(2, 30, 2, 2),
-  metric = "auto"
+  metric = "rmse"
 )
 }
 \arguments{
@@ -30,6 +30,11 @@ for early stopping. Defaults to \code{c(0, NA, 20, 2)}.}
 low-rank component. Expected format: \code{c(min, max, step, streaks)}, where
 \code{streaks} specifies the patience threshold for early stopping.
 Defaults to \code{c(2, 30, 2, 2)}.}
+
+\item{metric}{Character. The error metric computed on the validation set and
+used by \code{imr_tune()} to compare hyperparameter values: one of \code{"rmse"},
+\code{"mae"}, \code{"mape"}, \code{"rrmse"} or \code{"spearman"} (case-insensitive; see
+\code{\link[=get_metric]{get_metric()}}). Defaults to \code{"rmse"}.}
 }
 \value{
 An object of class \code{"imr_tune_grid"}, a list of the parameters and their values.

@@ -10,10 +10,12 @@ imr_data(
   Z = NULL,
   similarity_rows = NULL,
   similarity_cols = NULL,
+  val_prop = 0,
+  seed = NULL,
   train_mask = NULL,
   valid_mask = NULL,
-  val_prop = 0,
-  seed = NULL
+  center = TRUE,
+  scale = TRUE
 )
 }
 \arguments{
@@ -39,6 +41,22 @@ for hyperparameter tuning.}
 
 \item{seed}{Integer. An optional random seed for reproducibility when creating the
 train/validation split. Defaults to \code{NULL}.}
+
+\item{train_mask, valid_mask}{Optional matrices of 0s and 1s with the
+dimensions of \code{Y}, marking the training and the validation entries. When
+\code{valid_mask} is given, \code{train_mask} is required as well, the two may not
+overlap, and both may mark observed entries only. The split is then taken
+from the masks, and \code{val_prop} and \code{seed} are not used. Both default to
+\code{NULL}.}
+
+\item{center, scale}{Logical. If \code{TRUE} (the default), each column of \code{X} and
+\code{Z} is centered to mean zero (\code{center}) and scaled to unit standard
+deviation (\code{scale}). One transformed copy of each matrix is stored, with its
+column means and standard deviations. The penalties apply to the
+coefficients of the transformed covariates, and \code{coef()}, \code{summary()} and
+\code{reconstruct()} report the coefficients on the original scale. A constant
+column cannot be scaled and raises an error. Without the matching intercept
+in the model, centering changes the fitted model.}
 }
 \value{
 An object of class \code{"imr_data"}, containing:
@@ -71,7 +89,7 @@ later without re-processing the data matrices, use the \code{update()} method.
 Y <- matrix(
   c(2, NA, 3,
   4, .5, NA,
-  NA, NA, 5), 3, byrow= TRUE
+  NA, 1, 5), 3, byrow= TRUE
 )
 
 # create covariate matrix of 2 variables

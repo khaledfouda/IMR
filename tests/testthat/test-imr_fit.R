@@ -67,8 +67,17 @@ test_that("imr_fit handles shared covariates and intercepts", {
   test_data <- imr_data(dat_shared$Y, dat_shared$X, dat_shared$Z, val_prop = 0.3)
 
   # Scenario 1: Shared covariates without intercepts
+  # The shared updates take a unit step, which is valid only for orthonormal
+  # designs. Each (single) covariate is therefore scaled to unit norm, and
+  # imr_data() is told not to standardize. Shared models on standardized
+  # designs are a known open issue.
+  norm_x <- sqrt(sum(dat_shared$X^2))
+  norm_z <- sqrt(sum(dat_shared$Z^2))
+  shared_data <- imr_data(dat_shared$Y, dat_shared$X / norm_x,
+                          dat_shared$Z / norm_z, val_prop = 0.3,
+                          center = FALSE, scale = FALSE)
   data_shared_cov <- update(
-    test_data,
+    shared_data,
     row_covariates = TRUE, col_covariates = TRUE, low_rank_component = TRUE,
     shared_beta = TRUE, shared_gamma = TRUE, row_similarity = FALSE,
     col_similarity = FALSE, row_intercept = FALSE, col_intercept = FALSE
@@ -77,8 +86,9 @@ test_that("imr_fit handles shared covariates and intercepts", {
   fit_shared <- imr_fit(data_shared_cov, 2)
   rec_shared <- reconstruct(fit_shared, data_shared_cov, trace = FALSE)
 
-  expect_equal(rec_shared$beta, dat_shared$beta, tolerance = 0.1)
-  expect_equal(rec_shared$gamma, dat_shared$gamma, tolerance = 0.1)
+  # the estimates are for the unit-norm covariates: back to the original scale
+  expect_equal(rec_shared$beta / norm_x, dat_shared$beta, tolerance = 0.1)
+  expect_equal(rec_shared$gamma / norm_z, dat_shared$gamma, tolerance = 0.1)
 
   # Scenario 2: Intercepts only [intercept should approximate xbeta]
   data_intercepts <- update(
@@ -225,4 +235,45 @@ test_that("with lambda_gamma = 0 the Gamma estimate solves the least-squares nor
   grad <- ((sim$Y != 0) * (sim$Y - theta)) %*% sim$Z
   # tolerance 1e-3: the observed stationarity residual at a relative change of 1e-10 is about 2e-5
   expect_lt(max(abs(grad)), 1e-3)
+})
+
+test_that("imr_fit runs from a random orthonormal warm start given as a plain list", {
+  sim <- generate_simulated_data(20, 30, 3, 3, 2, sparsity = 0.5,
+                                 sparsity_beta = 0.5, sparsity_gamma = 0.5,
+                                 snr = 2, seed = 11)
+  data <- imr_data(sim$Y, sim$X, sim$Z, center = FALSE, scale = FALSE)
+  # both intercepts on, so that all seven components of the list are used
+  data <- update(data, row_intercept = TRUE, col_intercept = TRUE)
+  obs <- sim$Y != 0
+  n <- nrow(sim$Y)
+  m <- ncol(sim$Y)
+  r <- 4
+  set.seed(6)
+  ws <- list(
+    u = qr.Q(qr(matrix(rnorm(n * r), n, r))),
+    d = as.numeric(r:1),
+    v = qr.Q(qr(matrix(rnorm(m * r), m, r))),
+    beta = matrix(0, ncol(sim$X), m),
+    gamma = matrix(0, n, ncol(sim$Z)),
+    beta0 = numeric(n),
+    gamma0 = numeric(m)
+  )
+  # a rejected start warns ("warm start verification failed") and is replaced
+  expect_no_warning(
+    fit <- suppressMessages(imr_fit(
+      data, rank = r, lambda_m = 1, lambda_beta = 0.3, lambda_gamma = 0.3,
+      convergence = imr_convergence(maxit = 20), warm_start = ws,
+      return_objective = TRUE
+    )),
+    message = "warm start"
+  )
+  cf <- fit$coefficients
+  theta <- outer(cf$beta0, rep(1, m)) + outer(rep(1, n), cf$gamma0) +
+    sim$X %*% cf$beta + cf$gamma %*% t(sim$Z) + cf$u %*% (cf$d * t(cf$v))
+  # tolerance 1e-12 (relative): at most twenty iterations of in-place updates
+  # accumulate rounding of about 1e-14; a component of the start that is not
+  # removed from the residual would leave an error of the order of the residual
+  expect_equal(as.matrix(fit$residuals), obs * (sim$Y - theta), tolerance = 1e-12)
+  # tolerance 1e-10 * objective[1]: room for rounding only, as in the tests above
+  expect_true(all(diff(fit$objective) <= 1e-10 * fit$objective[1]))
 })

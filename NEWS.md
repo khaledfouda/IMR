@@ -1,5 +1,26 @@
 # IMR (development version)
 
+* `imr_data()` gains `center` and `scale` (both `TRUE`). The covariates are
+  centered and scaled to unit standard deviation instead of being orthonormalized
+  by QR, and the covariate blocks are updated by a proximal-gradient step with
+  step size $1/\|X\|_{op}^2$ (resp. $1/\|Z\|_{op}^2$). One copy of `X` and `Z` is
+  stored, with their column centers and scales. `update()` gains `center` and
+  `scale` to change these afterwards. The Lasso penalties apply to the
+  standardized coefficients; `coef()`, `summary()` and `reconstruct()` report the
+  coefficients on the original scale. This changes default results.
+* `imr_data()` now stops when a row or column of `Y` has fewer than two observed
+  entries, or when the training split leaves one without any.
+* `imr_fit()` gains `return_objective`. When `TRUE`, `fit$objective` holds the
+  value of the objective after each iteration.
+* Fits without a low-rank component no longer stop after one iteration, and the
+  stopping rule now includes the intercepts. This changes the least-squares
+  initialization and the `lambda_m` grid maximum from `imr_set_grid_limits()`.
+* `imr_set_grid_limits()` now verifies a bound 5% above its KKT value, so a
+  correct bound is no longer doubled.
+* `imr_tune()` now passes `nuclear_log_scale` on when it also tunes
+  `lambda_beta` or `lambda_gamma`.
+* Clearer error message when an internal eigendecomposition fails.
+
 # IMR 0.1.2
 I added a 'src/Makevars' file to link the BLAS, LAPACK, and Fortran libraries.
 

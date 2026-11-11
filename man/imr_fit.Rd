@@ -10,10 +10,10 @@ imr_fit(
   lambda_m = 0,
   lambda_beta = 0,
   lambda_gamma = 0,
-  huber_shift = 0,
   convergence = imr_convergence(),
   warm_start = NULL,
-  training = FALSE
+  training = FALSE,
+  return_objective = FALSE
 )
 }
 \arguments{
@@ -46,6 +46,11 @@ Defaults to \code{NULL}.}
 \item{training}{Logical. If \code{TRUE}, the model fits on \code{data$y_train} rather than
 the full \code{data$Y} matrix. This is primarily intended for internal use during
 cross-validation. Generally, users should leave this as \code{FALSE}. Defaults to \code{FALSE}.}
+
+\item{return_objective}{Logical. If \code{TRUE}, the value of the objective
+function after each iteration is returned in \code{fit$objective}, a numeric
+vector with one entry per iteration. Defaults to \code{FALSE}, in which case
+\code{fit$objective} is \code{NULL}.}
 }
 \value{
 An object of class \code{"imr_fit"}. This is a list containing:
@@ -75,7 +80,7 @@ specified model structure and regularization parameters.
 Y <- matrix(
   c(2, NA, 3,
   4, .5, NA,
-  NA, NA, 5), 3, byrow= TRUE
+  NA, 1, 5), 3, byrow= TRUE
 )
 
 # create covariate matrix of 2 variables

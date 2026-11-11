@@ -11,7 +11,6 @@ imr_set_grid_limits(
   default_lambda_m = 0,
   default_lambda_beta = 0,
   default_lambda_gamma = 0,
-  huber_shift = 0,
   convergence = imr_convergence(trace = FALSE, ls_initial = FALSE),
   training = TRUE,
   verify_iter = 1L,
@@ -36,10 +35,6 @@ the rank.}
 \item{default_lambda_beta, default_lambda_gamma}{Numeric. The row and column
 covariate penalties used as a reference when estimating the maximum
 \eqn{\lambda_M}. Defaults to \code{0}.}
-
-\item{huber_shift}{Numeric. Passed to \code{\link[=imr_fit]{imr_fit()}} for every internal fit. A
-grid computed under least squares is the wrong grid for a robust fit; see
-Details. Defaults to \code{0}.}
 
 \item{convergence}{An \code{"imr_convergence"} object specifying the numerical
 tolerances and optimization parameters for internal model fits. Defaults
@@ -92,11 +87,6 @@ indicates that the internal fits are stopping before their coefficients
 reach zero, and is better addressed through a smaller \code{thresh} in
 \code{\link[=imr_convergence]{imr_convergence()}} than by lowering the grid maximum.
 
-Under the Huber loss the gradient involves the clipped residual
-\eqn{\psi_c(r)} rather than \eqn{r}, so all three maxima are smaller, often
-substantially so when the data are contaminated. \code{huber_shift} must
-therefore match the value later passed to \code{\link[=imr_tune]{imr_tune()}}.
-
 During the estimation of the maximum \eqn{\lambda_\beta} or
 \eqn{\lambda_\Gamma}, the other covariate penalty is held at
 \code{default_lambda_gamma} or \code{default_lambda_beta} and the low-rank component
@@ -105,11 +95,13 @@ at \code{default_rank} and \code{default_lambda_m}. Conversely, estimation of
 \code{default_lambda_gamma}.
 }
 \examples{
-# create sample data
+# create sample data: three observed entries in every row and column, so
+# that each keeps at least one in the training split
 Y <- matrix(
-  c(2, NA, 3, 4,
-    4, .5, NA, 4,
-    NA, NA, 5, 3), 3, byrow= TRUE
+  c(NA, 1, 3, 4,
+    4, NA, 2, 4,
+    2, 1, NA, 3,
+    5, 2, 4, NA), 4, byrow= TRUE
 )
 # create a data object
 data <- imr_data(Y =  Y, val_prop = 0.2)
@@ -118,7 +110,7 @@ grid <- imr_tune_grid(nuclear = c(0, NA, 5, 2),
                      rank = c(2, 5, 1, 2))
 
 # get the KKT max value for the nuclear parameter
-grid <- imr_set_grid_limits(data, grid, bisection_iter=0)
+grid <- imr_set_grid_limits(data, grid)
 
 # tune the parameters lambda_m and r on the model Y = M
 cv_out <- imr_tune(data, grid, fast_nuclear = TRUE, n_cores = 1)

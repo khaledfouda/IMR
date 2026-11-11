@@ -75,6 +75,10 @@ imr_convergence <- function(maxit = 600,
 #' @param training Logical. If `TRUE`, the model fits on `data$y_train` rather than
 #'   the full `data$Y` matrix. This is primarily intended for internal use during
 #'   cross-validation. Generally, users should leave this as `FALSE`. Defaults to `FALSE`.
+#' @param return_objective Logical. If `TRUE`, the value of the objective
+#'   function after each iteration is returned in `fit$objective`, a numeric
+#'   vector with one entry per iteration. Defaults to `FALSE`, in which case
+#'   `fit$objective` is `NULL`.
 #'
 #' @return An object of class `"imr_fit"`. This is a list containing:
 #' \itemize{
@@ -99,7 +103,7 @@ imr_convergence <- function(maxit = 600,
 #' Y <- matrix(
 #'   c(2, NA, 3,
 #'   4, .5, NA,
-#'   NA, NA, 5), 3, byrow= TRUE
+#'   NA, 1, 5), 3, byrow= TRUE
 #' )
 #'
 #' # create covariate matrix of 2 variables

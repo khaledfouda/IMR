@@ -22,6 +22,20 @@
 #'   for hyperparameter tuning.
 #' @param seed Integer. An optional random seed for reproducibility when creating the
 #'   train/validation split. Defaults to `NULL`.
+#' @param train_mask,valid_mask Optional matrices of 0s and 1s with the
+#'   dimensions of `Y`, marking the training and the validation entries. When
+#'   `valid_mask` is given, `train_mask` is required as well, the two may not
+#'   overlap, and both may mark observed entries only. The split is then taken
+#'   from the masks, and `val_prop` and `seed` are not used. Both default to
+#'   `NULL`.
+#' @param center,scale Logical. If `TRUE` (the default), each column of `X` and
+#'   `Z` is centered to mean zero (`center`) and scaled to unit standard
+#'   deviation (`scale`). One transformed copy of each matrix is stored, with its
+#'   column means and standard deviations. The penalties apply to the
+#'   coefficients of the transformed covariates, and `coef()`, `summary()` and
+#'   `reconstruct()` report the coefficients on the original scale. A constant
+#'   column cannot be scaled and raises an error. Without the matching intercept
+#'   in the model, centering changes the fitted model.
 #'
 #' @details
 #' By default, `imr_data` assumes that if you provide `X`, `Z`, or similarity matrices,
@@ -50,7 +64,7 @@
 #' Y <- matrix(
 #'   c(2, NA, 3,
 #'   4, .5, NA,
-#'   NA, NA, 5), 3, byrow= TRUE
+#'   NA, 1, 5), 3, byrow= TRUE
 #' )
 #'
 #' # create covariate matrix of 2 variables
@@ -242,6 +256,10 @@ imr_data <- function(Y,
 #'   across all columns?
 #' @param shared_gamma Logical. Should column covariate effects (`gamma`) be shared
 #'   across all rows?
+#' @param center,scale Logical or `NULL`. `NULL` (the default) keeps the current
+#'   centering or scaling of `X` and `Z`. `TRUE` or `FALSE` applies or removes it
+#'   on the stored copy of each matrix, and the step sizes are recomputed. See
+#'   [imr_data()].
 #' @param ... Additional arguments (ignored).
 #'
 #' @return The modified `"imr_data"` object with updated `$model` flags.

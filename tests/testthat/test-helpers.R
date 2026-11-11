@@ -19,3 +19,24 @@ test_that("svd_opt() works correctly under cthin, rthin, and incomplete scenario
   out <- svd_opt(inc_y, 5, base_svd_d1 - 1)$d
   expect_type(out, "double")
 })
+
+test_that("verify_warm_start() keeps a full-rank random start unchanged", {
+  set.seed(6)
+  n <- 20
+  m <- 30
+  r <- 3
+  # a random initialization: orthonormal u and v, positive d, zero coefficients
+  ws <- list(
+    u = qr.Q(qr(matrix(rnorm(n * r), n, r))),
+    d = c(3, 2, 1),
+    v = qr.Q(qr(matrix(rnorm(m * r), m, r))),
+    beta = matrix(0, 3, m),
+    gamma = matrix(0, n, 2),
+    beta0 = numeric(n),
+    gamma0 = numeric(m)
+  )
+  # a rejected start gives a warning and NULL
+  expect_no_warning(out <- verify_warm_start(ws, r))
+  # no tolerance: with length(d) equal to the rank, nothing is truncated or padded
+  expect_identical(out, ws)
+})
