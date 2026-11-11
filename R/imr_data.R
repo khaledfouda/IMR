@@ -73,7 +73,11 @@ imr_data <- function(Y,
                      val_prop = 0.0,
                      seed = NULL,
                      train_mask = NULL,
-                     valid_mask = NULL) {
+                     valid_mask = NULL,
+                     center = TRUE,
+                     scale = TRUE) {
+  .imr_check_param(center, "bool")
+  .imr_check_param(scale, "bool")
   out <- list()
   if (!is.null(seed) && is.numeric(seed)) set.seed(seed)
 
@@ -84,6 +88,16 @@ imr_data <- function(Y,
 
   dims <- dim(Y)
   n_total_obs <- sum(obs_mask)
+
+  # every row and column needs at least two observed entries
+  n_few_rows <- sum(rowSums(obs_mask) < 2)
+  n_few_cols <- sum(colSums(obs_mask) < 2)
+  if (n_few_rows > 0 || n_few_cols > 0) {
+    stop(sprintf(
+      "Every row and column of Y needs at least two observed entries; %d rows and %d columns have fewer.",
+      n_few_rows, n_few_cols
+    ), call. = FALSE)
+  }
 
   # --- Train/Validation Split ---
   # if a validation mask is provided, it'll be used!
@@ -133,6 +147,18 @@ imr_data <- function(Y,
     n_valid <- 0
   }
 
+  # and the training split must keep at least one entry in every row and column
+  if (split_data) {
+    n_empty_rows <- sum(tabulate(out$y_train@i + 1, dims[1]) == 0)
+    n_empty_cols <- sum(diff(out$y_train@p) == 0)
+    if (n_empty_rows > 0 || n_empty_cols > 0) {
+      stop(sprintf(
+        "The training split leaves %d rows and %d columns of Y without observed entries; use another seed, a smaller val_prop or other masks.",
+        n_empty_rows, n_empty_cols
+      ), call. = FALSE)
+    }
+  }
+
   out$obs_mask <- as_incomplete(obs_mask * 1)
 
   # ---  Similarity Matrices ---
@@ -142,30 +168,33 @@ imr_data <- function(Y,
   out$similarity_cols <- similarity_cols
 
   # ---  Covariates ---
+  # The raw matrices, column means and sds are kept here. The designs actually used
+  # (data$X, data$Z and their step sizes data$LX, data$LZ) are built by update.imr_data().
+  constant_columns <- function(m) {
+    which(apply(m, 2, function(x) all(x == x[1])))
+  }
   if (!is.null(X)) {
     stopifnot(is.matrix(X))
     if(nrow(X) != nrow(Y))
       if(ncol(X) == nrow(Y)) X = t(X) else stop("None of the dimensions of X match the number of rows of Y")
-    # EDIT  -  we will no longer apply QR decomposition.
-    # also return Lipschitz constant for the Lasso algorithm
-    out$X <- X
-    out$LX <- 1 / svd_opt(X, 1)$d[1]^2
-    #xqr <- qr(X)
-    #out$Xq <- qr.Q(xqr)
-    #colnames(out$Xq) <- colnames(X)
-    #out$Xr <- qr.R(xqr)
+    if (scale && length(constant_columns(X)) > 0)
+      stop(sprintf("Constant columns of X cannot be scaled: %s.",
+                   toString(constant_columns(X))), call. = FALSE)
+    out$X_raw <- X
+    out$x_center <- colMeans(X)
+    out$x_scale <- if (scale) apply(X, 2, sd) else rep(1, ncol(X))
   }
 
   if (!is.null(Z)) {
     stopifnot(is.matrix(Z))
     if(nrow(Z) != ncol(Y))
       if(ncol(Z) == ncol(Y)) Z = t(Z) else stop("None of the dimensions of Z match the number of columns of Y")
-    out$Z <- Z
-    out$LZ <- 1 / svd_opt(Z, 1)$d[1]^2
-    #Zqr <- qr(Z)
-    #out$Zq <- qr.Q(Zqr)
-    #colnames(out$Zq) <- colnames(Z)
-    #out$Zr <- qr.R(Zqr)
+    if (scale && length(constant_columns(Z)) > 0)
+      stop(sprintf("Constant columns of Z cannot be scaled: %s.",
+                   toString(constant_columns(Z))), call. = FALSE)
+    out$Z_raw <- Z
+    out$z_center <- colMeans(Z)
+    out$z_scale <- if (scale) apply(Z, 2, sd) else rep(1, ncol(Z))
   }
 
   # ---  Metadata  ---
@@ -184,7 +213,11 @@ imr_data <- function(Y,
     num_Z_vars = if (!is.null(Z)) ncol(Z) else 0,
     names_Z_vars = if (!is.null(Z)) colnames(Z) else NULL,
     has_sim_row = !is.null(out$similarity_rows),
-    has_sim_col = !is.null(out$similarity_cols)
+    has_sim_col = !is.null(out$similarity_cols),
+    center = center,
+    scale = scale,
+    x_centered = FALSE,
+    z_centered = FALSE
   )
   # --- Model Structure ----
   out$model <- list(
@@ -199,7 +232,8 @@ imr_data <- function(Y,
     shared_gamma = FALSE
   )
 
-  structure(out, class = "imr_data")
+  # builds the designs for the model structure above
+  update.imr_data(structure(out, class = "imr_data"))
 }
 #----------------------------------------
 #' Update IMR Model Structure
@@ -288,6 +322,25 @@ update.imr_data <- function(object,
       warning("Setting shared_gamma = TRUE does nothing if col covariates are inactive.")
     }
     object$model$shared_gamma <- as.logical(shared_gamma[1])
+  }
+
+  # --- Designs actually used ---
+  # Columns are divided by their sds. X is centered while gamma0 (column intercepts)
+  # is in the model, Z while beta0 (row intercepts) is, as those absorb the means.
+  # The step sizes 1 / ||X||_op^2 and 1 / ||Z||_op^2 are computed on these designs.
+  if (object$meta$has_X) {
+    object$meta$x_centered <- object$meta$center && object$model$col_intercept
+    X <- object$X_raw
+    if (object$meta$x_centered) X <- sweep(X, 2, object$x_center)
+    object$X <- sweep(X, 2, object$x_scale, "/")
+    object$LX <- 1 / svd(object$X, nu = 0, nv = 0)$d[1]^2
+  }
+  if (object$meta$has_Z) {
+    object$meta$z_centered <- object$meta$center && object$model$row_intercept
+    Z <- object$Z_raw
+    if (object$meta$z_centered) Z <- sweep(Z, 2, object$z_center)
+    object$Z <- sweep(Z, 2, object$z_scale, "/")
+    object$LZ <- 1 / svd(object$Z, nu = 0, nv = 0)$d[1]^2
   }
 
   return(object)
@@ -409,7 +462,8 @@ reconstruct <- function(fit, data, trace = TRUE) {
     xbeta = NULL, gammaz = NULL, estimates = 0
   )
 
-  coefs <- fit$coefficients
+  # coefficients on the original scale of the covariates (see coef.imr_fit())
+  coefs <- coef(fit)
   meta <- fit$meta
 
   # Get dimensions to safely initialize estimates if M is absent
@@ -425,14 +479,11 @@ reconstruct <- function(fit, data, trace = TRUE) {
   }
 
   # --- Reconstructing row covariate effects ---
-  if (!is.null(coefs$beta) && !is.null(data$X)) {
+  if (!is.null(coefs$beta) && !is.null(data$X_raw)) {
     if (trace) message("Constructing XBeta ...")
 
-    # Back-transform beta to original scale
     out$beta <- coefs$beta
-    out$xbeta <- data$X %*% coefs$beta
-    #out$beta <- solve(data$Xr, coefs$beta)
-    #out$xbeta <- data$Xq %*% coefs$beta
+    out$xbeta <- data$X_raw %*% coefs$beta
 
     if (meta$shared_effects["beta"]) {
       # Shared beta: xbeta is an n x 1 matrix
@@ -444,14 +495,11 @@ reconstruct <- function(fit, data, trace = TRUE) {
   }
 
   # --- Reconstructing column covariate effects ---
-  if (!is.null(coefs$gamma) && !is.null(data$Z)) {
+  if (!is.null(coefs$gamma) && !is.null(data$Z_raw)) {
     if (trace) message("Constructing GammaZ ...")
 
-    # Back-transform gamma to original scale
     out$gamma <- coefs$gamma
-    out$gammaz <- coefs$gamma %*% t(data$Z)
-    #out$gamma <- coefs$gamma %*% solve(t(data$Zr))
-    #out$gammaz <- coefs$gamma %*% t(data$Zq)
+    out$gammaz <- coefs$gamma %*% t(data$Z_raw)
 
     if (meta$shared_effects["gamma"]) {
       # Shared gamma: gammaz is a 1 x m matrix.

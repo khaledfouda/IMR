@@ -1,5 +1,5 @@
 test_that("imr_tune forwards nuclear_log_scale to the lasso scenarios", {
-  dat <- generate_simulated_data(30, 40, 2, 1, 1, snr = 1, seed = 5)
+  dat <- generate_simulated_data(30, 40, 2, 1, 1, sparsity = 0.5, snr = 1, seed = 5)
   # streaks larger than the grid length, so every lambda_m value is fitted
   grid <- imr_tune_grid(beta = c(0, 1, 2), gamma = c(0, 1, 2),
                         nuclear = c(0.01, 1, 4, 10), rank = c(2, 4, 2, 10))

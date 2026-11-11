@@ -5,7 +5,7 @@ d_mat <- as.matrix(dist(c(1, 2)))
 test_that("imr_data keeps the 1.0.0 positional order: val_prop and seed before the masks", {
   expect_equal(names(formals(imr_data))[6:9], c("val_prop", "seed", "train_mask", "valid_mask"))
 
-  dat <- generate_simulated_data(20, 30, 2, 1, 1, snr = 0, seed = 1)
+  dat <- generate_simulated_data(20, 30, 2, 1, 1, sparsity = 0.5, snr = 0, seed = 1)
   data <- imr_data(dat$Y, dat$X, dat$Z, NULL, NULL, 0.2, 1)
   expect_true(data$meta$split_data)
   expect_false(is.null(data$valid_mask))
@@ -13,7 +13,7 @@ test_that("imr_data keeps the 1.0.0 positional order: val_prop and seed before t
 })
 
 test_that("imr_data uses train_mask and valid_mask passed by name as the split", {
-  dat <- generate_simulated_data(10, 12, 2, 0, 0, sparsity = 0.5, snr = 0, seed = 3)
+  dat <- generate_simulated_data(10, 12, 2, 0, 0, sparsity = 0.3, snr = 0, seed = 3)
   obs <- dat$Y != 0
   set.seed(3)
   valid <- matrix(0, 10, 12)
@@ -28,6 +28,24 @@ test_that("imr_data uses train_mask and valid_mask passed by name as the split",
   expect_equal(as.matrix(data$y_valid), dat$Y * valid, tolerance = 0)
   expect_equal(Matrix::which(data$y_valid != 0), which(valid == 1))
   expect_equal(as.matrix(data$y_train), dat$Y * train, tolerance = 0)
+})
+
+test_that("imr_data needs two observed entries per row and column, and one in the training split", {
+  Y <- matrix(1:9, 3, byrow = TRUE)
+  expect_no_error(imr_data(Y))
+
+  one_in_row <- Y
+  one_in_row[3, 2:3] <- c(NA, 0) # zeros also count as unobserved
+  expect_error(imr_data(one_in_row), "1 rows and 0 columns have fewer")
+  expect_error(imr_data(t(one_in_row)), "0 rows and 1 columns have fewer")
+
+  # row 2 keeps two observed entries, and both go to validation
+  Y[2, 3] <- NA
+  valid <- matrix(0, 3, 3)
+  valid[2, 1:2] <- 1
+  train <- (!is.na(Y)) * 1 - valid
+  expect_error(imr_data(Y, train_mask = train, valid_mask = valid),
+               "leaves 1 rows and 0 columns of Y without observed entries")
 })
 
 test_that("imr_similarity handles matrix inputs and invalid classes correctly", {

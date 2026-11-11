@@ -29,7 +29,7 @@ test_that("a fit without M that starts at zero iterates to the least-squares sol
   expect_true(fit$meta$converged)
   fitted <- reconstruct_partial(fit, data, data$Y@i, data$Y@p)
   # tolerance 1e-6 (relative): the fit stops at a relative change of 1e-14;
-  # the one-iteration fit of the old rule is off by 28% here
+  # the one-iteration fit of the old rule is off by 21% here
   expect_equal(fitted, ls_fitted(sim$Y, sim$X, sim$Z), tolerance = 1e-6)
 })
 

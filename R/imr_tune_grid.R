@@ -421,7 +421,9 @@ imr_lambda_max <- function(data,
   lower <- 0
   ok <- FALSE
   for (i in seq_len(max(verify_iter, 1L))) {
-    if (is_zero(upper)) { ok <- TRUE; break }
+    # at exactly the KKT value the target reaches zero only in the limit of the iterations,
+    # so the check is made 5% above it; the value itself is kept
+    if (is_zero(1.05 * upper)) { ok <- TRUE; break }
     lower <- upper
     upper <- upper * 2
     if (verbose >= 2) message(sprintf("  expand: lambda = %.5g", upper))

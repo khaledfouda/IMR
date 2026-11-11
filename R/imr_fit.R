@@ -176,6 +176,12 @@ imr_fit <- function(
     stopifnot(is.numeric(lambda_gamma) && lambda_gamma >= 0)
   if(model$low_rank_component)
     stopifnot(is.numeric(rank) && rank > 0 && is.numeric(lambda_m) && lambda_m >= 0)
+  # the designs are centered only while the matching intercepts are in the model;
+  # update() keeps the two in step
+  if ((model$row_covariates && data$meta$x_centered != (data$meta$center && model$col_intercept)) ||
+      (model$col_covariates && data$meta$z_centered != (data$meta$center && model$row_intercept)))
+    stop("The centering of X or Z does not match the intercepts in data$model; change the model with update().",
+         call. = FALSE)
 
   result_list <- imr_solver(
     Y = if (training) data$y_train else data$Y,
@@ -292,8 +298,14 @@ imr_fit <- function(
         gamma0 = result_list$gamma0
       ),
       residuals = result_list$residuals,
-      #Xr = if (model$row_covariates) data$Xr else NULL,
-      #Zr = if (model$col_covariates) data$Zr else NULL,
+      # the coefficients above are on the scale of the designs; coef() uses these
+      # to return them on the original scale (centers are NULL when not applied)
+      scaling = list(
+        x_center = if (model$row_covariates && data$meta$x_centered) data$x_center,
+        x_scale = if (model$row_covariates) data$x_scale,
+        z_center = if (model$col_covariates && data$meta$z_centered) data$z_center,
+        z_scale = if (model$col_covariates) data$z_scale
+      ),
       meta = list(
         rank = rank,
         lambdas = c(M = lambda_m, beta = lambda_beta, gamma = lambda_gamma),
@@ -666,14 +678,13 @@ imr_solver <- function(
       denom <- max(sum(gamma_old * gamma_old), 1e-9)
       ratio <- ratio + sum((gamma_old - gamma)^2) / denom
     }
-    # rows/columns without observed entries have NA intercepts
     if (row_intercept) {
-      denom <- max(sum(beta0_old * beta0_old, na.rm = TRUE), 1e-9)
-      ratio <- ratio + sum((beta0_old - beta0)^2, na.rm = TRUE) / denom
+      denom <- max(sum(beta0_old * beta0_old), 1e-9)
+      ratio <- ratio + sum((beta0_old - beta0)^2) / denom
     }
     if (col_intercept) {
-      denom <- max(sum(gamma0_old * gamma0_old, na.rm = TRUE), 1e-9)
-      ratio <- ratio + sum((gamma0_old - gamma0)^2, na.rm = TRUE) / denom
+      denom <- max(sum(gamma0_old * gamma0_old), 1e-9)
+      ratio <- ratio + sum((gamma0_old - gamma0)^2) / denom
     }
     if(huber_flag) {
       huber_ratio <- ((huber_c - c_old)/c_old)^2
@@ -973,20 +984,18 @@ summary.imr_fit <- function(object, ...) {
     }
   }
 
+  # coefficients on the original scale of the covariates
+  original <- coef(object)
   if (object$model$row_covariates) {
-    beta <- object$coefficients$beta
-    # beta <- inv(object$Xr) %*% object$coefficients$beta
     summarize_covariates(
-      t(beta), object$meta_data$names_X_vars,
+      t(original$beta), object$meta_data$names_X_vars,
       TRUE,
       object$meta_data$dimensions[2]
     )
   }
   if (object$model$col_covariates) {
-    gamma <- object$coefficients$gamma
-    # gamma <- tcrossprod(object$coefficients$gamma, inv(object$Zr))
     summarize_covariates(
-      gamma, object$meta_data$names_Z_vars,
+      original$gamma, object$meta_data$names_Z_vars,
       FALSE,
       object$meta_data$dimensions[1]
     )
@@ -995,7 +1004,7 @@ summary.imr_fit <- function(object, ...) {
   if (object$model$row_intercept || object$model$col_intercept) {
     cat("\n-- Intercepts --")
     if (object$model$row_intercept) {
-      coefs <- object$coefficients$beta0
+      coefs <- original$beta0
       cat(sprintf("\nRow Intercepts    (n=%d) | ", length(coefs)))
       cat(sprintf(
         "Mean: %.4f | SD: %.4f | Min: %.4f | Max: %.4f\n",
@@ -1003,7 +1012,7 @@ summary.imr_fit <- function(object, ...) {
       ))
     }
     if (object$model$col_intercept) {
-      coefs <- object$coefficients$gamma0
+      coefs <- original$gamma0
       cat(sprintf("Column Intercepts (m=%d) | ", length(coefs)))
       cat(sprintf(
         "Mean: %.4f | SD: %.4f | Min: %.4f | Max: %.4f\n",
@@ -1062,7 +1071,23 @@ print.imr_convergence <- function(x, ...) {
 #' @importFrom stats coef coefficients
 #' @method coef imr_fit
 coef.imr_fit <- function(object, ...) {
-  return(object$coefficients)
+  # object$coefficients are on the scale of the designs: X_s = (X - 1 xbar') S_x^{-1}
+  # and Z_s = (Z - 1 zbar') S_z^{-1}. On the original scale,
+  # beta = S_x^{-1} beta_s, gamma0 = gamma0_s - beta' xbar,
+  # Gamma = Gamma_s S_z^{-1} and beta0 = beta0_s - Gamma zbar.
+  coefs <- object$coefficients
+  sc <- object$scaling
+  if (!is.null(coefs$beta) && !is.null(sc$x_scale)) {
+    coefs$beta <- coefs$beta / sc$x_scale
+    if (!is.null(sc$x_center))
+      coefs$gamma0 <- coefs$gamma0 - as.vector(crossprod(coefs$beta, sc$x_center))
+  }
+  if (!is.null(coefs$gamma) && !is.null(sc$z_scale)) {
+    coefs$gamma <- sweep(coefs$gamma, 2, sc$z_scale, "/")
+    if (!is.null(sc$z_center))
+      coefs$beta0 <- coefs$beta0 - as.vector(coefs$gamma %*% sc$z_center)
+  }
+  return(coefs)
 }
 
 
