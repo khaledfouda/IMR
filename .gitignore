@@ -34,3 +34,7 @@ old_to_be_removed
 revdep/
 .positai
 /dev/robust_test
+.claude
+.claude/
+article/
+article
