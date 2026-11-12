@@ -29,8 +29,8 @@
 #' # Use the default convergence parameters
 #' convergence <- imr_convergence()
 #' print(convergence)
-imr_convergence <- function(maxit = 600,
-                            thresh = 1e-5,
+imr_convergence <- function(maxit = 2000,
+                            thresh = 1e-6,
                             trace = FALSE,
                             ls_initial = TRUE) {
 
@@ -107,12 +107,12 @@ imr_convergence <- function(maxit = 600,
 #' # create sample data
 #' Y <- matrix(
 #'   c(2, NA, 3,
-#'   4, .5, NA,
-#'   NA, 1, 5), 3, byrow= TRUE
+#'     4, .5, NA,
+#'     NA, 1, 5), 3, byrow = TRUE
 #' )
 #'
 #' # create covariate matrix of 2 variables
-#' X <- matrix(rnorm(3*2), 3, 2)
+#' X <- matrix(rnorm(3 * 2), 3, 2)
 #'
 #' # create the data object
 #' data <- imr_data(Y =  Y, X = X, val_prop = 0.0)
@@ -148,15 +148,15 @@ imr_convergence <- function(maxit = 600,
 #'
 #' @export
 imr_fit <- function(
-    data,
-    rank = 2,
-    lambda_m = 0,
-    lambda_beta = 0,
-    lambda_gamma = 0,
-    convergence = imr_convergence(),
-    warm_start = NULL,
-    training = FALSE, # if training use y_train instead of Y.
-    return_objective = FALSE
+  data,
+  rank = 2,
+  lambda_m = 0,
+  lambda_beta = 0,
+  lambda_gamma = 0,
+  convergence = imr_convergence(),
+  warm_start = NULL,
+  training = FALSE, # if training use y_train instead of Y.
+  return_objective = FALSE
 ) {
   # tracking time
   start_time <- Sys.time()
@@ -169,11 +169,11 @@ imr_fit <- function(
     warm_start <- warm_start$coefficients
   }
   model <- data$model
-  if(model$row_covariates)
+  if (model$row_covariates)
     stopifnot(is.numeric(lambda_beta) && lambda_beta >= 0)
-  if(model$col_covariates)
+  if (model$col_covariates)
     stopifnot(is.numeric(lambda_gamma) && lambda_gamma >= 0)
-  if(model$low_rank_component)
+  if (model$low_rank_component)
     stopifnot(is.numeric(rank) && rank > 0 && is.numeric(lambda_m) && lambda_m >= 0)
 
   result_list <- imr_solver(
@@ -313,16 +313,16 @@ imr_fit <- function(
 #' Not exported
 #' @noRd
 imr_solver <- function(
-    Y, X, Z,
-    row_intercept, col_intercept,
-    shared_beta, shared_gamma,
-    r, lambda_m, lambda_beta, lambda_gamma,
-    Ur, dr, Uc, dc,
-    convergence,
-    warm_start,
-    LX,
-    LZ,
-    return_objective = FALSE
+  Y, X, Z,
+  row_intercept, col_intercept,
+  shared_beta, shared_gamma,
+  r, lambda_m, lambda_beta, lambda_gamma,
+  Ur, dr, Uc, dc,
+  convergence,
+  warm_start,
+  LX,
+  LZ,
+  return_objective = FALSE
 ) {
   # Input checks & setup ----------------------------------------------------
   stopifnot(is_incomplete(Y))
@@ -352,8 +352,8 @@ imr_solver <- function(
   #-------------------------------------------------
   if (nuclear_r_flag) dr <- dr * lambda_m
   if (nuclear_c_flag) dc <- dc * lambda_m
-  penalty_beta <- if(lambda_beta_flag)  lambda_beta * LX else 1
-  penalty_gamma <- if(lambda_gamma_flag) lambda_gamma * LZ else 1
+  penalty_beta <- if (lambda_beta_flag) lambda_beta * LX else 1
+  penalty_gamma <- if (lambda_gamma_flag) lambda_gamma * LZ else 1
   #--------------------------------------------------
   # initial everything to null ------------------------
   beta <- gamma <- beta0 <- gamma0 <- U <- V <- Dsq <- NULL
@@ -517,7 +517,7 @@ imr_solver <- function(
         add_to_rows_inplace_cpp(Y@x, irow, change)
       } else {
         beta <- as.matrix(beta + LX * crossprod(X, Y))
-        if(lambda_beta_flag)
+        if (lambda_beta_flag)
           beta <- soft_threshold_cpp(beta, penalty_beta)
         # beta <- soft_threshold_cpp(
         #   as.matrix((crossprod(X, Y)) + beta),
@@ -542,8 +542,8 @@ imr_solver <- function(
         change <- old_val - gammaz
         add_to_cols_inplace_cpp(Y@x, pcol, change)
       } else {
-        gamma <- as.matrix(gamma + LZ * Y%*% Z)
-        if(lambda_gamma_flag)
+        gamma <- as.matrix(gamma + LZ * Y %*% Z)
+        if (lambda_gamma_flag)
           gamma <- soft_threshold_cpp(gamma, penalty_gamma)
         # gamma <- soft_threshold_cpp(
         #   as.matrix(Y %*% Z + gamma),
@@ -567,7 +567,7 @@ imr_solver <- function(
 
       BD <- svd_small_nc_cpp(BD)
       V <- BD$u
-      #Dsq <- tidyr::replace_na(BD$d, 0)
+      # Dsq <- tidyr::replace_na(BD$d, 0)
       Dsq <- BD$d
       Dsq[is.na(Dsq)] <- 0
 
@@ -589,7 +589,7 @@ imr_solver <- function(
 
       AD <- svd_small_nc_cpp(AD)
       U <- AD$u
-      #Dsq <- tidyr::replace_na(AD$d, 0)
+      # Dsq <- tidyr::replace_na(AD$d, 0)
       Dsq <- AD$d
       Dsq[is.na(Dsq)] <- 0
 
@@ -657,12 +657,12 @@ imr_solver <- function(
       if (return_objective) objective[iter] <- obj
       if (trace)
         cat(sprintf("%4d | obj=%12.5f, ratio=%10.3e, rmse=%9.4f, mae=%9.4f\n",
-                    iter, obj / nz, ratio, sqrt(sse / nz), mean(abs(Y@x))))
+          iter, obj / nz, ratio, sqrt(sse / nz), mean(abs(Y@x))))
     }
   }
   if (iter == maxit) {
     message(sprintf("Did not converge in %4d iterations with r=%2d and lambdas=(%.4f,%.4f,%.4f).\n",
-                    maxit, r, lambda_m, lambda_beta, lambda_gamma))
+      maxit, r, lambda_m, lambda_beta, lambda_gamma))
     # message("Did not converge in ", maxit, " iterations.")
   }
 
@@ -855,10 +855,10 @@ summary.imr_fit <- function(object, ...) {
       cat(sprintf("  %-21s : %s\n", label, .imr_fmt_pct(100 * ss / explained)))
     }
     if (object$model$low_rank_component) comp_line("Latent Matrix (M)", ssm)
-    if (object$model$row_covariates)     comp_line(sprintf("Row Covariates (X%s%s)", sym$dot, sym$beta), ssrc)
-    if (object$model$col_covariates)     comp_line(sprintf("Col Covariates (%s%sZ)", sym$Gamma, sym$dot), sscc)
-    if (object$model$row_intercept)      comp_line(sprintf("Row Intercepts (%s)", sym$beta0), ssri)
-    if (object$model$col_intercept)      comp_line(sprintf("Col Intercepts (%s)", sym$Gamma0), ssci)
+    if (object$model$row_covariates) comp_line(sprintf("Row Covariates (X%s%s)", sym$dot, sym$beta), ssrc)
+    if (object$model$col_covariates) comp_line(sprintf("Col Covariates (%s%sZ)", sym$Gamma, sym$dot), sscc)
+    if (object$model$row_intercept) comp_line(sprintf("Row Intercepts (%s)", sym$beta0), ssri)
+    if (object$model$col_intercept) comp_line(sprintf("Col Intercepts (%s)", sym$Gamma0), ssci)
     comp_line("Overlap / non-additive", explained - sss)
     cat("(Overlap is due to regularization.)\n")
   }
@@ -874,10 +874,10 @@ summary.imr_fit <- function(object, ...) {
       "\n-- %s Covariates --\nMode: %s (%s)\n",
       ifelse(rows, "Row", "Column"),
       ifelse(shared, paste0("Shared across ", ifelse(rows, "columns", "rows")),
-             paste0(ifelse(rows, "Column", "Row"), "-specific")
+        paste0(ifelse(rows, "Column", "Row"), "-specific")
       ),
       ifelse(shared, sprintf("%s = %d", ifelse(rows, "p", "q"), ncol(coefs)),
-             sprintf("%d x %d matrix", nrow(coefs), ncol(coefs))
+        sprintf("%d x %d matrix", nrow(coefs), ncol(coefs))
       )
     ))
     if (shared) {
