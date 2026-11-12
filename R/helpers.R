@@ -210,7 +210,13 @@ get_metric <- function(metric) {
 #'
 #' Computes common error metrics between two vectors or matrices.
 #'
-#' @param predicted,actual Numeric vectors or matrices of the same dimension
+#' @param predicted,actual Numeric vectors or matrices of the same dimension.
+#'   When `actual` is an incomplete matrix (see [as_incomplete()]), only its
+#'   observed entries are evaluated. When entries are selected, by an incomplete
+#'   `actual` or by `mask`, `predicted` is either a matrix with the dimensions
+#'   of `actual`, from which the same entries are taken, or a vector already
+#'   aligned with the selected entries in column-major order (the order of
+#'   `actual@x`).
 #' @param metric A character string specifying the single metric to compute
 #'   (one of `"rmse"`, `"rrmse"`, `"mae"`, `"medae"`, `"mape"`, `"spearman"`).
 #'   If set to `"all"` (the default), the function computes and returns the
@@ -220,6 +226,10 @@ get_metric <- function(metric) {
 #'   Defaults to `TRUE`. Note that removal is performed pairwise: if an `NA` is
 #'   present at a specific index in either `predicted` or `actual`, that entire
 #'   pair is excluded from the calculation.
+#' @param mask An optional matrix with the dimensions of `actual`, dense or
+#'   sparse. Only the entries where `mask == 1` are evaluated. If `actual` is
+#'   also an incomplete matrix, the masked entries that it does not store are
+#'   left out. Defaults to `NULL` (no mask).
 #'
 #' @details
 #' The function calculates the following metrics:
@@ -249,8 +259,40 @@ get_metric <- function(metric) {
 #'
 #' # Get only the Root Mean Squared Error
 #' evaluate(pred_vals, actual_vals, metric = "rmse")
+#'
+#' # Evaluate a matrix of predictions on the observed entries only
+#' actual_mat <- as_incomplete(matrix(c(2, NA, 4, 0.5, NA, 1), 2))
+#' pred_mat <- matrix(c(2.2, 1, 3.5, 0.4, 7, 1.1), 2)
+#' evaluate(pred_mat, actual_mat, metric = "rmse")
+#'
+#' # Evaluate on the entries selected by a mask
+#' mask <- matrix(c(1, 0, 0, 1, 0, 1), 2)
+#' evaluate(pred_mat, actual_mat, metric = "rmse", mask = mask)
 #' @export
-evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE) {
+evaluate <- function(predicted, actual, metric = "all", na.rm = TRUE,
+                     mask = NULL) {
+  if (!is.null(mask) || is_incomplete(actual)) {
+    # Entries to evaluate ----
+    # positions (row, column) in column-major order, the order of `actual@x`
+    if (is.null(mask)) {
+      ij <- cbind(actual@i + 1L, rep(seq_len(ncol(actual)), diff(actual@p)))
+      a <- actual@x
+    } else {
+      stopifnot(identical(dim(mask), dim(actual)))
+      ij <- Matrix::which(mask == 1, arr.ind = TRUE)
+      a <- actual[ij]
+    }
+    # a vector is taken as already aligned with these entries
+    if (!is.null(dim(predicted))) predicted <- predicted[ij]
+    stopifnot(length(predicted) == length(a))
+    if (!is.null(mask) && is_incomplete(actual)) {
+      # a masked entry that `actual` does not store is unobserved
+      keep <- a != 0
+      predicted <- predicted[keep]
+      a <- a[keep]
+    }
+    actual <- a
+  }
   p <- as.numeric(predicted)
   a <- as.numeric(actual)
   if (tolower(metric) != "all") {

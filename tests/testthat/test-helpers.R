@@ -50,6 +50,53 @@ test_that("get_metric('medae') is the median absolute error", {
   expect_identical(get_metric("medae")(predicted, actual, na.rm = FALSE), NA_real_)
 })
 
+# Data for the evaluate() tests: a dense truth, predictions, the observed set
+set.seed(11)
+ev_theta <- matrix(rnorm(20 * 15), 20, 15)
+ev_pred <- ev_theta + matrix(rnorm(20 * 15, sd = 0.3), 20, 15)
+ev_obs <- matrix(rbinom(20 * 15, 1, 0.5), 20, 15) == 1
+ev_y <- as_incomplete(ev_theta * ev_obs)
+ev_mask <- matrix(rbinom(20 * 15, 1, 0.4), 20, 15)
+
+test_that("evaluate() uses only the observed entries of an incomplete actual", {
+  # reference: the same metrics on the dense entries selected by hand; the
+  # selected values are the same doubles, hence no tolerance
+  expect_identical(evaluate(ev_pred, ev_y),
+                   evaluate(ev_pred[ev_obs], ev_theta[ev_obs]))
+  # the zero-filled comparison of the previous code gives another value
+  expect_false(isTRUE(all.equal(
+    evaluate(ev_pred, ev_y, "rmse"),
+    sqrt(mean((ev_pred - ev_theta * ev_obs)^2))
+  )))
+})
+
+test_that("evaluate() takes a vector aligned with the observed entries", {
+  expect_identical(evaluate(ev_pred[ev_obs], ev_y),
+                   evaluate(ev_pred[ev_obs], ev_theta[ev_obs]))
+})
+
+test_that("evaluate() uses only the entries where mask == 1", {
+  sel <- ev_mask == 1
+  ref <- evaluate(ev_pred[sel], ev_theta[sel])
+  # a dense mask, the same mask stored sparse, and an aligned vector
+  expect_identical(evaluate(ev_pred, ev_theta, mask = ev_mask), ref)
+  expect_identical(evaluate(ev_pred, ev_theta, mask = as_incomplete(ev_mask)),
+                   ref)
+  expect_identical(evaluate(ev_pred[sel], ev_theta, mask = ev_mask), ref)
+})
+
+test_that("evaluate() intersects the mask with an incomplete actual", {
+  # the mask also selects entries that ev_y does not store
+  expect_true(any(ev_mask == 1 & !ev_obs))
+  sel <- ev_mask == 1 & ev_obs
+  expect_identical(evaluate(ev_pred, ev_y, mask = ev_mask),
+                   evaluate(ev_pred[sel], ev_theta[sel]))
+})
+
+test_that("evaluate() rejects a mask of other dimensions", {
+  expect_error(evaluate(ev_pred, ev_theta, mask = t(ev_mask)))
+})
+
 test_that("imr_tune_grid() accepts the median absolute error", {
   expect_identical(imr_tune_grid(metric = "medae")$metric, "MEDAE")
 })

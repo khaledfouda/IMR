@@ -4,10 +4,16 @@
 \alias{evaluate}
 \title{Evaluate Model Predictions}
 \usage{
-evaluate(predicted, actual, metric = "all", na.rm = TRUE)
+evaluate(predicted, actual, metric = "all", na.rm = TRUE, mask = NULL)
 }
 \arguments{
-\item{predicted, actual}{Numeric vectors or matrices of the same dimension}
+\item{predicted, actual}{Numeric vectors or matrices of the same dimension.
+When \code{actual} is an incomplete matrix (see \code{\link[=as_incomplete]{as_incomplete()}}), only its
+observed entries are evaluated. When entries are selected, by an incomplete
+\code{actual} or by \code{mask}, \code{predicted} is either a matrix with the dimensions
+of \code{actual}, from which the same entries are taken, or a vector already
+aligned with the selected entries in column-major order (the order of
+\code{actual@x}).}
 
 \item{metric}{A character string specifying the single metric to compute
 (one of \code{"rmse"}, \code{"rrmse"}, \code{"mae"}, \code{"medae"}, \code{"mape"}, \code{"spearman"}).
@@ -19,6 +25,11 @@ computed only when requested by name.}
 Defaults to \code{TRUE}. Note that removal is performed pairwise: if an \code{NA} is
 present at a specific index in either \code{predicted} or \code{actual}, that entire
 pair is excluded from the calculation.}
+
+\item{mask}{An optional matrix with the dimensions of \code{actual}, dense or
+sparse. Only the entries where \code{mask == 1} are evaluated. If \code{actual} is
+also an incomplete matrix, the masked entries that it does not store are
+left out. Defaults to \code{NULL} (no mask).}
 }
 \value{
 If \code{metric = "all"}, returns a one-row data-frame containing
@@ -50,6 +61,15 @@ evaluate(pred_vals, actual_vals)
 
 # Get only the Root Mean Squared Error
 evaluate(pred_vals, actual_vals, metric = "rmse")
+
+# Evaluate a matrix of predictions on the observed entries only
+actual_mat <- as_incomplete(matrix(c(2, NA, 4, 0.5, NA, 1), 2))
+pred_mat <- matrix(c(2.2, 1, 3.5, 0.4, 7, 1.1), 2)
+evaluate(pred_mat, actual_mat, metric = "rmse")
+
+# Evaluate on the entries selected by a mask
+mask <- matrix(c(1, 0, 0, 1, 0, 1), 2)
+evaluate(pred_mat, actual_mat, metric = "rmse", mask = mask)
 }
 \seealso{
 \code{\link[=get_metric]{get_metric()}}

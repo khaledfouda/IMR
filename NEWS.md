@@ -8,6 +8,10 @@
 * New validation metric `"medae"`, the median absolute error, in
   `imr_tune_grid()`, `get_metric()` and `evaluate()`. It is computed only when
   requested by name: the default table of `evaluate()` is unchanged.
+* `evaluate()` gains `mask`: only the entries where `mask == 1` are evaluated.
+  When `actual` is an incomplete matrix (see `as_incomplete()`), only its
+  observed entries are evaluated; previously its unobserved entries were
+  compared as zeros.
 * New `imr_identify()`: an optional step after `imr_fit()` that returns the
   decomposition of the same fitted matrix in which the low-rank component is
   orthogonal to the row and column covariates (and to the intercepts), and the

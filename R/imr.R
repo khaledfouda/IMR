@@ -78,6 +78,8 @@ imr <- function(Y,
                 Z = NULL,
                 row_intercept = FALSE,
                 col_intercept = FALSE,
+                center = TRUE,
+                scale = TRUE,
                 val_prop = 0.2,
                 grid = imr_tune_grid(),
                 metric = grid$metric,
@@ -115,7 +117,8 @@ imr <- function(Y,
   }
 
   data <- step("preparing the data", update.imr_data(
-    imr_data(Y, X, Z, val_prop = if (tune) val_prop else 0, seed = seed),
+    imr_data(Y, X, Z, val_prop = if (tune) val_prop else 0, seed = seed,
+      center = center, scale = scale),
     row_intercept = row_intercept, col_intercept = col_intercept
   ))
   if (!tune) {
