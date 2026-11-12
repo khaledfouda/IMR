@@ -47,12 +47,12 @@ routines to calculate only the targeted entries.
 # create sample data
 Y <- matrix(
   c(2, NA, 3,
-  4, .5, NA,
-  NA, 1, 5), 3, byrow= TRUE
+    4, .5, NA,
+    NA, 1, 5), 3, byrow = TRUE
 )
 
 # create covariate matrix of 2 variables
-X <- matrix(rnorm(3*2), 3, 2)
+X <- matrix(rnorm(3 * 2), 3, 2)
 
 # create the data object
 data <- imr_data(Y =  Y, X = X, val_prop = 0.0)

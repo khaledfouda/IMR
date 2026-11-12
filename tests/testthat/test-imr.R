@@ -5,7 +5,8 @@ grid_all <- imr_tune_grid(beta = c(0, NA, 3), gamma = c(0, NA, 3),
                           nuclear = c(0, NA, 4, 2), rank = c(2, 6, 2, 2))
 
 # The reference for imr(): the calls it replaces, with the same seed and the
-# same settings. `...` goes to imr_tune().
+# same settings. `...` goes to imr_tune(). The tests give `maxit` and `thresh`
+# to imr() as well, so that they do not depend on its defaults.
 manual_imr <- function(Y, X = NULL, Z = NULL, grid, seed, row_intercept = FALSE,
                        col_intercept = FALSE, thresh = 1e-5, ...) {
   convergence <- imr_convergence(maxit = 600, thresh = thresh, ls_initial = TRUE)
@@ -32,16 +33,16 @@ expect_same_tuning <- function(out, ref) {
 
 test_that("imr() equals the manual calls when only the low-rank part is tuned", {
   # the slow path, so that fast_nuclear is seen to reach imr_tune()
-  out <- suppressMessages(imr(sim$Y, grid = grid_m, fast_nuclear = FALSE, n_cores = 1,
-                              seed = 1, verbose = 0))
+  out <- suppressMessages(imr(sim$Y, grid = grid_m, maxit = 600, thresh = 1e-5,
+                              fast_nuclear = FALSE, n_cores = 1, seed = 1, verbose = 0))
   ref <- suppressMessages(manual_imr(sim$Y, grid = grid_m, seed = 1, fast_nuclear = FALSE))
   expect_same_tuning(out, ref)
 })
 
 test_that("imr() equals the manual calls when lambda_beta is tuned as well", {
   # a linear lambda_m grid, so that nuclear_log_scale is seen to reach imr_tune()
-  out <- suppressMessages(imr(sim$Y, sim$X, grid = grid_all, nuclear_log_scale = FALSE,
-                              n_cores = 1, seed = 1, verbose = 0))
+  out <- suppressMessages(imr(sim$Y, sim$X, grid = grid_all, maxit = 600, thresh = 1e-5,
+                              nuclear_log_scale = FALSE, n_cores = 1, seed = 1, verbose = 0))
   ref <- suppressMessages(manual_imr(sim$Y, sim$X, grid = grid_all, seed = 1,
                                      nuclear_log_scale = FALSE))
   expect_same_tuning(out, ref)
@@ -51,8 +52,8 @@ test_that("imr() equals the manual calls when both Lasso penalties are tuned", {
   skip_on_cran()
   # both intercepts, and a threshold other than the default
   out <- suppressMessages(imr(sim$Y, sim$X, sim$Z, row_intercept = TRUE, col_intercept = TRUE,
-                              grid = grid_all, thresh = 1e-4, n_cores = 1, seed = 1,
-                              verbose = 0))
+                              grid = grid_all, maxit = 600, thresh = 1e-4, n_cores = 1,
+                              seed = 1, verbose = 0))
   ref <- suppressMessages(manual_imr(sim$Y, sim$X, sim$Z, grid = grid_all, seed = 1,
                                      row_intercept = TRUE, col_intercept = TRUE,
                                      thresh = 1e-4))
@@ -77,7 +78,7 @@ test_that("imr() asks for a validation split when it tunes", {
 test_that("imr() fits once, without a split, when the grid fixes every parameter", {
   grid <- imr_tune_grid(beta = 0.5, gamma = 0.2, nuclear = 1, rank = 3)
   out <- suppressMessages(imr(sim$Y, sim$X, sim$Z, col_intercept = TRUE, grid = grid,
-                              seed = 3, verbose = 0))
+                              maxit = 600, thresh = 1e-5, seed = 3, verbose = 0))
 
   data <- update(imr_data(sim$Y, sim$X, sim$Z, val_prop = 0, seed = 3), col_intercept = TRUE)
   fit <- suppressMessages(imr_fit(data, rank = 3, lambda_m = 1, lambda_beta = 0.5,
@@ -91,9 +92,10 @@ test_that("imr() fits once, without a split, when the grid fixes every parameter
 
 test_that("imr() ignores the grid entries of covariates that are not given", {
   # beta and gamma keep their default ranges, but there is no X and no Z
-  out <- suppressMessages(imr(sim$Y, grid = imr_tune_grid(nuclear = 1, rank = 3), seed = 3,
-                              verbose = 0))
-  fit <- suppressMessages(imr_fit(imr_data(sim$Y, seed = 3), rank = 3, lambda_m = 1))
+  out <- suppressMessages(imr(sim$Y, grid = imr_tune_grid(nuclear = 1, rank = 3), maxit = 600,
+                              thresh = 1e-5, seed = 3, verbose = 0))
+  fit <- suppressMessages(imr_fit(imr_data(sim$Y, seed = 3), rank = 3, lambda_m = 1,
+                                  convergence = imr_convergence(maxit = 600, thresh = 1e-5)))
   expect_named(out, c("fit", "data", "grid"))
   # the same computation on both sides: see expect_same_tuning() for the tolerance
   expect_equal(out$fit$coefficients, fit$coefficients)

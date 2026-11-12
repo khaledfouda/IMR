@@ -141,7 +141,8 @@ verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
     }
     return(verify_low_rank(M, J, min_eigv))
   } else {
-    warning("warm start verification failed - no significant singular values. Reinitializing...")
+    # M = 0, as a fit at or above the critical lambda_m returns it: the default
+    # start is used instead
     return(NULL)
   }
 }

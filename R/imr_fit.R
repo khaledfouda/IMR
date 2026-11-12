@@ -14,7 +14,10 @@
 #' @param ls_initial Logical. Sets the starting values when no `warm_start` is
 #'   given. If `TRUE` (the default), the model without the low-rank term is
 #'   fitted first: the coefficients and intercepts start at that fit, and
-#'   \eqn{M} at the rank-`rank` truncated SVD of its residuals. If `FALSE`,
+#'   \eqn{M} at the rank-`rank` truncated SVD of its residuals. When the
+#'   largest singular value of these residuals is at most `lambda_m`,
+#'   \eqn{M = 0} is the solution, and that fit is returned with `d = 0` and
+#'   without iterating (models with similarity matrices excepted). If `FALSE`,
 #'   the coefficients and intercepts start at zero and \eqn{M} at the
 #'   truncated SVD of the zero-filled `Y`. Neither start is random. `TRUE`
 #'   usually needs fewer iterations. Ignored for models without a low-rank
@@ -349,6 +352,8 @@ imr_solver <- function(
   nuclear_c_flag <- !(is.null(Uc) || is.null(dc))
   low_rank_flag <- !(is.null(r) || is.null(lambda_m) || r <= 0)
   if (!low_rank_flag) ls_initial <- FALSE
+  # set by the cold start when the model without M is already the solution
+  null_solution <- FALSE
   #-------------------------------------------------
   if (nuclear_r_flag) dr <- dr * lambda_m
   if (nuclear_c_flag) dc <- dc * lambda_m
@@ -434,6 +439,14 @@ imr_solver <- function(
       }
 
       init <- svd_opt(mfit$residuals, r)
+      # KKT condition of M = 0: sigma_1 of these residuals is at most lambda_m.
+      # The fit without M is then the solution, and the main loop is skipped.
+      # The tolerance allows for a lambda_m that comes from another SVD call.
+      # Not with similarity matrices, whose penalty has another dual norm.
+      null_solution <- !nuclear_r_flag && !nuclear_c_flag &&
+        mfit$n_iter < maxit &&
+        init$d[1] <= lambda_m * (1 + sqrt(.Machine$double.eps))
+      if (null_solution) init$d[] <- 0
     } else {
       if (beta_flag) {
         if (shared_beta) {
@@ -491,7 +504,7 @@ imr_solver <- function(
 
   #  Main loop ---------------------------------------------------------------
   if (return_objective) objective <- numeric(maxit)
-  ratio <- Inf
+  ratio <- if (null_solution) 0 else Inf
   iter <- 0
   while (ratio > thresh && iter < maxit) {
     iter <- iter + 1

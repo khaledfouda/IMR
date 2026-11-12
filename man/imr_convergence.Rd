@@ -4,7 +4,7 @@
 \alias{imr_convergence}
 \title{Control Parameters for IMR Convergence}
 \usage{
-imr_convergence(maxit = 600, thresh = 1e-05, trace = FALSE, ls_initial = TRUE)
+imr_convergence(maxit = 2000, thresh = 1e-06, trace = FALSE, ls_initial = TRUE)
 }
 \arguments{
 \item{maxit}{Integer. The maximum number of iterations allowed for the fit
@@ -20,7 +20,10 @@ function value at each iteration. Defaults to \code{FALSE}.}
 \item{ls_initial}{Logical. Sets the starting values when no \code{warm_start} is
 given. If \code{TRUE} (the default), the model without the low-rank term is
 fitted first: the coefficients and intercepts start at that fit, and
-\eqn{M} at the rank-\code{rank} truncated SVD of its residuals. If \code{FALSE},
+\eqn{M} at the rank-\code{rank} truncated SVD of its residuals. When the
+largest singular value of these residuals is at most \code{lambda_m},
+\eqn{M = 0} is the solution, and that fit is returned with \code{d = 0} and
+without iterating (models with similarity matrices excepted). If \code{FALSE},
 the coefficients and intercepts start at zero and \eqn{M} at the
 truncated SVD of the zero-filled \code{Y}. Neither start is random. \code{TRUE}
 usually needs fewer iterations. Ignored for models without a low-rank

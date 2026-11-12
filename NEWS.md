@@ -32,6 +32,15 @@
   initialization and the `lambda_m` grid maximum from `imr_set_grid_limits()`.
 * `imr_set_grid_limits()` now verifies a bound 5% above its KKT value, so a
   correct bound is no longer doubled.
+* `imr_fit()` no longer iterates when `lambda_m` is at or above its critical
+  value, the largest singular value of the residuals of the model without the
+  low-rank term. With the default start (`ls_initial = TRUE`) it returns that
+  model, with `d = 0` and zero iterations. Such a fit used to need about
+  `thresh^(-1/2)` iterations, or to stop at `maxit` with "Did not converge",
+  and it returned a small nonzero `d`. In `imr_tune()`, the fit at the
+  `lambda_m` grid maximum therefore has rank 0, which can change the selected
+  model. Models with similarity matrices are not affected. A warm start whose
+  `d` is all zero is now replaced by the default start without a warning.
 * `imr_tune()` now passes `nuclear_log_scale` on when it also tunes
   `lambda_beta` or `lambda_gamma`.
 * Clearer error message when an internal eigendecomposition fails.
