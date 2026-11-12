@@ -33,8 +33,8 @@ Defaults to \code{c(2, 30, 2, 2)}.}
 
 \item{metric}{Character. The error metric computed on the validation set and
 used by \code{imr_tune()} to compare hyperparameter values: one of \code{"rmse"},
-\code{"mae"}, \code{"mape"}, \code{"rrmse"} or \code{"spearman"} (case-insensitive; see
-\code{\link[=get_metric]{get_metric()}}). Defaults to \code{"rmse"}.}
+\code{"mae"}, \code{"medae"} (the median absolute error), \code{"mape"}, \code{"rrmse"} or
+\code{"spearman"} (case-insensitive; see \code{\link[=get_metric]{get_metric()}}). Defaults to \code{"rmse"}.}
 }
 \value{
 An object of class \code{"imr_tune_grid"}, a list of the parameters and their values.

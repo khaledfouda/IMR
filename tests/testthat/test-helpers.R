@@ -40,3 +40,16 @@ test_that("verify_warm_start() keeps a full-rank random start unchanged", {
   # no tolerance: with length(d) equal to the rank, nothing is truncated or padded
   expect_identical(out, ws)
 })
+
+test_that("get_metric('medae') is the median absolute error", {
+  predicted <- c(1, 4, NA, 10, 3)
+  actual <- c(2, 2, 5, 3, NA)
+  # the complete pairs have absolute errors 1, 2 and 7: no rounding, no tolerance
+  expect_identical(get_metric("medae")(predicted, actual), 2)
+  expect_identical(evaluate(predicted, actual, metric = "medae"), 2)
+  expect_identical(get_metric("medae")(predicted, actual, na.rm = FALSE), NA_real_)
+})
+
+test_that("imr_tune_grid() accepts the median absolute error", {
+  expect_identical(imr_tune_grid(metric = "medae")$metric, "MEDAE")
+})

@@ -153,10 +153,11 @@ verify_warm_start <- function(M, J, min_eigv = .Machine$double.eps) {
 #' `get_metric()` returns one of the common error metric functions that takes
 #' two arguments: predictions and true values.
 #'
-#' @param metric one of ("rmse", "rrmse", "mae", "mape", "spearman")
+#' @param metric one of ("rmse", "rrmse", "mae", "medae", "mape", "spearman").
+#'   "medae" is the median absolute error.
 #' @return A function that takes two arguments (vectors or matrices)
 #' @seealso [evaluate()]
-#' @importFrom stats complete.cases cor
+#' @importFrom stats complete.cases cor median
 #' @examples
 #' rmse_function <- get_metric("rmse")
 #' rmse_function(predicted = c(1,3,NA), actual = c(1,2,3), na.rm = TRUE)
@@ -176,6 +177,10 @@ get_metric <- function(metric) {
 
     "mae" = function(predicted, actual, na.rm = TRUE) {
       mean(abs(actual - predicted), na.rm = na.rm)
+    },
+
+    "medae" = function(predicted, actual, na.rm = TRUE) {
+      median(abs(actual - predicted), na.rm = na.rm)
     },
 
     "rmse" = function(predicted, actual, na.rm = TRUE) {
@@ -206,8 +211,10 @@ get_metric <- function(metric) {
 #'
 #' @param predicted,actual Numeric vectors or matrices of the same dimension
 #' @param metric A character string specifying the single metric to compute
-#'   (one of `"rmse"`, `"rrmse"`, `"mae"`, `"mape"`, `"spearman"`). If set to
-#'   `"all"` (the default), the function computes and returns all available metrics.
+#'   (one of `"rmse"`, `"rrmse"`, `"mae"`, `"medae"`, `"mape"`, `"spearman"`).
+#'   If set to `"all"` (the default), the function computes and returns the
+#'   metrics listed in Details. `"medae"`, the median absolute error, is
+#'   computed only when requested by name.
 #' @param na.rm Logical. Should missing values be removed before computation?
 #'   Defaults to `TRUE`. Note that removal is performed pairwise: if an `NA` is
 #'   present at a specific index in either `predicted` or `actual`, that entire

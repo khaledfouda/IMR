@@ -22,8 +22,8 @@
 #'   Defaults to `c(2, 30, 2, 2)`.
 #' @param metric Character. The error metric computed on the validation set and
 #'   used by `imr_tune()` to compare hyperparameter values: one of `"rmse"`,
-#'   `"mae"`, `"mape"`, `"rrmse"` or `"spearman"` (case-insensitive; see
-#'   [get_metric()]). Defaults to `"rmse"`.
+#'   `"mae"`, `"medae"` (the median absolute error), `"mape"`, `"rrmse"` or
+#'   `"spearman"` (case-insensitive; see [get_metric()]). Defaults to `"rmse"`.
 #'
 #' @details
 #' Specifications for `beta`, `gamma`, and `nuclear` parameters are subject to the
@@ -86,7 +86,8 @@ imr_tune_grid <- function(beta = c(0, NA, 20), # min, max, length
   }
 
   .imr_check_param(metric, "character", case_insensitive = TRUE, raise_error = TRUE,
-                   choices = c("rmse", "mae", "mape", "rrmse", "spearman"))
+                   choices = c("rmse", "mae", "medae", "mape", "rrmse",
+                               "spearman"))
 
 
   structure(

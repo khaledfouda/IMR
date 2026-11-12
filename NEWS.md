@@ -1,5 +1,13 @@
 # IMR (development version)
 
+* New `imr()`: prepares the data, computes the grid limits, tunes and fits the
+  model in one call, with the most used arguments of `imr_data()`, `update()`,
+  `imr_set_grid_limits()` and `imr_tune()`. It returns the tuning result
+  together with the data object and the grid. When the grid fixes every tuning
+  parameter, the model is fitted once, without a validation split.
+* New validation metric `"medae"`, the median absolute error, in
+  `imr_tune_grid()`, `get_metric()` and `evaluate()`. It is computed only when
+  requested by name: the default table of `evaluate()` is unchanged.
 * New `imr_identify()`: an optional step after `imr_fit()` that returns the
   decomposition of the same fitted matrix in which the low-rank component is
   orthogonal to the row and column covariates (and to the intercepts), and the

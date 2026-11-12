@@ -10,8 +10,10 @@ evaluate(predicted, actual, metric = "all", na.rm = TRUE)
 \item{predicted, actual}{Numeric vectors or matrices of the same dimension}
 
 \item{metric}{A character string specifying the single metric to compute
-(one of \code{"rmse"}, \code{"rrmse"}, \code{"mae"}, \code{"mape"}, \code{"spearman"}). If set to
-\code{"all"} (the default), the function computes and returns all available metrics.}
+(one of \code{"rmse"}, \code{"rrmse"}, \code{"mae"}, \code{"medae"}, \code{"mape"}, \code{"spearman"}).
+If set to \code{"all"} (the default), the function computes and returns the
+metrics listed in Details. \code{"medae"}, the median absolute error, is
+computed only when requested by name.}
 
 \item{na.rm}{Logical. Should missing values be removed before computation?
 Defaults to \code{TRUE}. Note that removal is performed pairwise: if an \code{NA} is

@@ -7,7 +7,8 @@
 get_metric(metric)
 }
 \arguments{
-\item{metric}{one of ("rmse", "rrmse", "mae", "mape", "spearman")}
+\item{metric}{one of ("rmse", "rrmse", "mae", "medae", "mape", "spearman").
+"medae" is the median absolute error.}
 }
 \value{
 A function that takes two arguments (vectors or matrices)
