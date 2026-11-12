@@ -81,8 +81,8 @@ imr <- function(Y,
                 val_prop = 0.2,
                 grid = imr_tune_grid(),
                 metric = grid$metric,
-                maxit = 600,
-                thresh = 1e-5,
+                maxit = 2000,
+                thresh = 1e-8,
                 fast_nuclear = TRUE,
                 nuclear_log_scale = TRUE,
                 final_fit = TRUE,
@@ -93,16 +93,16 @@ imr <- function(Y,
   # nothing to tune when every parameter of the model is fixed in the grid
   fixed <- function(p) identical(p$min, p$max)
   tune <- !(fixed(grid$nuclear) && fixed(grid$rank) &&
-              (is.null(X) || fixed(grid$beta)) &&
-              (is.null(Z) || fixed(grid$gamma)))
+    (is.null(X) || fixed(grid$beta)) &&
+    (is.null(Z) || fixed(grid$gamma)))
   if (tune) {
     .imr_check_param(val_prop, "numeric", 0, 1, min_inclusive = FALSE,
-                     max_inclusive = FALSE)
+      max_inclusive = FALSE)
     get_metric(metric) # stops on an unknown metric
     grid$metric <- toupper(metric)
   }
   convergence <- imr_convergence(maxit = maxit, thresh = thresh,
-                                 trace = verbose > 10, ls_initial = TRUE)
+    trace = verbose > 10, ls_initial = TRUE)
   # runs one step; announces it and reports its time when verbose > 0
   step <- function(label, expr) {
     if (verbose <= 0) return(expr)
@@ -110,7 +110,7 @@ imr <- function(Y,
     start <- Sys.time()
     value <- expr
     message(sprintf("imr: done in %.2f s",
-                    as.numeric(Sys.time() - start, units = "secs")))
+      as.numeric(Sys.time() - start, units = "secs")))
     return(value)
   }
 
